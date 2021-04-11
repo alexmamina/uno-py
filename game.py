@@ -253,6 +253,10 @@ class Game(Frame):
 						result += 50
 			messagebox.showinfo("Points", "Your points are: "+str(result))
 
+
+	##################################### CLIENT ##################################
+
+
 	##################################### MAIN ##################################
 if __name__ == "__main__":
 	root = Tk()
