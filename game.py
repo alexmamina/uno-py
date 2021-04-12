@@ -1,3 +1,4 @@
+from threading import Thread
 from tkinter import *
 from tkinter import simpledialog
 from math import *
@@ -6,6 +7,8 @@ from os import *
 import card
 import deck
 import events
+from socket import *
+from sys import *
 from events import *
 from card import *
 import re
@@ -21,7 +24,8 @@ class Game(Frame):
 	global new_deck
 	new_deck = Deck()
 	pile = new_deck.deck
-
+	global message
+	message = {}
 	#global cards_left
 	#Last played card
 	global lastplayed
@@ -32,7 +36,7 @@ class Game(Frame):
 	#List of cards on your hands
 	global hand_cards
 	hand_cards = {}
-
+	global window
 	#List of buttons, same as hand_cards
 	global hand_btns
 	hand_btns = {}
@@ -42,7 +46,7 @@ class Game(Frame):
 
 
 	# Initialise a frame (going to be within the window). Set the cards label
-	def __init__(self, master):
+	def __init__(self, master, message):
 		super().__init__(master)
 		self.pack()
 		self.parent = master
@@ -54,14 +58,20 @@ class Game(Frame):
 		self.uno = but(text="UNO?", fg="red", bg="yellow", width=100, height=80, borderless=1,
 					   command=self.one_card)
 		self.uno.place(x=50,y=150)
+		self.setup_menu()
+		self.setup_pile(message)
+		self.cards = self.deal_cards(message)
+		self.setup_hand(self.cards)
 
 	# Create a hand of 7 cards
-	def deal_cards(self):
-		global hand_cards
+	def deal_cards(self, message):
+		global hand_cards, pile, new_deck
 		hand = []
+		pile = message['pile']
 		for i in range(7):
 			c = pile.pop(0)
-			hand.append(c)
+			card = new_deck.get_card(c)
+			hand.append(card) #NAMES
 			#hand_cards.append(c)
 		return hand
 
@@ -83,16 +93,17 @@ class Game(Frame):
 		self.parent.configure(menu=menubar)
 
 	# Add the pile and last played buttons
-	def setup_pile(self):
-		global last
+	def setup_pile(self, message):
+		global last, new_deck
 		photo = ImageTk.PhotoImage(deck.backofcard)
 
 		new_card = Button(image=photo, width=117, height=183, command=self.take_card)
 		new_card.image = photo
 		new_card.place(x=300, y=50)
-
-		photo2 = ImageTk.PhotoImage(lastplayed.card_pic)
-		last = Button(text=lastplayed.name, image=photo2, width=117, height=183, border=0,
+		#Put the last played card from the message
+		lastplayed2 = message['played'] #this is a name!!
+		photo2 = ImageTk.PhotoImage(new_deck.get_card(lastplayed2).card_pic)
+		last = Button(text=lastplayed2, image=photo2, width=117, height=183, border=0,
 					  state="disabled")
 		last.image = photo2
 		last.place(x=453, y=50)
@@ -110,7 +121,7 @@ class Game(Frame):
 			hand_cards[i] = dealt_cards[i]
 			coords = self.get_card_placement(n,i)
 			b.place(x=coords[1], y=coords[2])
-
+		print(pile)
 
 	def get_card_placement(self,num_cards, i):
 		result = []
@@ -193,7 +204,7 @@ class Game(Frame):
 				ctr += 1
 
 	def take_card(self):
-		global pile, hand_cards, hand_btns, all_played
+		global pile, hand_cards, hand_btns, all_played, new_deck
 		print("CARD")
 		#If pile is empty, reshuffle the all_played cards
 		if (len(pile) < 1 or pile is None):
@@ -202,7 +213,7 @@ class Game(Frame):
 			shuffle(pile)
 			all_played = all_played[-1:]
 			print(pile)
-		new = pile.pop(0)
+		new = new_deck.get_card(pile.pop(0))
 		#Since hand is a dict, the keys aren't in order.
 		#Get the largest and add 1 for the next
 		ind = max(list(hand_cards.keys())) + 1
@@ -214,7 +225,7 @@ class Game(Frame):
 		b.image = photo
 		hand_btns[ind] = b
 		self.cards_left.config(text="Your cards left: " + str(len(hand_cards)) +
-									"\n Other player's cards left: " + str(8))
+									"\n Other player's cards left: " + str(7))
 		ctr = 0
 		for i in hand_btns.keys():
 			b = hand_btns[i]
@@ -255,22 +266,44 @@ class Game(Frame):
 
 
 	##################################### CLIENT ##################################
+def receive():
+		global message, root
+		while True:
+			print("Waiting")
+			json, addr = sock.recvfrom(8000)
+			message = loads(json.decode())
+			#print(message)
+			if message['stage'] == "INIT":
+				print("HERE")
 
+				# Window is a frame
+				window = Game(root, message)
+
+			if message['stage'] == "END":
+				break
+		sock.close()
 
 	##################################### MAIN ##################################
+
 if __name__ == "__main__":
-	root = Tk()
+	global window, message, root
+
+	port = argv[1]
+	sock = socket(AF_INET, SOCK_DGRAM)
+	#window = Game(root, message)
+	sock.bind(('localhost', int(port)))
+
+	thread = Thread(target=receive)
+	thread.start()
+	thread.join()
 	#Start thread, receive first info
 	#Use it in here
-	root.title("UNO")
-	root.configure(bg='white')
-	root.geometry("700x553")
-	global window
-	# Window is a frame
-	window = Game(root)
-	window.setup_menu()
-	window.setup_pile()
-	cards = window.deal_cards()
-	window.setup_hand(cards)
-	window.mainloop()
-	print("Done")
+	if len(message) > 0:
+		root = Tk()
+
+		root.title("UNO")
+		root.configure(bg='white')
+		root.geometry("700x553")
+		#print(message)
+		window = Game(root, message)
+		window.mainloop()

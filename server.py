@@ -14,10 +14,13 @@ d = Deck().deck
 pile = [c.name for c in d]
 print(pile)
 first_card = pile.pop(14)
+#TO 1 we need to send [0:7]:[15:]
+#TO 2 we need to send [8:]
+
 #Skeleton of json to be sent
 data_to_send = {"stage" : "INIT",
 				"played" : first_card,
-				"pile" : pile,
+				"pile" : pile[0:7]+pile[14:],
 				"num_left" : 7,
 				"color" : first_card[0:3],
 				"all_played" : [],
