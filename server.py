@@ -75,25 +75,25 @@ while True:
 		#receiver is 0, sender is 1
 		if current == 1:
 			print("Player 1 will go again")
-			sock.sendto(dumps(data).encode(), addresses[1])
+			sock.sendto(dumps(data).encode(), (ip, port))
 			data['player'] = 0
-			sock2.sendto(dumps(data).encode(), addresses[2])
+			sock2.sendto(dumps(data).encode(), (ip, port2))
 			print("Player 2 waits")
 		else:
 			print("Player 2 will go again")
-			sock2.sendto(dumps(data).encode(), addresses[2])
+			sock2.sendto(dumps(data).encode(), (ip, port2))
 			data['player'] = 0
-			sock.sendto(dumps(data).encode(), addresses[1])
+			sock.sendto(dumps(data).encode(), (ip, port))
 			print("Player 1 waits")
 	#Not stop, so just relay info
 	else:
 		if current==1:
 			#Relay to player 2
-			sock2.sendto(dumps(data).encode(), addresses[2])
+			sock2.sendto(dumps(data).encode(), (ip, port2))
 			print("Sent to player 2")
-			waiting_for_one = False
+			current = 2
 
 		else:
 			print("Sent to player 1")
-			sock.sendto(dumps(data).encode(), addresses[1])
-			waiting_for_one = True
+			sock.sendto(dumps(data).encode(), (ip, port))
+			current = 1

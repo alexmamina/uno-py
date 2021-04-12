@@ -40,7 +40,8 @@ class Game(Frame):
 	#List of buttons, same as hand_cards
 	global hand_btns
 	hand_btns = {}
-
+	global uno
+	uno = False
 	global all_played
 	all_played = []
 
@@ -139,14 +140,14 @@ class Game(Frame):
 
 	##################################### EVENTS ##################################
 	def place_card(self,ind, binst):
-		global hand_btns, hand_cards, last, all_played, cards_left
+		global hand_btns, hand_cards, last, all_played, cards_left, uno
 		card = hand_cards[ind].name
 		old_card = last['text']
 		print("OLD: ", old_card, " NEW: ", card)
 		#Same color (0:3), same symbol (3:), black
 		if (card[0:3] == old_card[0:3] or card[3:] == old_card[3:] or "bla" in card[0:3]):
 			binst.destroy()
-			all_played.append(hand_cards[ind])
+			all_played.append(hand_cards[ind].name)
 			if "bla" in card[0:3]:
 				new_color = askinteger("Color picker", "Input a number between 1 and 4: \n"
 													   "1. Red \n"
@@ -202,6 +203,16 @@ class Game(Frame):
 				coords = self.get_card_placement(len(hand_btns),ctr)
 				b.place(x=coords[1], y=coords[2])
 				ctr += 1
+			data_to_send = {
+				"played" : card,
+				"pile" : pile,
+				"stage" : "GO",
+				"said_uno" : uno,
+				"color" : card[0:3],
+				"all_played" : all_played,
+				"num_left" : len(hand_cards)
+			}
+			sock.sendto(dumps(data_to_send).encode(), addr)
 
 	def take_card(self):
 		global pile, hand_cards, hand_btns, all_played, new_deck
@@ -267,7 +278,7 @@ class Game(Frame):
 
 	##################################### CLIENT ##################################
 def receive():
-		global message, root
+		global message, root, addr
 		while True:
 			print("Waiting")
 			json, addr = sock.recvfrom(8000)
@@ -275,10 +286,10 @@ def receive():
 			#print(message)
 			if message['stage'] == "INIT":
 				print("HERE")
-
 				# Window is a frame
 				window = Game(root, message)
-
+			if message['stage'] == "GO":
+				print(message)
 			if message['stage'] == "END":
 				break
 		sock.close()
