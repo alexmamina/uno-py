@@ -12,11 +12,17 @@ from sys import *
 from events import *
 from card import *
 import re
+import queue
 from deck import *
 from random import *
 from tkinter.simpledialog import *
 import copy
 from tkmacosx import Button as but
+
+port = argv[1]
+sock = socket(AF_INET, SOCK_DGRAM)
+#sock.bind(('localhost', int(port)))
+
 
 class Game(Frame):
 	global pile
@@ -32,6 +38,7 @@ class Game(Frame):
 	lastplayed = pile.pop(0)
 	#button with that card
 	global last
+	global root
 	#global uno
 	#List of cards on your hands
 	global hand_cards
@@ -47,10 +54,11 @@ class Game(Frame):
 
 
 	# Initialise a frame (going to be within the window). Set the cards label
-	def __init__(self, master, message):
+	def __init__(self, master, queue, message):
 		super().__init__(master)
 		self.pack()
 		self.parent = master
+		self.q = queue
 		self.hand_cards = []
 		text_cards_left = "Your cards left: " + str(7) + "\n Other player's cards " \
 																	"left: " + str(7)
@@ -276,45 +284,48 @@ class Game(Frame):
 			messagebox.showinfo("Points", "Your points are: "+str(result))
 
 
+	def incoming(self):
+		global cards_left
+		while self.q.qsize():
+			try:
+				msg = self.q.get(0)
+				if msg['num_left']:
+					self.cards_left.config(text=msg['num_left'])
+			except queue.Empty:
+				pass
+
 	##################################### CLIENT ##################################
-def receive():
-		global message, root, addr
-		while True:
-			print("Waiting")
-			json, addr = sock.recvfrom(8000)
-			message = loads(json.decode())
-			#print(message)
-			if message['stage'] == "INIT":
-				print("HERE")
-				# Window is a frame
-				window = Game(root, message)
-			if message['stage'] == "GO":
+	def receive(self):
+			global message, root, addr
+			while True:
+				print("Waiting")
+				json, addr = sock.recvfrom(8000)
+				message = loads(json.decode())
 				print(message)
-			if message['stage'] == "END":
-				break
-		sock.close()
+				self.q.put(message)
+
+
+
+def checkPeriodically(w):
+	w.incoming()
+	#TODO pick best waiting time here
+	w.after(500, checkPeriodically, w)
+
 
 	##################################### MAIN ##################################
 
 if __name__ == "__main__":
-	global window, message, root
 
-	port = argv[1]
-	sock = socket(AF_INET, SOCK_DGRAM)
-	#window = Game(root, message)
-	sock.bind(('localhost', int(port)))
-
-	thread = Thread(target=receive)
+	root = Tk()
+	root.title("UNO - port " + port)
+	root.configure(bg='white')
+	root.geometry("700x553")
+	sock.bind(('', int(port)))
+	init, addr = sock.recvfrom(8000)
+	message = loads(init.decode())
+	q = queue.Queue()
+	window = Game(root, q, message)
+	thread = Thread(target=window.receive)
 	thread.start()
-	thread.join()
-	#Start thread, receive first info
-	#Use it in here
-	if len(message) > 0:
-		root = Tk()
-
-		root.title("UNO")
-		root.configure(bg='white')
-		root.geometry("700x553")
-		#print(message)
-		window = Game(root, message)
-		window.mainloop()
+	checkPeriodically(window)
+	window.mainloop()

@@ -6,8 +6,10 @@ sock = socket(AF_INET, SOCK_DGRAM)
 sock2 = socket(AF_INET, SOCK_DGRAM)
 
 ip = 'localhost'
-port = 44444
-port2 = 44445
+#port = 44444
+#port2 = 44445
+port = 54456
+port2 = 54455
 addresses = {}
 current = 1
 d = Deck().deck
@@ -44,7 +46,8 @@ pile = pile[7:]
 #ALL SENT
 
 while True:
-
+	#s = "answer me"
+	#sock2.sendto(s.encode(), (ip, port2))
 	if current == 1:
 		print("Waiting for player one")
 		json, addr = sock.recvfrom(8000)
