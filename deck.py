@@ -12,7 +12,7 @@ import copy
 
 class Deck:
 
-	global backofcard
+	global backofcard, special_blacks
 	backofcard = Image.open("/Users/alexmamina/IdeaProjects/uno/backofcard.jpg")
 	backofcard = backofcard.resize((117, 183), Image.ANTIALIAS)
 
@@ -33,6 +33,9 @@ class Deck:
 	yelblack = Image.open("/Users/alexmamina/IdeaProjects/uno/yelblack.jpeg")
 	yelblack = yelblack.resize((117, 183), Image.ANTIALIAS)
 
+	special_blacks = {"redplus": redplus, "greplus": greplus, "bluplus": bluplus, 'yelplus' :
+		yelplus, 'redblack': redblack,  'blublack': blublack,  'yelblack': yelblack,  'greblack':
+		greblack }
 
 #List of all Card objects
 	def __init__(self):
@@ -63,7 +66,13 @@ class Deck:
 				return c
 		return None
 				
-	
+	def get_special(self, name):
+		for i in special_blacks:
+			print(i, " ", name)
+			if i in name:
+				return special_blacks[i]
+		return None
+
 	def __str__(self):
 		str = ""
 		for c in self.deck:
@@ -78,17 +87,3 @@ class Deck:
 			str += ", "
 		return str
 
-
-if __name__ == "__main__":
-	print ("hello")
-	d = Deck()
-	print(len(d.deck))
-	#This is the 'queue', deck not affected
-	c = copy.deepcopy(d.deck)
-	c.pop(0)
-	
-	print (len(c))
-	print (len(d.deck))
-	
-	#do stuff
-	#main()

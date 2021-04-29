@@ -305,12 +305,12 @@ class Game(Frame):
 					for i in self.hand_btns:
 							self.hand_btns[i].config(state='normal')
 				#todo challenge uno
-				q.empty()
+				q.queue.clear()
 			except queue.Empty:
 				pass
-#todo send when taken card(s)
+#todo send when taken card(s) (counter global, when value, send)
 	#TODO add which player you are
-#todo empty q so that only one message exists
+	#todo add label so that seen who's turn it is now
 	#todo ending
 #todo pick color if first is black
 	#todo disable second player in the beginning
@@ -335,7 +335,7 @@ class Game(Frame):
 def checkPeriodically(w):
 	w.incoming()
 	#TODO pick best waiting time here
-	w.after(200, checkPeriodically, w)
+	w.after(100, checkPeriodically, w)
 
 def close_window():
 	sock.close()
@@ -346,14 +346,20 @@ def close_window():
 if __name__ == "__main__":
 
 	root = Tk()
-	root.title("UNO - port " + port)
 	root.configure(bg='white')
 	root.geometry("700x553")
 	sock.bind(('', int(port)))
 	init, addr = sock.recvfrom(8000)
 	message = loads(init.decode())
+	root.title("UNO - port " + port + " player - " + str(message['player']))
 	q = queue.Queue()
 	window = Game(root, q, message)
+	if message['player'] == 0:
+		window.new_card.config(state="disabled")
+		window.uno = False
+		window.uno_but.config(fg="red", bg="yellow", state='disabled')
+		for i in window.hand_btns:
+			window.hand_btns[i].config(state='disabled')
 	thread = Thread(target=window.receive)
 	thread.start()
 	checkPeriodically(window)
