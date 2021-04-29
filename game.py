@@ -10,6 +10,8 @@ import events
 from socket import *
 from sys import *
 from events import *
+
+from picker import *
 from card import *
 import re
 import queue
@@ -51,7 +53,7 @@ class Game(Frame):
 																	"left: " + str(7)
 		self.cards_left = Label(text=text_cards_left, fg="blue", bg="white", width=20, height=5)
 		self.cards_left.place(x=10, y=30)
-		self.uno_but = but(text="UNO?", fg="red", bg="yellow", width=100, height=80, borderless=1,
+		self.uno_but = but(text="UNO?", fg="red", bg="white", width=100, height=80, borderless=1,
 						   command=self.one_card)
 		self.uno_but.place(x=50, y=150)
 		self.uno = False
@@ -149,43 +151,23 @@ class Game(Frame):
 			all_played.append(self.hand_cards[ind].name)
 			#Changes the black card to black with a color to show which one to play next
 			if "bla" in card[0:3]:
-				new_color = askinteger("Color picker", "Input a number between 1 and 4: \n"
-													   "1. Red \n"
-													   "2. Blue \n"
-													   "3. Green \n"
-													   "4. Yellow", minvalue=1, maxvalue=4)
-				if new_color == 1:
-					#Get the new red black card (open file)
-					if "plus" in card:
-						photocard = new_deck.redplus
-						card_col = "redplusfour.png"
-					else:
-						photocard = new_deck.redblack
-						card_col = "redblack.png"
-				elif new_color == 2:
-					#Get the new blue black card (open file)
-					if "plus" in card:
-						photocard = new_deck.bluplus
-						card_col = "bluplusfour.png"
-					else:
-						photocard = new_deck.blublack
-						card_col = "blublack.png"
-				elif new_color == 3:
-					#Get the new green black card (open file)
-					if "plus" in card:
-						photocard = new_deck.greplus
-						card_col = "greplusfour.png"
-					else:
-						photocard = new_deck.greblack
-						card_col = "greblack.png"
+				picker = Picker(self, "New color", "Which one?", ['Red','Green','Blue',
+																	 'Yellow'])
+				new_color = picker.result
+				print(new_color)
+				print(type(new_color))
+				new_color = new_color.lower()[0:3]
+				print(new_color)
+				if "plus" in card:
+					new_color += "plus"
+					card_col = new_color+"four.png"
+					photocard = new_deck.get_special(new_color)
 				else:
-					#Get the new yellow black card (open file)
-					if "plus" in card:
-						photocard = new_deck.yelplus
-						card_col = "yelplusfour.png"
-					else:
-						photocard = new_deck.yelblack
-						card_col = "yelblack.png"
+					new_color += "black"
+					card_col = new_color+"black.png"
+					photocard = new_deck.get_special(new_color)
+
+
 			else:
 				photocard = self.hand_cards[ind].card_pic
 				card_col = card
@@ -249,7 +231,7 @@ class Game(Frame):
 	def one_card(self):
 		if self.uno:
 			self.uno = False
-			self.uno_but.config(fg="red", bg="yellow")
+			self.uno_but.config(fg="red", bg="white")
 		else:
 			self.uno = True
 			self.uno_but.config(fg="green", bg="white")
@@ -317,10 +299,7 @@ class Game(Frame):
 			except queue.Empty:
 				pass
 #todo send when taken card(s) (counter global, when value, send)
-	#TODO add which player you are
-	#todo multiple choice color picker
 	#todo ending
-	#todo fix disabling uno colors
 	def receive(self):
 			global message, root, addr
 			while True:
@@ -342,7 +321,6 @@ class Game(Frame):
 
 def checkPeriodically(w):
 	w.incoming()
-	#TODO pick best waiting time here
 	w.after(100, checkPeriodically, w)
 
 def close_window():
@@ -359,13 +337,14 @@ if __name__ == "__main__":
 	sock.bind(('', int(port)))
 	init, addr = sock.recvfrom(8000)
 	message = loads(init.decode())
-	root.title("UNO - port " + port + " player - " + str(message['player']))
+	root.title("UNO - port " + port + " player - " + (str(1) if message['player'] == 1 and 'stop'
+			not in message['played'] else str(2)))
 	q = queue.Queue()
 	window = Game(root, q, message)
 	if message['player'] == 0:
 		window.new_card.config(state="disabled")
 		window.uno = False
-		window.uno_but.config(fg="red", bg="yellow", state='disabled')
+		window.uno_but.config(fg="red", bg="white", state='disabled')
 		for i in window.hand_btns:
 			window.hand_btns[i].config(state='disabled')
 	thread = Thread(target=window.receive)

@@ -17,20 +17,12 @@ d = Deck().deck
 pile = [c.name for c in d]
 print(pile)
 first_card = pile.pop(14)
-#todo if first is stop send to other player
-
+previous = {}
 # Black card will not be played first. If popped, reshuffle and get new
 while "bla" in first_card:
 	pile.append(first_card)
 	shuffle(pile)
 	first_card = pile.pop(14)
-
-
-if "stop" in first_card:
-	current = 0
-else:
-	current = 1
-
 
 #TO 1 we need to send [0:7]:[15:]
 #TO 2 we need to send [8:]
@@ -45,19 +37,40 @@ data_to_send = {"stage" : "INIT",
 				"player" : 1,
 				"said_uno" : False}
 
-#Send init stage deck + first card played
-info = data_to_send
-sock.sendto(dumps(info).encode(), (ip, port))
-print("Sent to player 1")
-#"Remove" the first 7 cards used for player 1
-pile = pile[7:]
-#Update values and send to player 2
-data_to_send["pile"] = pile
-data_to_send["player"] = 0
-info2 = data_to_send
-sock2.sendto(dumps(info2).encode(), (ip, port2))
-print("Sent to player 2")
-pile = pile[7:]
+#Send data to different players depending on if the first one needs to skip a turn
+if "stop" in first_card:
+	current = 2
+
+	#Send init stage deck + first card played
+	data_to_send["player"] = 0
+	info = data_to_send
+	sock.sendto(dumps(info).encode(), (ip, port))
+	print("Sent to player 1")
+	#"Remove" the first 7 cards used for player 1
+	pile = pile[7:]
+	#Update values and send to player 2
+	data_to_send["pile"] = pile
+	data_to_send["player"] = 1
+	info2 = data_to_send
+	sock2.sendto(dumps(info2).encode(), (ip, port2))
+	print("Sent to player 2")
+	pile = pile[7:]
+
+else:
+	current = 1
+	#Send init stage deck + first card played
+	info = data_to_send
+	sock.sendto(dumps(info).encode(), (ip, port))
+	print("Sent to player 1")
+	#"Remove" the first 7 cards used for player 1
+	pile = pile[7:]
+	#Update values and send to player 2
+	data_to_send["pile"] = pile
+	data_to_send["player"] = 0
+	info2 = data_to_send
+	sock2.sendto(dumps(info2).encode(), (ip, port2))
+	print("Sent to player 2")
+	pile = pile[7:]
 
 #ALL SENT
 
@@ -91,17 +104,21 @@ while True:
 	if card is not None and "stop" in card:
 		#receiver is 0, sender is 1
 		if current == 1:
-			print("Player 1 will go again")
-			sock.sendto(dumps(data).encode(), (ip, port))
 			data['player'] = 0
 			sock2.sendto(dumps(data).encode(), (ip, port2))
 			print("Player 2 waits")
+			print("Player 1 will go again")
+			data['num_left'] = previous['num_left']
+			data['player'] = 1
+			sock.sendto(dumps(data).encode(), (ip, port))
 		else:
-			print("Player 2 will go again")
-			sock2.sendto(dumps(data).encode(), (ip, port2))
 			data['player'] = 0
 			sock.sendto(dumps(data).encode(), (ip, port))
 			print("Player 1 waits")
+			data['player'] = 1
+			data['num_left'] = previous['num_left']
+			print("Player 2 will go again")
+			sock2.sendto(dumps(data).encode(), (ip, port2))
 	#Not stop, so just relay info
 	else:
 		if current==1:
@@ -114,3 +131,5 @@ while True:
 			print("Sent to player 1")
 			sock.sendto(dumps(data).encode(), (ip, port))
 			current = 1
+	if "stop" not in message['played']:
+		previous = message
