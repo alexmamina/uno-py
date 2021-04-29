@@ -41,13 +41,16 @@ class Game(Frame):
 		self.parent = master
 		self.q = queue
 		self.last = None
+		self.turn = Label(text="Your turn" if message['player'] == 1 else "Waiting...",
+						  fg='blue', bg='white', width=10, height=1)
+		self.turn.place(x=300,y=0)
 		self.hand_cards = {}
 		self.pile = message['pile']
 		self.other_cards_left = message['num_left']
 		text_cards_left = "Your cards left: " + str(7) + "\n Other player's cards " \
 																	"left: " + str(7)
-		self.cards_left = Label(text=text_cards_left, fg="blue", bg="white", width=20, height=10)
-		self.cards_left.place(x=10, y=5)
+		self.cards_left = Label(text=text_cards_left, fg="blue", bg="white", width=20, height=5)
+		self.cards_left.place(x=10, y=30)
 		self.uno_but = but(text="UNO?", fg="red", bg="yellow", width=100, height=80, borderless=1,
 						   command=self.one_card)
 		self.uno_but.place(x=50, y=150)
@@ -69,7 +72,6 @@ class Game(Frame):
 			#Lookup the card name from pile to get card itself
 			card = new_deck.get_card(c)
 			hand.append(card) #NAMES
-			print(card)
 		return hand
 
 	# Create a menu bar, configure to add to parent (which is the root window)
@@ -217,7 +219,7 @@ class Game(Frame):
 		global all_played, new_deck
 		print("CARD")
 		#If pile is empty, reshuffle the all_played cards
-		if (len(self.pile) < 1 or self.pile is None):
+		if len(self.pile) < 1 or self.pile is None:
 			print(all_played)
 			print("Shuffling those cards")
 			self.pile = copy.deepcopy(all_played)
@@ -245,9 +247,14 @@ class Game(Frame):
 			ctr += 1
 
 	def one_card(self):
-		self.uno = True
-		self.uno_but.config(fg="green", bg="white")
+		if self.uno:
+			self.uno = False
+			self.uno_but.config(fg="red", bg="yellow")
+		else:
+			self.uno = True
+			self.uno_but.config(fg="green", bg="white")
 		print("UNO")
+
 
 
 	def show_points(self):
@@ -301,6 +308,7 @@ class Game(Frame):
 				all_played = msg['all_played']
 				if int(message['player']) == 1:
 					self.new_card.config(state='normal')
+					self.turn.config(text="Your turn")
 					self.uno_but.config(state='normal')
 					for i in self.hand_btns:
 							self.hand_btns[i].config(state='normal')
@@ -310,10 +318,9 @@ class Game(Frame):
 				pass
 #todo send when taken card(s) (counter global, when value, send)
 	#TODO add which player you are
-	#todo add label so that seen who's turn it is now
+	#todo multiple choice color picker
 	#todo ending
-#todo pick color if first is black
-	#todo disable second player in the beginning
+	#todo fix disabling uno colors
 	def receive(self):
 			global message, root, addr
 			while True:
@@ -327,9 +334,10 @@ class Game(Frame):
 		sock.sendto(dumps(data_to_send).encode(), addr)
 		self.new_card.config(state="disabled")
 		self.uno = False
-		self.uno_but.config(fg="red", bg="yellow", state='disabled')
+		self.uno_but.config(fg="red", bg="white", state='disabled')
 		for i in self.hand_btns:
 			self.hand_btns[i].config(state='disabled')
+		self.turn.config(text="Waiting...")
 ##################################### CLIENT ##################################
 
 def checkPeriodically(w):

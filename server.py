@@ -1,5 +1,5 @@
 from socket import *
-
+from sys import *
 from deck import *
 
 sock = socket(AF_INET, SOCK_DGRAM)
@@ -8,14 +8,30 @@ sock2 = socket(AF_INET, SOCK_DGRAM)
 ip = 'localhost'
 #port = 44444
 #port2 = 44445
-port = 54456
-port2 = 54455
+#port = 54456
+#port2 = 54455
+port = int(argv[1])
+port2 = int(argv[2])
 addresses = {}
-current = 1
 d = Deck().deck
 pile = [c.name for c in d]
 print(pile)
 first_card = pile.pop(14)
+#todo if first is stop send to other player
+
+# Black card will not be played first. If popped, reshuffle and get new
+while "bla" in first_card:
+	pile.append(first_card)
+	shuffle(pile)
+	first_card = pile.pop(14)
+
+
+if "stop" in first_card:
+	current = 0
+else:
+	current = 1
+
+
 #TO 1 we need to send [0:7]:[15:]
 #TO 2 we need to send [8:]
 
@@ -46,8 +62,6 @@ pile = pile[7:]
 #ALL SENT
 
 while True:
-	#s = "answer me"
-	#sock2.sendto(s.encode(), (ip, port2))
 	if current == 1:
 		print("Waiting for player one")
 		json, addr = sock.recvfrom(8000)
