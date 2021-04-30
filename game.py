@@ -41,6 +41,8 @@ class Game(Frame):
 		super().__init__(master)
 		self.pack()
 		self.parent = master
+		#Take one card only
+		self.card_counter = 1
 		self.q = queue
 		self.last = None
 		self.turn = Label(text="Your turn" if message['player'] == 1 else "Waiting...",
@@ -209,6 +211,8 @@ class Game(Frame):
 			all_played = all_played[-1:]
 			print(self.pile)
 		new = new_deck.get_card(self.pile.pop(0))
+
+		self.card_counter -= 1
 		#Since hand is a dict, the keys aren't in order.
 		#Get the largest and add 1 for the next
 		ind = max(list(self.hand_cards.keys())) + 1
@@ -222,11 +226,35 @@ class Game(Frame):
 		self.cards_left.config(text="Your cards left: " + str(len(self.hand_cards)) +
 									"\n Other player's cards left: " + str(self.other_cards_left))
 		ctr = 0
+		possible_move = False
 		for i in self.hand_btns.keys():
 			b = self.hand_btns[i]
 			coords = self.get_card_placement(len(self.hand_btns),ctr)
+			print(b['text'])
+			print(self.last['text'])
 			b.place(x=coords[1], y=coords[2])
 			ctr += 1
+			if "bla" in b['text'] or self.last['text'][0:3] in b['text'] or self.last['text'][3:]\
+					in b['text']:
+				possible_move = possible_move or True
+				print(possible_move)
+		print(possible_move)
+		print(~possible_move)
+				#Here don't break the loop bc we need the rest to replace buttons
+
+		if self.card_counter == 0 and (possible_move == False or
+									   ('taken' not in message and "plus" in self.last['text'])):
+			data_to_send = {
+				"played" : self.last['text'],
+				"pile" : self.pile,
+				"stage" : "GO",
+				"said_uno" : self.uno,
+				"color" : self.last['text'][0:3],
+				"all_played" : all_played,
+				"num_left" : len(self.hand_cards),
+				"taken" : True
+			}
+			self.sendInfo(data_to_send, addr)
 
 	def one_card(self):
 		if self.uno:
@@ -238,22 +266,20 @@ class Game(Frame):
 		print("UNO")
 
 
-
 	def show_points(self):
 		result = 0
-		ans = messagebox.askyesno("Points","  Card   | Points\n"
-							"   0-9   |  0-9 \n"
-							"-----------------\n"
-							" Reverse |       \n"
-							"  Stop   |  20   \n"
-							"   +2    |       \n"
-							"  Black  |  50")
+		ans = messagebox.askyesno("Points",
+							"0-9 - 0-9\n"
+							" Reverse - 20\n"
+							" Stop - 20\n"
+							" +2 - 20\n"
+							" Black - 50\n"
+							"Calculate automatically?")
 		if ans:
 			for k in self.hand_cards.keys():
 				c = self.hand_cards[k].name
 				if re.search(r'\d+', c) is not None:
 					point = int(re.search(r'\d+', c).group())
-					print(point)
 					result += point
 				else:
 					#non-numbers
@@ -270,16 +296,23 @@ class Game(Frame):
 			try:
 				msg = self.q.get(0)
 				#Played, pile, num_left, color, all_played, player, saiduno
-				newC = message['played']
-				if 'bla' in newC:
-					if 'four' in newC:
-						newC = message['color'][0:3] + "plusfour.png"
-						img = ImageTk.PhotoImage(new_deck.get_special(newC))
+				newC = msg['played']
+
+				if 'four' in newC:
+					newC = msg['color'][0:3] + "plusfour.png"
+					img = ImageTk.PhotoImage(new_deck.get_special(newC))
+					if 'taken' not in msg:
+						self.card_counter = 4
 					else:
-						newC = message['color'][0:3] + "black.png"
-						img = ImageTk.PhotoImage(new_deck.get_special(newC))
+						self.card_counter = 1
+				elif 'bla' in newC:
+					newC = msg['color'][0:3] + "black.png"
+					img = ImageTk.PhotoImage(new_deck.get_special(newC))
 				else:
 					img = ImageTk.PhotoImage(new_deck.get_card(newC).card_pic)
+					self.card_counter = 1
+				if "plustwo" in newC and 'taken' not in msg:
+					self.card_counter = 2
 				self.last.config(image=img, text=newC)
 				self.last.image = img
 				self.pile = msg['pile']
@@ -288,17 +321,18 @@ class Game(Frame):
 								  +"\n Other player's cards left: " + str(self.other_cards_left)
 				self.cards_left.config(text=left_cards_text)
 				all_played = msg['all_played']
-				if int(message['player']) == 1:
+				if int(msg['player']) == 1:
 					self.new_card.config(state='normal')
 					self.turn.config(text="Your turn")
-					self.uno_but.config(state='normal')
-					for i in self.hand_btns:
-							self.hand_btns[i].config(state='normal')
+					if self.card_counter < 2: # Here can add stack option later
+						self.uno_but.config(state='normal')
+						for i in self.hand_btns:
+								self.hand_btns[i].config(state='normal')
 				#todo challenge uno
 				q.queue.clear()
 			except queue.Empty:
 				pass
-#todo send when taken card(s) (counter global, when value, send)
+	#todo if first is plus two take cards
 	#todo ending
 	def receive(self):
 			global message, root, addr

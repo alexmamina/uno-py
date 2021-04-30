@@ -100,6 +100,8 @@ while True:
 			"all_played" : message['all_played'],
 			"color" : message['color'],
 			}
+	if 'taken' in message:
+		data['taken'] = message['taken']
 	#If the last played card is stop
 	if card is not None and "stop" in card:
 		#receiver is 0, sender is 1
