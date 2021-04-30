@@ -57,7 +57,7 @@ class Game(Frame):
 		self.cards_left.place(x=10, y=30)
 		self.uno_but = but(text="UNO?", fg="red", bg="white", width=100, height=80, borderless=1,
 						   command=self.one_card)
-		self.uno_but.place(x=50, y=150)
+		#self.uno_but.place(x=50, y=150)
 		self.uno = False
 		self.new_card = None
 		self.setup_menu()
@@ -188,6 +188,8 @@ class Game(Frame):
 				coords = self.get_card_placement(len(self.hand_btns),ctr)
 				b.place(x=coords[1], y=coords[2])
 				ctr += 1
+			if (len(self.hand_cards) <= 2):
+				self.uno_but.place(x=50, y=150)
 			data_to_send = {
 				"played" : card,
 				"pile" : self.pile,
@@ -237,11 +239,10 @@ class Game(Frame):
 			if "bla" in b['text'] or self.last['text'][0:3] in b['text'] or self.last['text'][3:]\
 					in b['text']:
 				possible_move = possible_move or True
-				print(possible_move)
-		print(possible_move)
-		print(~possible_move)
+		if (len(self.hand_cards) > 2):
+			self.uno_but.place_forget()
 				#Here don't break the loop bc we need the rest to replace buttons
-
+#todo stop doesn't send to other player; keeps on one until card placed
 		if self.card_counter == 0 and (possible_move == False or
 									   ('taken' not in message and "plus" in self.last['text'])):
 			data_to_send = {
@@ -295,7 +296,7 @@ class Game(Frame):
 		while self.q.qsize():
 			try:
 				msg = self.q.get(0)
-				#Played, pile, num_left, color, all_played, player, saiduno
+				#Played, pile, num_left, color, all_played, player, saiduno, taken
 				newC = msg['played']
 
 				if 'four' in newC:
@@ -317,8 +318,21 @@ class Game(Frame):
 				self.last.image = img
 				self.pile = msg['pile']
 				self.other_cards_left = msg['num_left']
+				if self.other_cards_left == 1:
+					if msg['said_uno']:
+						uno_said = "\nUNO said!"
+					else:
+						uno_said = "\nUNO not said!"
+						#todo challenge uno
+						self.challenge = but(text="UNO not said!", bg='red', fg='white',
+											  width=150, height=30,command=self.challengeUno)
+						self.challenge.place(x=50, y=120)
+				else:
+					uno_said = ""
+
 				left_cards_text = "Your cards left: " + str(len(self.hand_cards))\
-								  +"\n Other player's cards left: " + str(self.other_cards_left)
+								  +"\n Other player's cards left: " + str(self.other_cards_left)\
+								+uno_said
 				self.cards_left.config(text=left_cards_text)
 				all_played = msg['all_played']
 				if int(msg['player']) == 1:
@@ -328,12 +342,13 @@ class Game(Frame):
 						self.uno_but.config(state='normal')
 						for i in self.hand_btns:
 								self.hand_btns[i].config(state='normal')
-				#todo challenge uno
+				if len(self.hand_cards) == 2:
+					self.uno_but.place(x=50, y=150)
+					print('here')
 				q.queue.clear()
 			except queue.Empty:
 				pass
-	#todo if first is plus two take cards
-	#todo ending
+	#todo ending (also end with +2/4)
 	def receive(self):
 			global message, root, addr
 			while True:
@@ -348,9 +363,23 @@ class Game(Frame):
 		self.new_card.config(state="disabled")
 		self.uno = False
 		self.uno_but.config(fg="red", bg="white", state='disabled')
+		self.uno_but.place_forget()
 		for i in self.hand_btns:
 			self.hand_btns[i].config(state='disabled')
 		self.turn.config(text="Waiting...")
+
+	def challengeUno(self):
+		data = {
+			"played" : self.last['text'],
+			"pile" : self.pile,
+			"stage" : "CHALLENGE",
+			"said_uno" : self.uno,
+			"color" : self.last['text'][0:3],
+			"all_played" : all_played,
+			"num_left" : len(self.hand_cards),
+			"taken" : True
+		}
+		#todo finish this
 ##################################### CLIENT ##################################
 
 def checkPeriodically(w):
@@ -371,12 +400,19 @@ if __name__ == "__main__":
 	sock.bind(('', int(port)))
 	init, addr = sock.recvfrom(8000)
 	message = loads(init.decode())
+	#todo if stop both have title 2 but correct palyer goes
 	root.title("UNO - port " + port + " player - " + (str(1) if message['player'] == 1 and 'stop'
 			not in message['played'] else str(2)))
 	q = queue.Queue()
 	window = Game(root, q, message)
 	if message['player'] == 0:
 		window.new_card.config(state="disabled")
+		window.uno = False
+		window.uno_but.config(fg="red", bg="white", state='disabled')
+		for i in window.hand_btns:
+			window.hand_btns[i].config(state='disabled')
+	if "plus" in message['played']:
+		window.card_counter = 2
 		window.uno = False
 		window.uno_but.config(fg="red", bg="white", state='disabled')
 		for i in window.hand_btns:
