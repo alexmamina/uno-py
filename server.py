@@ -107,7 +107,7 @@ while True:
 		if 'taken' in message:
 			data['taken'] = message['taken']
 		#If the last played card is stop
-		if card is not None and "stop" in card:
+		if "stop" in card and 'taken' not in message:
 			#receiver is 0, sender is 1
 			if current == 1:
 				data['player'] = 0

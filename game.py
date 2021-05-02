@@ -242,7 +242,6 @@ class Game(Frame):
 		if (len(self.hand_cards) > 2):
 			self.uno_but.place_forget()
 				#Here don't break the loop bc we need the rest to replace buttons
-#todo stop doesn't send to other player; keeps on one until card placed
 		if self.card_counter == 0 and (possible_move == False or
 									   ('taken' not in message and "plus" in self.last['text'])):
 			data_to_send = {
@@ -349,6 +348,8 @@ class Game(Frame):
 			except queue.Empty:
 				pass
 	#todo ending (also end with +2/4)
+	#todo greblack keeps on same turn
+	#todo uno btn appear only if move is yours
 	def receive(self):
 			global message, root, addr
 			while True:
