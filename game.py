@@ -239,10 +239,12 @@ class Game(Frame):
 			if "bla" in b['text'] or self.last['text'][0:3] in b['text'] or self.last['text'][3:]\
 					in b['text']:
 				possible_move = possible_move or True
+		print(possible_move)
+		print(self.card_counter)
 		if (len(self.hand_cards) > 2):
 			self.uno_but.place_forget()
 				#Here don't break the loop bc we need the rest to replace buttons
-		if self.card_counter == 0 and (possible_move == False or
+		if self.card_counter <= 0 and (possible_move == False or
 									   ('taken' not in message and "plus" in self.last['text'])):
 			data_to_send = {
 				"played" : self.last['text'],
@@ -348,8 +350,8 @@ class Game(Frame):
 			except queue.Empty:
 				pass
 	#todo ending (also end with +2/4)
-	#todo greblack keeps on same turn
 	#todo uno btn appear only if move is yours
+	#todo change so that can only take card if no move (?)
 	def receive(self):
 			global message, root, addr
 			while True:
@@ -363,6 +365,7 @@ class Game(Frame):
 		sock.sendto(dumps(data_to_send).encode(), addr)
 		self.new_card.config(state="disabled")
 		self.uno = False
+		self.card_counter = 1
 		self.uno_but.config(fg="red", bg="white", state='disabled')
 		self.uno_but.place_forget()
 		for i in self.hand_btns:
