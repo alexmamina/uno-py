@@ -400,9 +400,9 @@ if __name__ == "__main__":
 	sock.bind(('', int(port)))
 	init, addr = sock.recvfrom(8000)
 	message = loads(init.decode())
-	#todo if stop both have title 2 but correct palyer goes
-	root.title("UNO - port " + port + " player - " + (str(1) if message['player'] == 1 and 'stop'
-			not in message['played'] else str(2)))
+	root.title("UNO - port " + port + " player - " + (str(1) if (message['player'] == 1 and
+			"stop" not in message['played']) or ('stop' in message['played']
+			and message['player'] == 0) else str(2)))
 	q = queue.Queue()
 	window = Game(root, q, message)
 	if message['player'] == 0:
