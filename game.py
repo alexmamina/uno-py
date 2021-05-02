@@ -45,6 +45,7 @@ class Game(Frame):
 		self.card_counter = 1
 		self.q = queue
 		self.last = None
+		self.challenge = None
 		self.turn = Label(text="Your turn" if message['player'] == 1 else "Waiting...",
 						  fg='blue', bg='white', width=10, height=1)
 		self.turn.place(x=300,y=0)
@@ -144,6 +145,8 @@ class Game(Frame):
 	##################################### EVENTS ##################################
 	def place_card(self,ind, binst):
 		global all_played
+		if self.challenge:
+			self.challenge.place_forget()
 		card = self.hand_cards[ind].name
 		old_card = self.last['text']
 		print("OLD: ", old_card, " NEW: ", card)
@@ -213,7 +216,8 @@ class Game(Frame):
 			all_played = all_played[-1:]
 			print(self.pile)
 		new = new_deck.get_card(self.pile.pop(0))
-
+		if self.challenge:
+			self.challenge.place_forget()
 		self.card_counter -= 1
 		#Since hand is a dict, the keys aren't in order.
 		#Get the largest and add 1 for the next
@@ -245,7 +249,8 @@ class Game(Frame):
 			self.uno_but.place_forget()
 				#Here don't break the loop bc we need the rest to replace buttons
 		if self.card_counter <= 0 and (possible_move == False or
-									   ('taken' not in message and "plus" in self.last['text'])):
+									   ('taken' not in message and "plus" in self.last['text']) or
+										message['stage']=="CHALLENGE"):
 			data_to_send = {
 				"played" : self.last['text'],
 				"pile" : self.pile,
@@ -253,9 +258,10 @@ class Game(Frame):
 				"said_uno" : self.uno,
 				"color" : self.last['text'][0:3],
 				"all_played" : all_played,
-				"num_left" : len(self.hand_cards),
-				"taken" : True
+				"num_left" : len(self.hand_cards)
 			}
+			if message['stage'] != "CHALLENGE":
+				data_to_send['taken'] = True
 			self.sendInfo(data_to_send, addr)
 
 	def one_card(self):
@@ -298,54 +304,60 @@ class Game(Frame):
 			try:
 				msg = self.q.get(0)
 				#Played, pile, num_left, color, all_played, player, saiduno, taken
-				newC = msg['played']
+				if msg['stage'] == "GO":
+					newC = msg['played']
 
-				if 'four' in newC:
-					newC = msg['color'][0:3] + "plusfour.png"
-					img = ImageTk.PhotoImage(new_deck.get_special(newC))
-					if 'taken' not in msg:
-						self.card_counter = 4
+					if 'four' in newC:
+						newC = msg['color'][0:3] + "plusfour.png"
+						img = ImageTk.PhotoImage(new_deck.get_special(newC))
+						if 'taken' not in msg:
+							self.card_counter = 4
+						else:
+							self.card_counter = 1
+					elif 'bla' in newC:
+						newC = msg['color'][0:3] + "black.png"
+						img = ImageTk.PhotoImage(new_deck.get_special(newC))
 					else:
+						img = ImageTk.PhotoImage(new_deck.get_card(newC).card_pic)
 						self.card_counter = 1
-				elif 'bla' in newC:
-					newC = msg['color'][0:3] + "black.png"
-					img = ImageTk.PhotoImage(new_deck.get_special(newC))
-				else:
-					img = ImageTk.PhotoImage(new_deck.get_card(newC).card_pic)
-					self.card_counter = 1
-				if "plustwo" in newC and 'taken' not in msg:
-					self.card_counter = 2
-				self.last.config(image=img, text=newC)
-				self.last.image = img
-				self.pile = msg['pile']
-				self.other_cards_left = msg['num_left']
-				if self.other_cards_left == 1:
-					if msg['said_uno']:
-						uno_said = "\nUNO said!"
+					if "plustwo" in newC and 'taken' not in msg:
+						self.card_counter = 2
+					self.last.config(image=img, text=newC)
+					self.last.image = img
+					self.pile = msg['pile']
+					self.other_cards_left = msg['num_left']
+					if self.other_cards_left == 1:
+						if msg['said_uno']:
+							uno_said = "\nUNO said!"
+						else:
+							uno_said = "\nUNO not said!"
+							self.challenge = but(text="UNO not said!", bg='red', fg='white',
+												  width=150, height=30,command=self.challengeUno)
+							self.challenge.place(x=50, y=120)
 					else:
-						uno_said = "\nUNO not said!"
-						#todo challenge uno
-						self.challenge = but(text="UNO not said!", bg='red', fg='white',
-											  width=150, height=30,command=self.challengeUno)
-						self.challenge.place(x=50, y=120)
-				else:
-					uno_said = ""
+						uno_said = ""
 
-				left_cards_text = "Your cards left: " + str(len(self.hand_cards))\
-								  +"\n Other player's cards left: " + str(self.other_cards_left)\
-								+uno_said
-				self.cards_left.config(text=left_cards_text)
-				all_played = msg['all_played']
-				if int(msg['player']) == 1:
+					left_cards_text = "Your cards left: " + str(len(self.hand_cards))\
+									  +"\n Other player's cards left: " + str(self.other_cards_left)\
+									+uno_said
+					self.cards_left.config(text=left_cards_text)
+					all_played = msg['all_played']
+					if int(msg['player']) == 1:
+						self.new_card.config(state='normal')
+						self.turn.config(text="Your turn")
+						if self.card_counter < 2: # Here can add stack option later
+							self.uno_but.config(state='normal')
+							for i in self.hand_btns:
+									self.hand_btns[i].config(state='normal')
+					if len(self.hand_cards) == 2:
+						self.uno_but.place(x=50, y=150)
+						print('here')
+				elif msg['stage'] == "CHALLENGE":
 					self.new_card.config(state='normal')
+					self.card_counter = 2
+					messagebox.showinfo("UNO not said!", "You forgot to click UNO, "
+																 "so take 2 cards!")
 					self.turn.config(text="Your turn")
-					if self.card_counter < 2: # Here can add stack option later
-						self.uno_but.config(state='normal')
-						for i in self.hand_btns:
-								self.hand_btns[i].config(state='normal')
-				if len(self.hand_cards) == 2:
-					self.uno_but.place(x=50, y=150)
-					print('here')
 				q.queue.clear()
 			except queue.Empty:
 				pass
@@ -360,7 +372,8 @@ class Game(Frame):
 				message = loads(json.decode())
 				print(message)
 				self.q.put(message)
-
+#todo add manual send button to server only for debugging and changing turn:
+	# pile+played+hand!+stage=debug+?
 	def sendInfo(self, data_to_send, addr):
 		sock.sendto(dumps(data_to_send).encode(), addr)
 		self.new_card.config(state="disabled")
@@ -373,17 +386,10 @@ class Game(Frame):
 		self.turn.config(text="Waiting...")
 
 	def challengeUno(self):
-		data = {
-			"played" : self.last['text'],
-			"pile" : self.pile,
-			"stage" : "CHALLENGE",
-			"said_uno" : self.uno,
-			"color" : self.last['text'][0:3],
-			"all_played" : all_played,
-			"num_left" : len(self.hand_cards),
-			"taken" : True
-		}
-		#todo finish this
+		data = {"stage" : "CHALLENGE"}
+		self.sendInfo(data, addr)
+		self.challenge.place_forget()
+
 ##################################### CLIENT ##################################
 
 def checkPeriodically(w):

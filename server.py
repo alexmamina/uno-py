@@ -140,5 +140,14 @@ while True:
 		if "stop" not in message['played']:
 			previous = message
 	elif (message['stage'] == "CHALLENGE"):
-		#todo relay to another player in a way to make them pick two cards
-		print("challenge")
+		print("UNO has not been said")
+		if current == 1:
+			#Relay to player 2
+			sock2.sendto(dumps(message).encode(), (ip, port2))
+			print("Sent to player 2")
+			current = 2
+
+		else:
+			print("Sent to player 1")
+			sock.sendto(dumps(message).encode(), (ip, port))
+			current = 1
