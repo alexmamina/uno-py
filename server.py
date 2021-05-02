@@ -87,14 +87,18 @@ while True:
 	message = loads(json.decode())
 
 
-	if (message['stage'] == "GO"):
+	if (message['stage'] == "GO" or message['stage'] == "DEBUG"):
 		card = message['played']
 		print ("PLAYED CARD: ", card)
 		print("UNO SAID: ", message['said_uno'])
 		print("FROM player: ", " one " if current==1 else " two ")
 		#Check if played is a skip, send json to both, but the orig player is 1
 		#new is 0
-
+		if message['stage'] == "DEBUG":
+			print("DEBUGGING ERROR INFORMATION------------")
+			for x in message:
+				print(x, "  --  ", message[x])
+			print("---------------------------------------")
 		data = {"pile" : message["pile"],
 				"num_left" : message['num_left'],
 				"played" : message['played'],

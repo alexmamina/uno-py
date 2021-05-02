@@ -64,6 +64,10 @@ class Game(Frame):
 		self.setup_menu()
 		self.setup_pile(message)
 		self.cards = self.deal_cards(message)
+		self.debug = but(text="Not my turn", fg='red', bg='white', borderless=1, width=100,
+						 height=30,
+						 command=self.send_debug)
+		self.debug.place(x=600,y=498)
 		self.hand_btns = {}
 		self.setup_hand(self.cards)
 
@@ -390,6 +394,20 @@ class Game(Frame):
 		self.sendInfo(data, addr)
 		self.challenge.place_forget()
 
+
+	def send_debug(self):
+		global all_played
+		print("Changing turns")
+		data = {'stage' : "DEBUG",
+				"played" : self.last['text'],
+				"pile" : self.pile,
+				"hand" : [self.hand_cards[x].name for x in self.hand_cards],
+				"num_left" : len(self.hand_cards),
+				"all_played" : all_played,
+				"color" : self.last['text'],
+				"said_uno" : False
+				}
+		self.sendInfo(data, addr)
 ##################################### CLIENT ##################################
 
 def checkPeriodically(w):
