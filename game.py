@@ -10,8 +10,9 @@ import events
 from socket import *
 from sys import *
 from events import *
-
+from time import *
 from picker import *
+from stages import *
 from card import *
 import re
 import queue
@@ -23,7 +24,6 @@ from tkmacosx import Button as but
 
 port = argv[1]
 sock = socket(AF_INET, SOCK_DGRAM)
-#sock.bind(('', int(port)))
 
 
 class Game(Frame):
@@ -47,7 +47,7 @@ class Game(Frame):
 		self.last = None
 		self.challenge = None
 		self.turn = Label(text="Your turn" if message['player'] == 1 else "Waiting...",
-						  fg='blue', bg='white', width=10, height=1)
+						  fg='blue', bg='white', width=30, height=1)
 		self.turn.place(x=300,y=0)
 		self.hand_cards = {}
 		self.pile = message['pile']
@@ -200,13 +200,16 @@ class Game(Frame):
 			data_to_send = {
 				"played" : card,
 				"pile" : self.pile,
-				"stage" : "GO",
+				"stage" : GO,
 				"said_uno" : self.uno,
 				"color" : card_col,
 				"all_played" : all_played,
 				"num_left" : len(self.hand_cards)
 			}
-			self.sendInfo(data_to_send, addr)
+			if (len(self.hand_cards) > 0):
+				self.sendInfo(data_to_send, addr)
+			else:
+				self.sendFinal(data_to_send, addr)
 
 	def take_card(self):
 		global all_played, new_deck
@@ -251,20 +254,22 @@ class Game(Frame):
 		print(self.card_counter)
 		if (len(self.hand_cards) > 2):
 			self.uno_but.place_forget()
-				#Here don't break the loop bc we need the rest to replace buttons
+		if self.card_counter <= 0 and message['stage'] == TAKECARDS:
+			data_to_send = {"stage": CALC, "points": self.calculate_points()}
+			self.sendInfo(data_to_send, addr)
 		if self.card_counter <= 0 and (possible_move == False or
 									   ('taken' not in message and "plus" in self.last['text']) or
-										message['stage']=="CHALLENGE"):
+										message['stage']==CHALLENGE):
 			data_to_send = {
 				"played" : self.last['text'],
 				"pile" : self.pile,
-				"stage" : "GO",
+				"stage" : GO,
 				"said_uno" : self.uno,
 				"color" : self.last['text'][0:3],
 				"all_played" : all_played,
 				"num_left" : len(self.hand_cards)
 			}
-			if message['stage'] != "CHALLENGE":
+			if message['stage'] != CHALLENGE:
 				data_to_send['taken'] = True
 			self.sendInfo(data_to_send, addr)
 
@@ -288,19 +293,23 @@ class Game(Frame):
 							" Black - 50\n"
 							"Calculate automatically?")
 		if ans:
-			for k in self.hand_cards.keys():
-				c = self.hand_cards[k].name
-				if re.search(r'\d+', c) is not None:
-					point = int(re.search(r'\d+', c).group())
-					result += point
-				else:
-					#non-numbers
-					if ("two" in c or "reverse" in c or "stop" in c):
-						result += 20
-					else:
-						result += 50
+			result = self.calculate_points()
 			messagebox.showinfo("Points", "Your points are: "+str(result))
 
+	def calculate_points(self):
+		result = 0
+		for k in self.hand_cards.keys():
+			c = self.hand_cards[k].name
+			if re.search(r'\d+', c) is not None:
+				point = int(re.search(r'\d+', c).group())
+				result += point
+			else:
+				#non-numbers
+				if ("two" in c or "reverse" in c or "stop" in c):
+					result += 20
+				else:
+					result += 50
+		return result
 
 	def incoming(self):
 		global all_played
@@ -308,7 +317,7 @@ class Game(Frame):
 			try:
 				msg = self.q.get(0)
 				#Played, pile, num_left, color, all_played, player, saiduno, taken
-				if msg['stage'] == "GO":
+				if msg['stage'] == GO:
 					newC = msg['played']
 
 					if 'four' in newC:
@@ -356,17 +365,36 @@ class Game(Frame):
 					if len(self.hand_cards) == 2:
 						self.uno_but.place(x=50, y=150)
 						print('here')
-				elif msg['stage'] == "CHALLENGE":
+				elif msg['stage'] == CHALLENGE:
 					self.new_card.config(state='normal')
 					self.card_counter = 2
 					messagebox.showinfo("UNO not said!", "You forgot to click UNO, "
 																 "so take 2 cards!")
 					self.turn.config(text="Your turn")
+				elif msg['stage'] == TAKECARDS:
+					# print 'waiting for player to take cards'
+					messagebox.showinfo("Waiting", "The player is taking more cards, please wait")
+				elif msg['stage'] == ZEROCARDS:
+					# if plus take cards else send points
+					if msg['to_take']:
+						#enable taking cards
+						print('taking')
+						self.new_card.config(state='normal')
+						self.card_counter = 2
+					else:
+						points = {"stage" : CALC, "points" : self.calculate_points()}
+						sock.sendto(dumps(points).encode(), addr)
+						sleep(5)
+						close_window()
+				elif msg['stage'] == CALC:
+					messagebox.showinfo("Win", "You get "+str(msg['points'])+" points")
+					close_window()
 				q.queue.clear()
 			except queue.Empty:
 				pass
 	#todo ending (also end with +2/4)
 	#todo uno btn appear only if move is yours
+	#todo when changing turns set taken as true
 	#todo change so that can only take card if no move (?)
 	def receive(self):
 			global message, root, addr
@@ -376,8 +404,7 @@ class Game(Frame):
 				message = loads(json.decode())
 				print(message)
 				self.q.put(message)
-#todo add manual send button to server only for debugging and changing turn:
-	# pile+played+hand!+stage=debug+?
+
 	def sendInfo(self, data_to_send, addr):
 		sock.sendto(dumps(data_to_send).encode(), addr)
 		self.new_card.config(state="disabled")
@@ -390,7 +417,7 @@ class Game(Frame):
 		self.turn.config(text="Waiting...")
 
 	def challengeUno(self):
-		data = {"stage" : "CHALLENGE"}
+		data = {"stage" : CHALLENGE}
 		self.sendInfo(data, addr)
 		self.challenge.place_forget()
 
@@ -398,16 +425,31 @@ class Game(Frame):
 	def send_debug(self):
 		global all_played
 		print("Changing turns")
-		data = {'stage' : "DEBUG",
+		data = {'stage' : DEBUG,
 				"played" : self.last['text'],
 				"pile" : self.pile,
 				"hand" : [self.hand_cards[x].name for x in self.hand_cards],
 				"num_left" : len(self.hand_cards),
 				"all_played" : all_played,
 				"color" : self.last['text'],
-				"said_uno" : False
+				"said_uno" : False,
+				"taken" : True
 				}
 		self.sendInfo(data, addr)
+
+	def sendFinal(self,data_to_send, addr):
+		print("END")
+		data_to_send['stage'] = ZEROCARDS
+		self.new_card.config(state="disabled")
+		self.uno = False
+		self.card_counter = 1
+		self.uno_but.config(fg="red", bg="white", state='disabled')
+		self.uno_but.place_forget()
+		self.turn.config(text="Waiting for the other player to finish up!")
+		sock.sendto(dumps(data_to_send).encode(), addr)
+
+
+
 ##################################### CLIENT ##################################
 
 def checkPeriodically(w):
@@ -425,6 +467,9 @@ if __name__ == "__main__":
 	root = Tk()
 	root.configure(bg='white')
 	root.geometry("700x553")
+	#todo remove this line after testing:
+	root.geometry("650x553")
+
 	sock.bind(('', int(port)))
 	init, addr = sock.recvfrom(8000)
 	message = loads(init.decode())
