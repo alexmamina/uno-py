@@ -246,15 +246,11 @@ class Game(Frame):
 		for i in self.hand_btns.keys():
 			b = self.hand_btns[i]
 			coords = self.get_card_placement(len(self.hand_btns),ctr)
-			#print(b['text'])
-			#print(self.last['text'])
 			b.place(x=coords[1], y=coords[2])
 			ctr += 1
-			#if "bla" in b['text'] or self.last['text'][0:3] in b['text'] or self.last['text'][3:]\
-			#		in b['text']:
-			#	possible_move = possible_move or True
-		print(possible_move)
-		#print(self.card_counter)
+		if len(self.hand_cards) == 2 and possible_move:
+			self.uno_but.place(x=50,y=150)
+			self.uno_but.config(state='normal')
 		if (len(self.hand_cards) > 2):
 			self.uno_but.place_forget()
 		if self.card_counter <= 0 and 'stage' in message.keys() and message['stage'] == TAKECARDS:
@@ -283,6 +279,7 @@ class Game(Frame):
 		else:
 			self.uno = True
 			self.uno_but.config(fg="green", bg="white")
+			self.uno_but.place_forget()
 		print("UNO")
 
 
@@ -363,12 +360,12 @@ class Game(Frame):
 							self.new_card.config(state='normal')
 						self.turn.config(text="Your turn")
 						if self.card_counter < 2: # Here can add stack option later
-							self.uno_but.config(state='normal')
+							if self.possible_move() and len(self.hand_cards) == 2:
+								self.uno_but.place(x=50,y=150)
+								self.uno_but.config(state='normal')
 							for i in self.hand_btns:
 									self.hand_btns[i].config(state='normal')
-					if len(self.hand_cards) == 2:
-						self.uno_but.place(x=50, y=150)
-						print('here')
+
 				elif msg['stage'] == CHALLENGE:
 					self.new_card.config(state='normal')
 					self.card_counter = 2
@@ -396,8 +393,8 @@ class Game(Frame):
 				#q.queue.clear()
 			except queue.Empty:
 				pass
-	#todo ending (also end with +2/4)
-	#todo uno btn appear only if move is yours
+	#todo save to file; new  game; load prevous game
+	#todo multiplayer
 	#todo change so that client send first msg, so that server won't need to be stopper
 	def receive(self):
 			global message, root, addr
