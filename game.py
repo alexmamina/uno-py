@@ -61,12 +61,12 @@ class Game(Frame):
 		self.cards_left.place(x=10, y=30)
 		self.uno_but = but(text="UNO?", fg="red", bg="white", width=100, height=80, borderless=1,
 						   command=self.one_card)
-		#self.uno_but.place(x=50, y=150)
 		self.uno = False
 		self.new_card = None
 		self.setup_menu()
 		self.setup_pile(message)
 		self.cards = self.deal_cards(message)
+		# Button for debugging
 		self.debug = but(text="Not my turn", fg='red', bg='white', borderless=1, width=100,
 						 height=30,
 						 command=self.send_debug)
@@ -83,7 +83,7 @@ class Game(Frame):
 			c = self.pile.pop(0)
 			#Lookup the card name from pile to get card itself
 			card = new_deck.get_card(c)
-			hand.append(card) #NAMES
+			hand.append(card) #CARDS
 		return hand
 
 	# Create a menu bar, configure to add to parent (which is the root window)
@@ -95,11 +95,12 @@ class Game(Frame):
 		menu.add_command(label="Points", command=self.show_points)
 		menubar.add_cascade(label="Menu", menu=menu)
 		mode = Menu(menubar)
+		# This is not working yet, so not added to the menu
 		mode.add_command(label="Regular")
 		mode.add_command(label="Stack")
 		mode.add_command(label="Jump-in")
 		mode.add_command(label="7-0")
-		menubar.add_cascade(label="Game mode", menu=mode)
+		#menubar.add_cascade(label="Game mode", menu=mode)
 
 		self.parent.configure(menu=menubar)
 
@@ -122,7 +123,7 @@ class Game(Frame):
 	def setup_hand(self, dealt_cards):
 		n = len(dealt_cards)
 		for i in range(n):
-			#Createa button for each card in dealt cards, add a command
+			#Create a button for each card in dealt cards, add a command
 			photo = ImageTk.PhotoImage(dealt_cards[i].card_pic)
 			b = Button(text=dealt_cards[i].name, image=photo, width=117, height=183, border=0,
 					   bg="white")
@@ -166,10 +167,8 @@ class Game(Frame):
 				picker = Picker(self, "New color", "Which one?", ['Red','Green','Blue',
 																	 'Yellow'])
 				new_color = picker.result
-				print(new_color)
-				print(type(new_color))
 				new_color = new_color.lower()[0:3]
-				print(new_color)
+				# Get the colored black cards from the deck for ease of transfer
 				if "plus" in card:
 					new_color += "plus"
 					card_col = new_color+"four.png"
@@ -180,26 +179,27 @@ class Game(Frame):
 					photocard = new_deck.get_special(new_color)
 
 
-			else:
+			else: # Not a black card
 				photocard = self.hand_cards[ind].card_pic
 				card_col = card
 			img = ImageTk.PhotoImage(photocard)
 			self.last.config(image=img, text=card_col)
 			self.last.image = img
 			self.last.text = card_col
+			# Remove card from 'hand', update label with number
 			self.hand_cards.pop(ind)
 			self.hand_btns.pop(ind)
 			self.cards_left.config(text="Your cards left: " + str(len(self.hand_cards)) +
 								   "\n Other player's cards left: " + str(self.other_cards_left))
 			ctr = 0
 			for i in self.hand_btns.keys():
-				#Move all buttons
+				# Move all buttons
 				b = self.hand_btns[i]
 				coords = self.get_card_placement(len(self.hand_btns),ctr)
 				b.place(x=coords[1], y=coords[2])
 				ctr += 1
-			if (len(self.hand_cards) <= 2):
-				self.uno_but.place(x=50, y=150)
+			#if len(self.hand_cards) <= 2:
+			#	self.uno_but.place(x=50, y=150)
 			data_to_send = {
 				"played" : card,
 				"pile" : self.pile,
@@ -209,7 +209,8 @@ class Game(Frame):
 				"all_played" : all_played,
 				"num_left" : len(self.hand_cards)
 			}
-			if (len(self.hand_cards) > 0):
+			# Send all the information either in progress of the game, or to end it
+			if len(self.hand_cards) > 0:
 				self.sendInfo(data_to_send, self.addr)
 			else:
 				self.sendFinal(data_to_send, self.addr)
@@ -217,7 +218,7 @@ class Game(Frame):
 	def take_card(self):
 		global all_played, new_deck
 		print("CARD")
-		#If pile is empty, reshuffle the all_played cards
+		# If pile is empty, reshuffle the all_played cards
 		if len(self.pile) < 1 or self.pile is None:
 			print(all_played)
 			print("Shuffling those cards")
@@ -225,13 +226,17 @@ class Game(Frame):
 			shuffle(self.pile)
 			all_played = all_played[-1:]
 			print(self.pile)
+		# Take new card
 		new = new_deck.get_card(self.pile.pop(0))
+		# Remove the 'uno not placed' button as was ignored
 		if self.challenge:
 			self.challenge.place_forget()
+		# Decrease number of cards that need to be taken
 		self.card_counter -= 1
-		#Since hand is a dict, the keys aren't in order.
-		#Get the largest and add 1 for the next
+		# Since hand is a dict, the keys aren't in order.
+		# Get the largest and add 1 for the next
 		ind = max(list(self.hand_cards.keys())) + 1
+		# Add new card to the 'hand', create new button, update number
 		self.hand_cards[ind] = new
 		photo = ImageTk.PhotoImage(new.card_pic)
 		b = Button(text=new.name, image=photo, width=117, height=183, border=0,
@@ -242,20 +247,30 @@ class Game(Frame):
 		self.cards_left.config(text="Your cards left: " + str(len(self.hand_cards)) +
 									"\n Other player's cards left: " + str(self.other_cards_left))
 		ctr = 0
+		# Is it possible to place a card right now?
 		possible_move = self.possible_move()
 		for i in self.hand_btns.keys():
+			# Move all buttons
 			b = self.hand_btns[i]
 			coords = self.get_card_placement(len(self.hand_btns),ctr)
 			b.place(x=coords[1], y=coords[2])
 			ctr += 1
+		# Make UNO button appear as uno is possible
 		if len(self.hand_cards) == 2 and possible_move:
 			self.uno_but.place(x=50,y=150)
 			self.uno_but.config(state='normal')
-		if (len(self.hand_cards) > 2):
+		# Remove UNO button if many cards (should be unnecessary)
+		if len(self.hand_cards) > 2:
 			self.uno_but.place_forget()
+
+		# Send the points from the cards if you had to take them at the end (last played was +,
+			# but game is over)
 		if self.card_counter <= 0 and 'stage' in message.keys() and message['stage'] == TAKECARDS:
 			data_to_send = {"stage": CALC, "points": self.calculate_points()}
 			self.sendInfo(data_to_send, self.addr)
+
+		# Send information about taken cards if can't go or had to take +2/4 due to challenge or
+		# card
 		if self.card_counter <= 0 and (possible_move == False or
 									   ('taken' not in message and "plus" in self.last['text']) or
 										message['stage']==CHALLENGE):
@@ -272,6 +287,7 @@ class Game(Frame):
 				data_to_send['taken'] = True
 			self.sendInfo(data_to_send, self.addr)
 
+	# Remove UNO button when clicked, set the value to True to be sent
 	def one_card(self):
 		if self.uno:
 			self.uno = False
@@ -282,7 +298,7 @@ class Game(Frame):
 			self.uno_but.place_forget()
 		print("UNO")
 
-
+	# Show the points that you have with your cards right now (option in menu)
 	def show_points(self):
 		result = 0
 		ans = messagebox.askyesno("Points",
@@ -296,6 +312,7 @@ class Game(Frame):
 			result = self.calculate_points()
 			messagebox.showinfo("Points", "Your points are: "+str(result))
 
+	# Go through the hand and calculate points; regex is for finding numbers
 	def calculate_points(self):
 		result = 0
 		for k in self.hand_cards.keys():
@@ -317,9 +334,13 @@ class Game(Frame):
 			try:
 				msg = self.q.get(0)
 				#Played, pile, num_left, color, all_played, player, saiduno, taken
+
+				# Normal play stage
 				if msg['stage'] == GO:
 					newC = msg['played']
 
+					# Set the image for the played card (find fancy if it's black)
+					# Set the counter for how many cards can be taken
 					if 'four' in newC:
 						newC = msg['color'][0:3] + "plusfour.png"
 						img = ImageTk.PhotoImage(new_deck.get_special(newC))
@@ -339,6 +360,8 @@ class Game(Frame):
 					self.last.image = img
 					self.pile = msg['pile']
 					self.other_cards_left = msg['num_left']
+					# Check if other player said UNO; place the challenge button if not said
+					# Update label to show that
 					if self.other_cards_left == 1:
 						if msg['said_uno']:
 							uno_said = "\nUNO said!"
@@ -355,6 +378,7 @@ class Game(Frame):
 									+uno_said
 					self.cards_left.config(text=left_cards_text)
 					all_played = msg['all_played']
+					# Enable buttons for cards if your turn; make UNO show if necessary
 					if int(msg['player']) == 1:
 						if not self.possible_move() or self.card_counter > 1:
 							self.new_card.config(state='normal')
@@ -366,15 +390,21 @@ class Game(Frame):
 							for i in self.hand_btns:
 									self.hand_btns[i].config(state='normal')
 
+				# Forgot to say UNO - enable taking new cards only
 				elif msg['stage'] == CHALLENGE:
 					self.new_card.config(state='normal')
 					self.card_counter = 2
 					messagebox.showinfo("UNO not said!", "You forgot to click UNO, "
 																 "so take 2 cards!")
 					self.turn.config(text="Your turn")
+				# Final stage - very last played card is a plus, so need to take cards before
+					# game ends. While the other player is doing that, show information
 				elif msg['stage'] == TAKECARDS:
 					# print 'waiting for player to take cards'
 					messagebox.showinfo("Waiting", "The player is taking more cards, please wait")
+
+				# Another player has finished the game; you either take cards if last is a plus,
+				# or automatically send the remaining points for the other player
 				elif msg['stage'] == ZEROCARDS:
 					# if plus take cards else send points
 					if msg['to_take']:
@@ -387,6 +417,7 @@ class Game(Frame):
 						self.sock.sendto(dumps(points).encode(), self.addr)
 						sleep(5)
 						#close_window()
+				# Get points from the opponent and show them
 				elif msg['stage'] == CALC:
 					messagebox.showinfo("Win", "You get "+str(msg['points'])+" points")
 					#close_window()
@@ -396,6 +427,8 @@ class Game(Frame):
 	#todo save to file; new  game; load prevous game
 	#todo multiplayer
 	#todo change so that client send first msg, so that server won't need to be stopper
+
+	# Put received message in queue for async processing
 	def receive(self):
 			global message, root, addr
 			while True:
@@ -405,6 +438,7 @@ class Game(Frame):
 				print(message)
 				self.q.put(message)
 
+	# Disable all buttons when sending information and when it's not your turn anymore
 	def sendInfo(self, data_to_send, addr):
 		self.sock.sendto(dumps(data_to_send).encode(), addr)
 		self.new_card.config(state="disabled")
@@ -416,12 +450,14 @@ class Game(Frame):
 			self.hand_btns[i].config(state='disabled')
 		self.turn.config(text="Waiting...")
 
+	# Notify opponent that they forgot to say UNO
 	def challengeUno(self):
 		data = {"stage" : CHALLENGE}
 		self.sendInfo(data, self.addr)
 		self.challenge.place_forget()
 
-
+	# If for some reason the turn didn't change, this sends current info to server who prints it
+	# out and changes turns
 	def send_debug(self):
 		global all_played
 		print("Changing turns")
@@ -437,6 +473,7 @@ class Game(Frame):
 				}
 		self.sendInfo(data, self.addr)
 
+	# Send all the final information with 0 cards left to end/finalise the game
 	def sendFinal(self,data_to_send, addr):
 		print("END")
 		data_to_send['stage'] = ZEROCARDS
@@ -449,6 +486,7 @@ class Game(Frame):
 		self.sock.sendto(dumps(data_to_send).encode(), addr)
 
 
+	# Go through the hand and see if there are cards that could be played
 	def possible_move(self):
 		move = False
 		for i in self.hand_cards.keys():
@@ -457,8 +495,5 @@ class Game(Frame):
 					in c.name:
 				move = move or True
 		return move
-##################################### CLIENT ##################################
 
 
-
-	##################################### MAIN ##################################
