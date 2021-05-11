@@ -9,6 +9,7 @@ import deck
 import events
 from socket import *
 from sys import *
+
 from events import *
 from time import *
 from picker import *
@@ -23,7 +24,7 @@ import copy
 from tkmacosx import Button as but
 
 port = argv[1]
-sock = socket(AF_INET, SOCK_DGRAM)
+
 
 
 class Game(Frame):
@@ -37,9 +38,11 @@ class Game(Frame):
 
 
 	# Initialise a frame. Setup the pile, hand, last played card and all gui
-	def __init__(self, master, queue, message):
+	def __init__(self, master, queue, message, sock, addr):
 		super().__init__(master)
 		self.pack()
+		self.addr = addr
+		self.sock = sock
 		self.parent = master
 		#Take one card only
 		self.card_counter = 1
@@ -207,9 +210,9 @@ class Game(Frame):
 				"num_left" : len(self.hand_cards)
 			}
 			if (len(self.hand_cards) > 0):
-				self.sendInfo(data_to_send, addr)
+				self.sendInfo(data_to_send, self.addr)
 			else:
-				self.sendFinal(data_to_send, addr)
+				self.sendFinal(data_to_send, self.addr)
 
 	def take_card(self):
 		global all_played, new_deck
@@ -239,24 +242,24 @@ class Game(Frame):
 		self.cards_left.config(text="Your cards left: " + str(len(self.hand_cards)) +
 									"\n Other player's cards left: " + str(self.other_cards_left))
 		ctr = 0
-		possible_move = False
+		possible_move = self.possible_move()
 		for i in self.hand_btns.keys():
 			b = self.hand_btns[i]
 			coords = self.get_card_placement(len(self.hand_btns),ctr)
-			print(b['text'])
-			print(self.last['text'])
+			#print(b['text'])
+			#print(self.last['text'])
 			b.place(x=coords[1], y=coords[2])
 			ctr += 1
-			if "bla" in b['text'] or self.last['text'][0:3] in b['text'] or self.last['text'][3:]\
-					in b['text']:
-				possible_move = possible_move or True
+			#if "bla" in b['text'] or self.last['text'][0:3] in b['text'] or self.last['text'][3:]\
+			#		in b['text']:
+			#	possible_move = possible_move or True
 		print(possible_move)
-		print(self.card_counter)
+		#print(self.card_counter)
 		if (len(self.hand_cards) > 2):
 			self.uno_but.place_forget()
-		if self.card_counter <= 0 and message['stage'] == TAKECARDS:
+		if self.card_counter <= 0 and 'stage' in message.keys() and message['stage'] == TAKECARDS:
 			data_to_send = {"stage": CALC, "points": self.calculate_points()}
-			self.sendInfo(data_to_send, addr)
+			self.sendInfo(data_to_send, self.addr)
 		if self.card_counter <= 0 and (possible_move == False or
 									   ('taken' not in message and "plus" in self.last['text']) or
 										message['stage']==CHALLENGE):
@@ -271,7 +274,7 @@ class Game(Frame):
 			}
 			if message['stage'] != CHALLENGE:
 				data_to_send['taken'] = True
-			self.sendInfo(data_to_send, addr)
+			self.sendInfo(data_to_send, self.addr)
 
 	def one_card(self):
 		if self.uno:
@@ -356,7 +359,8 @@ class Game(Frame):
 					self.cards_left.config(text=left_cards_text)
 					all_played = msg['all_played']
 					if int(msg['player']) == 1:
-						self.new_card.config(state='normal')
+						if not self.possible_move() or self.card_counter > 1:
+							self.new_card.config(state='normal')
 						self.turn.config(text="Your turn")
 						if self.card_counter < 2: # Here can add stack option later
 							self.uno_but.config(state='normal')
@@ -383,30 +387,29 @@ class Game(Frame):
 						self.card_counter = 2
 					else:
 						points = {"stage" : CALC, "points" : self.calculate_points()}
-						sock.sendto(dumps(points).encode(), addr)
+						self.sock.sendto(dumps(points).encode(), self.addr)
 						sleep(5)
-						close_window()
+						#close_window()
 				elif msg['stage'] == CALC:
 					messagebox.showinfo("Win", "You get "+str(msg['points'])+" points")
-					close_window()
-				q.queue.clear()
+					#close_window()
+				#q.queue.clear()
 			except queue.Empty:
 				pass
 	#todo ending (also end with +2/4)
 	#todo uno btn appear only if move is yours
-	#todo when changing turns set taken as true
-	#todo change so that can only take card if no move (?)
+	#todo change so that client send first msg, so that server won't need to be stopper
 	def receive(self):
 			global message, root, addr
 			while True:
 				print("Waiting")
-				json, addr = sock.recvfrom(8000)
+				json, addr = self.sock.recvfrom(8000)
 				message = loads(json.decode())
 				print(message)
 				self.q.put(message)
 
 	def sendInfo(self, data_to_send, addr):
-		sock.sendto(dumps(data_to_send).encode(), addr)
+		self.sock.sendto(dumps(data_to_send).encode(), addr)
 		self.new_card.config(state="disabled")
 		self.uno = False
 		self.card_counter = 1
@@ -418,7 +421,7 @@ class Game(Frame):
 
 	def challengeUno(self):
 		data = {"stage" : CHALLENGE}
-		self.sendInfo(data, addr)
+		self.sendInfo(data, self.addr)
 		self.challenge.place_forget()
 
 
@@ -435,7 +438,7 @@ class Game(Frame):
 				"said_uno" : False,
 				"taken" : True
 				}
-		self.sendInfo(data, addr)
+		self.sendInfo(data, self.addr)
 
 	def sendFinal(self,data_to_send, addr):
 		print("END")
@@ -446,52 +449,19 @@ class Game(Frame):
 		self.uno_but.config(fg="red", bg="white", state='disabled')
 		self.uno_but.place_forget()
 		self.turn.config(text="Waiting for the other player to finish up!")
-		sock.sendto(dumps(data_to_send).encode(), addr)
+		self.sock.sendto(dumps(data_to_send).encode(), addr)
 
 
-
+	def possible_move(self):
+		move = False
+		for i in self.hand_cards.keys():
+			c = self.hand_cards[i]
+			if "bla" in c.name or self.last['text'][0:3] in c.name or self.last['text'][3:] \
+					in c.name:
+				move = move or True
+		return move
 ##################################### CLIENT ##################################
 
-def checkPeriodically(w):
-	w.incoming()
-	w.after(100, checkPeriodically, w)
 
-def close_window():
-	sock.close()
-	root.destroy()
 
 	##################################### MAIN ##################################
-
-if __name__ == "__main__":
-
-	root = Tk()
-	root.configure(bg='white')
-	root.geometry("700x553")
-	#todo remove this line after testing:
-	root.geometry("650x553")
-
-	sock.bind(('', int(port)))
-	init, addr = sock.recvfrom(8000)
-	message = loads(init.decode())
-	root.title("UNO - port " + port + " player - " + (str(1) if (message['player'] == 1 and
-			"stop" not in message['played']) or ('stop' in message['played']
-			and message['player'] == 0) else str(2)))
-	q = queue.Queue()
-	window = Game(root, q, message)
-	if message['player'] == 0:
-		window.new_card.config(state="disabled")
-		window.uno = False
-		window.uno_but.config(fg="red", bg="white", state='disabled')
-		for i in window.hand_btns:
-			window.hand_btns[i].config(state='disabled')
-	if "plus" in message['played']:
-		window.card_counter = 2
-		window.uno = False
-		window.uno_but.config(fg="red", bg="white", state='disabled')
-		for i in window.hand_btns:
-			window.hand_btns[i].config(state='disabled')
-	thread = Thread(target=window.receive)
-	thread.start()
-	checkPeriodically(window)
-	root.protocol("WM_DELETE_WINDOW", close_window)
-	window.mainloop()
