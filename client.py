@@ -28,13 +28,22 @@ root.configure(bg='white')
 root.geometry("700x553")
 #todo remove this line after testing:
 root.geometry("650x553")
-sock = socket(AF_INET, SOCK_DGRAM)
-sock.bind(('', int(port)))
+sock = socket(AF_INET, SOCK_STREAM)
+try:
+	sock.connect(('', int(port)))
+	print("Connected to server")
+except error as e:
+	print(str(e))
+
 init, addr = sock.recvfrom(8000)
 message = loads(init.decode())
-root.title("UNO - port " + port + " player - " + (str(1) if (message['player'] == 1 and
-															 "stop" not in message['played']) or ('stop' in message['played']
-																								  and message['player'] == 0) else str(2)))
+#root.title("UNO - port " + port + " player - " + (str(1) if (message['player'] == 1 and
+#															 "stop" not in message['played']) or
+#															 ('stop' in message['played']
+#
+#																								  and message['player'] == 0) else str(2)))
+root.title("UNO - player "+ str(message['whoami']))
+
 q = queue.Queue()
 window = Game(root, q, message, sock, addr)
 if message['player'] == 0:

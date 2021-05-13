@@ -2,75 +2,71 @@ from socket import *
 from sys import *
 from deck import *
 from stages import *
-sock = socket(AF_INET, SOCK_DGRAM)
-sock2 = socket(AF_INET, SOCK_DGRAM)
+sock = socket(AF_INET, SOCK_STREAM)
 
 ip = 'localhost'
-# port = 44444
-# port2 = 44445
-# port = 54456
-# port2 = 54455
 port = int(argv[1])
-port2 = int(argv[2])
-addresses = {}
+sock.bind((ip, port))
+num_players = int(argv[2])
+socks = []
+addresses = []
+current_player = 0
+sock.listen(5)
+player_counter = 0
+reverse = False
+
+# Deck initialisation
 d = Deck().deck
 pile = [c.name for c in d]
 print(pile)
-first_card = pile.pop(14)
+first_card = pile.pop(7*num_players)
 previous = {}
 # Black card will not be played first. If popped, reshuffle and get new
 while "bla" in first_card:
 	pile.append(first_card)
 	shuffle(pile)
-	first_card = pile.pop(14)
+	first_card = pile.pop(7*num_players)
 
-# TO 1 we need to send [0:7]:[15:]
-# TO 2 we need to send [8:]
 
 # Skeleton of json to be sent
 data_to_send = {"stage": INIT,
 				"played": first_card,
-				"pile": pile[0:7] + pile[14:],
+				"pile": pile[0:7],
 				"num_left": 7,
 				"color": first_card[0:3],
 				"all_played": [],
-				"player": 1,
+				"player": 0,
 				"said_uno": False}
 previous = data_to_send
-# Send data to different players depending on if the first one needs to skip a turn
-if "stop" in first_card:
-	current = 2
+# End of initialisation
 
-	# Send init stage deck + first card played
-	data_to_send["player"] = 0
-	info = data_to_send
-	sock.sendto(dumps(info).encode(), (ip, port))
-	print("Sent to player 1")
-	# "Remove" the first 7 cards used for player 1
-	pile = pile[7:]
-	# Update values and send to player 2
-	data_to_send["pile"] = pile
-	data_to_send["player"] = 1
-	info2 = data_to_send
-	sock2.sendto(dumps(info2).encode(), (ip, port2))
-	print("Sent to player 2")
+
+# Wait for clients to connect, save them
+while player_counter < num_players:
+	player, addr = sock.accept()
+	socks.append(player)
+	addresses.append(addr)
+	player_counter += 1
+	print("Connected player ", player_counter)
+
+# Send the data: pile is first 7 + rest of pile common for all.
+# Player 3 is current if reverse True
+# Player 2 is current if stop True
+# Else player 1 is current
+for i in range(num_players):
+	data_to_send['pile'] = pile[0:7] + pile[7*(num_players-i):]
+	data_to_send['whoami'] = i
+	if (i == 0 and "stop" not in first_card) or \
+			(i == 1 and "stop" in first_card) or \
+		(i == num_players-1 and "reverse" in first_card):
+		data_to_send['player'] = 1
+		current_player = i
+	else:
+		data_to_send['player'] = 0
+	socks[i].sendto(dumps(data_to_send).encode(), addresses[i])
+	print("Sent init to player ", i)
 	pile = pile[7:]
 
-else:
-	current = 1
-	# Send init stage deck + first card played
-	info = data_to_send
-	sock.sendto(dumps(info).encode(), (ip, port))
-	print("Sent to player 1")
-	# "Remove" the first 7 cards used for player 1
-	pile = pile[7:]
-	# Update values and send to player 2
-	data_to_send["pile"] = pile
-	data_to_send["player"] = 0
-	info2 = data_to_send
-	sock2.sendto(dumps(info2).encode(), (ip, port2))
-	print("Sent to player 2")
-	pile = pile[7:]
 
 # ALL SENT
 # Go - regular play, regular relay
@@ -81,24 +77,16 @@ else:
 # Takecards - send back to player out of cards while waiting for the other to take more
 # Calc - other player sends points
 while True:
-	if current == 1:
-		print("Waiting for player one")
-		json, addr = sock.recvfrom(8000)
-		addresses[1] = addr
-
-	else:
-		print("Waiting for player two")
-		json, addr = sock2.recvfrom(8000)
-		addresses[2] = addr
+	print("Waiting for player ", current_player)
+	json, addr = socks[current_player].recvfrom(8000)
 	message = loads(json.decode())
+
 
 	if message['stage'] == GO or message['stage'] == DEBUG:
 		card = message['played']
 		print("PLAYED CARD: ", card)
-		print("UNO SAID: ", message['said_uno'])
-		print("FROM player: ", " one " if current == 1 else " two ")
-		# Check if played is a skip, send json to both, but the orig player is 1
-		# new is 0
+		print("FROM player: ", current_player)
+
 		if message['stage'] == DEBUG:
 			print("DEBUGGING ERROR INFORMATION------------")
 			for x in message:
@@ -117,37 +105,34 @@ while True:
 			data['taken'] = message['taken']
 		# If the last played card is stop
 		if "stop" in card and 'taken' not in message:
-			# receiver is 0, sender is 1
-			if current == 1:
-				data['player'] = 0
-				sock2.sendto(dumps(data).encode(), (ip, port2))
-				print("Player 2 waits")
-				print("Player 1 will go again")
+			# Current+2 is 1, rest are 0 (as skip in between)
+			for i in range(num_players):
+				if i == ((current_player + 2) % num_players):
+					data['player'] = 1
+					print(current_player)
+				else:
+					data['player'] = 0
 				data['num_left'] = previous['num_left']
-				data['player'] = 1
-				sock.sendto(dumps(data).encode(), (ip, port))
-			else:
-				data['player'] = 0
-				sock.sendto(dumps(data).encode(), (ip, port))
-				print("Player 1 waits")
-				data['player'] = 1
-				data['num_left'] = previous['num_left']
-				print("Player 2 will go again")
-				sock2.sendto(dumps(data).encode(), (ip, port2))
+				socks[i].sendto(dumps(data).encode(), addresses[i])
+			current_player = ((current_player + 2) % num_players)
+
+
 		# Not stop, so just relay info
 		else:
-			if current == 1:
-				# Relay to player 2
-				sock2.sendto(dumps(data).encode(), (ip, port2))
-				print("Sent to player 2")
-				current = 2
+			for i in range(num_players):
+				if i != current_player:
+					if i == ((current_player + 1) % num_players):
+						data['player'] = 1
+					else:
+						data['player'] = 0
+					socks[i].sendto(dumps(data).encode(), addresses[i])
+					print("Sent to player ", i)
+			current_player = ((current_player + 1) % num_players)
 
-			else:
-				print("Sent to player 1")
-				sock.sendto(dumps(data).encode(), (ip, port))
-				current = 1
 		if "stop" not in message['played']:
 			previous = message
+
+'''
 	elif message['stage'] == CHALLENGE:
 		print("UNO has not been said")
 		if current == 1:
@@ -199,3 +184,4 @@ while True:
 			print("Sent to player 1")
 			sock.sendto(dumps(message).encode(), (ip, port))
 			current = 1
+'''

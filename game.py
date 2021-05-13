@@ -211,9 +211,9 @@ class Game(Frame):
 			}
 			# Send all the information either in progress of the game, or to end it
 			if len(self.hand_cards) > 0:
-				self.sendInfo(data_to_send, self.addr)
+				self.sendInfo(data_to_send)
 			else:
-				self.sendFinal(data_to_send, self.addr)
+				self.sendFinal(data_to_send)
 
 	def take_card(self):
 		global all_played, new_deck
@@ -267,7 +267,7 @@ class Game(Frame):
 			# but game is over)
 		if self.card_counter <= 0 and 'stage' in message.keys() and message['stage'] == TAKECARDS:
 			data_to_send = {"stage": CALC, "points": self.calculate_points()}
-			self.sendInfo(data_to_send, self.addr)
+			self.sendInfo(data_to_send)
 
 		# Send information about taken cards if can't go or had to take +2/4 due to challenge or
 		# card
@@ -285,7 +285,7 @@ class Game(Frame):
 			}
 			if message['stage'] != CHALLENGE:
 				data_to_send['taken'] = True
-			self.sendInfo(data_to_send, self.addr)
+			self.sendInfo(data_to_send)
 
 	# Remove UNO button when clicked, set the value to True to be sent
 	def one_card(self):
@@ -414,7 +414,7 @@ class Game(Frame):
 						self.card_counter = 2
 					else:
 						points = {"stage" : CALC, "points" : self.calculate_points()}
-						self.sock.sendto(dumps(points).encode(), self.addr)
+						self.sock.send(dumps(points).encode())
 						sleep(5)
 						#close_window()
 				# Get points from the opponent and show them
@@ -425,12 +425,12 @@ class Game(Frame):
 			except queue.Empty:
 				pass
 	#todo save to file; new  game; load prevous game
-	#todo multiplayer
-	#todo change so that client send first msg, so that server won't need to be stopper
+	#todo change so that client send first msg, so that server won't need to be stopped
+	#todo several num lefts in each message if more than 2 players - fix again if stop played
 
 	# Put received message in queue for async processing
 	def receive(self):
-			global message, root, addr
+			global message, root
 			while True:
 				print("Waiting")
 				json, addr = self.sock.recvfrom(8000)
@@ -439,8 +439,8 @@ class Game(Frame):
 				self.q.put(message)
 
 	# Disable all buttons when sending information and when it's not your turn anymore
-	def sendInfo(self, data_to_send, addr):
-		self.sock.sendto(dumps(data_to_send).encode(), addr)
+	def sendInfo(self, data_to_send):
+		self.sock.send(dumps(data_to_send).encode())
 		self.new_card.config(state="disabled")
 		self.uno = False
 		self.card_counter = 1
@@ -453,7 +453,7 @@ class Game(Frame):
 	# Notify opponent that they forgot to say UNO
 	def challengeUno(self):
 		data = {"stage" : CHALLENGE}
-		self.sendInfo(data, self.addr)
+		self.sendInfo(data)
 		self.challenge.place_forget()
 
 	# If for some reason the turn didn't change, this sends current info to server who prints it
@@ -471,10 +471,10 @@ class Game(Frame):
 				"said_uno" : False,
 				"taken" : True
 				}
-		self.sendInfo(data, self.addr)
+		self.sendInfo(data)
 
 	# Send all the final information with 0 cards left to end/finalise the game
-	def sendFinal(self,data_to_send, addr):
+	def sendFinal(self,data_to_send):
 		print("END")
 		data_to_send['stage'] = ZEROCARDS
 		self.new_card.config(state="disabled")
@@ -483,7 +483,7 @@ class Game(Frame):
 		self.uno_but.config(fg="red", bg="white", state='disabled')
 		self.uno_but.place_forget()
 		self.turn.config(text="Waiting for the other player to finish up!")
-		self.sock.sendto(dumps(data_to_send).encode(), addr)
+		self.sock.send(dumps(data_to_send).encode())
 
 
 	# Go through the hand and see if there are cards that could be played
