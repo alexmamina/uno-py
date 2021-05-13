@@ -116,14 +116,14 @@ while True:
 			# If reverse, current -2
 			for i in range(num_players):
 				if (i == ((current_player + 2) % num_players) and not reverse) or (reverse and
-										i == ((num_players + current_player - 2) % num_players)):
+										i == ((current_player - 2) % num_players)):
 					data['player'] = 1
 					print(current_player)
 				else:
 					data['player'] = 0
 				data['num_left'] = previous['num_left']
 				socks[i].sendto(dumps(data).encode(), addresses[i])
-			current_player = ((num_players + current_player - 2) % num_players) if reverse \
+			current_player = ((current_player - 2) % num_players) if reverse \
 				else ((current_player + 2) % num_players)
 
 		# Not stop, so just relay info
@@ -143,20 +143,16 @@ while True:
 		if "stop" not in message['played']:
 			previous = message
 
-		#todo if reverse, change order
-'''
 	elif message['stage'] == CHALLENGE:
+		#From a current player to the previous player; need to send to previous player only
 		print("UNO has not been said")
-		if current == 1:
-			# Relay to player 2
-			sock2.sendto(dumps(message).encode(), (ip, port2))
-			print("Sent to player 2")
-			current = 2
+		rulebreaker = (current_player - 1) % num_players if not reverse else (current_player + 1)\
+																			 % num_players
+		socks[rulebreaker].sendto(dumps(message).encode(), addresses[rulebreaker])
+		print("Sent to player who forgot to take UNO")
+		current_player = rulebreaker
 
-		else:
-			print("Sent to player 1")
-			sock.sendto(dumps(message).encode(), (ip, port))
-			current = 1
+'''
 	elif message['stage'] == ZEROCARDS:
 		print("ENDING")
 		taking_cards = "plus" in message['played']

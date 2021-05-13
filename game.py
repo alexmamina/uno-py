@@ -369,7 +369,8 @@ class Game(Frame):
 							uno_said = "\nUNO not said!"
 							self.challenge = but(text="UNO not said!", bg='red', fg='white',
 												  width=150, height=30,command=self.challengeUno)
-							self.challenge.place(x=50, y=120)
+							if msg['player'] == 1:
+								self.challenge.place(x=50, y=120)
 					else:
 						uno_said = ""
 
