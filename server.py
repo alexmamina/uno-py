@@ -4,7 +4,7 @@ from deck import *
 from stages import *
 sock = socket(AF_INET, SOCK_STREAM)
 
-ip = 'localhost'
+ip = ''
 port = int(argv[1])
 sock.bind((ip, port))
 num_players = int(argv[2])
@@ -26,7 +26,10 @@ while "bla" in first_card:
 	pile.append(first_card)
 	shuffle(pile)
 	first_card = pile.pop(7*num_players)
-
+while "reverse" not in first_card:
+	pile.append(first_card)
+	shuffle(pile)
+	first_card = pile.pop(7*num_players)
 
 # Skeleton of json to be sent
 data_to_send = {"stage": INIT,
@@ -56,11 +59,12 @@ while player_counter < num_players:
 for i in range(num_players):
 	data_to_send['pile'] = pile[0:7] + pile[7*(num_players-i):]
 	data_to_send['whoami'] = i
-	if (i == 0 and "stop" not in first_card) or \
+	if (i == 0 and "stop" not in first_card and "reverse" not in first_card) or \
 			(i == 1 and "stop" in first_card) or \
 		(i == num_players-1 and "reverse" in first_card):
 		data_to_send['player'] = 1
 		current_player = i
+		reverse = "reverse" in first_card
 	else:
 		data_to_send['player'] = 0
 	socks[i].sendto(dumps(data_to_send).encode(), addresses[i])
@@ -103,35 +107,43 @@ while True:
 				}
 		if 'taken' in message:
 			data['taken'] = message['taken']
+		if "reverse" in card and 'taken' not in message:
+			reverse = not reverse
 		# If the last played card is stop
 		if "stop" in card and 'taken' not in message:
 			# Current+2 is 1, rest are 0 (as skip in between)
+
+			# If reverse, current -2
 			for i in range(num_players):
-				if i == ((current_player + 2) % num_players):
+				if (i == ((current_player + 2) % num_players) and not reverse) or (reverse and
+										i == ((num_players + current_player - 2) % num_players)):
 					data['player'] = 1
 					print(current_player)
 				else:
 					data['player'] = 0
 				data['num_left'] = previous['num_left']
 				socks[i].sendto(dumps(data).encode(), addresses[i])
-			current_player = ((current_player + 2) % num_players)
-
+			current_player = ((num_players + current_player - 2) % num_players) if reverse \
+				else ((current_player + 2) % num_players)
 
 		# Not stop, so just relay info
 		else:
 			for i in range(num_players):
 				if i != current_player:
-					if i == ((current_player + 1) % num_players):
+					if (i == ((current_player + 1) % num_players) and not reverse) or\
+						(i == ((current_player - 1) % num_players) and reverse):
 						data['player'] = 1
 					else:
 						data['player'] = 0
 					socks[i].sendto(dumps(data).encode(), addresses[i])
 					print("Sent to player ", i)
-			current_player = ((current_player + 1) % num_players)
+			current_player = ((current_player + 1) % num_players) if not reverse\
+							else ((current_player - 1) % num_players)
 
 		if "stop" not in message['played']:
 			previous = message
 
+		#todo if reverse, change order
 '''
 	elif message['stage'] == CHALLENGE:
 		print("UNO has not been said")
