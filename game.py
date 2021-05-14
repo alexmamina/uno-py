@@ -55,9 +55,13 @@ class Game(Frame):
 		self.turn.place(x=300,y=0)
 		self.hand_cards = {}
 		self.pile = message['pile']
-		self.other_cards_left = message['num_left']
-		text_cards_left = "Your cards left: " + str(7) + "\n Other player's cards " \
-																	"left: " + str(7)
+		self.all_nums_of_cards = message['other_left']
+		text_cards_left = "Your cards left: " + str(7)
+		pl = 0
+		for x in message['other_left']:
+			if pl != self.identity:
+				text_cards_left += "\n Player "+str(pl) + " has " + str(x) + " cards left"
+			pl += 1
 		self.cards_left = Label(text=text_cards_left, fg="blue", bg="white", width=20, height=5)
 		self.cards_left.place(x=10, y=30)
 		self.uno_but = but(text="UNO?", fg="red", bg="white", width=100, height=80, borderless=1,
@@ -190,8 +194,8 @@ class Game(Frame):
 			# Remove card from 'hand', update label with number
 			self.hand_cards.pop(ind)
 			self.hand_btns.pop(ind)
-			self.cards_left.config(text="Your cards left: " + str(len(self.hand_cards)) +
-								   "\n Other player's cards left: " + str(self.other_cards_left))
+			text = self.label_for_cards_left(self.all_nums_of_cards)
+			self.cards_left.config(text=text)
 			ctr = 0
 			for i in self.hand_btns.keys():
 				# Move all buttons
@@ -245,8 +249,8 @@ class Game(Frame):
 		b['command'] = lambda ind=ind, binst=b: self.place_card(ind, binst)
 		b.image = photo
 		self.hand_btns[ind] = b
-		self.cards_left.config(text="Your cards left: " + str(len(self.hand_cards)) +
-									"\n Other player's cards left: " + str(self.other_cards_left))
+		text = self.label_for_cards_left(self.all_nums_of_cards)
+		self.cards_left.config(text=text)
 		ctr = 0
 		# Is it possible to place a card right now?
 		possible_move = self.possible_move()
@@ -360,10 +364,12 @@ class Game(Frame):
 					self.last.config(image=img, text=newC)
 					self.last.image = img
 					self.pile = msg['pile']
-					self.other_cards_left = msg['num_left']
 					# Check if other player said UNO; place the challenge button if not said
 					# Update label to show that
-					if self.other_cards_left == 1:
+					if (self.all_nums_of_cards[self.identity-1 % len(self.all_nums_of_cards)] == 1
+						and 'stop' not in newC) or ('stop' in newC and
+						self.all_nums_of_cards[self.identity-2 % len(self.all_nums_of_cards)] == 1):
+						#todo dont show if not said but stop was there as skipeed turn
 						if msg['said_uno']:
 							uno_said = "\nUNO said!"
 						else:
@@ -375,9 +381,11 @@ class Game(Frame):
 					else:
 						uno_said = ""
 
-					left_cards_text = "Your cards left: " + str(len(self.hand_cards))\
-									  +"\n Other player's cards left: " + str(self.other_cards_left)\
-									+uno_said
+
+					self.all_nums_of_cards = msg['other_left']
+					left_cards_text = self.label_for_cards_left(msg['other_left'])
+					left_cards_text += uno_said
+
 					self.cards_left.config(text=left_cards_text)
 					all_played = msg['all_played']
 					# Enable buttons for cards if your turn; make UNO show if necessary
@@ -415,6 +423,7 @@ class Game(Frame):
 						self.sock.send(dumps(points).encode())
 						#sleep(5)
 						#close_window()
+					self.cards_left.config(text='Game over!')
 				# Get points from the opponent and show them
 				elif msg['stage'] == CALC:
 					if msg['winner'] == self.identity:
@@ -429,6 +438,7 @@ class Game(Frame):
 	#todo save to file; new  game; load prevous game
 	#todo change so that client send first msg, so that server won't need to be stopped
 	#todo several num lefts in each message if more than 2 players - fix again if stop played
+	#todo change file path for card imgs in deck
 
 	# Put received message in queue for async processing
 	def receive(self):
@@ -499,3 +509,11 @@ class Game(Frame):
 		return move
 
 
+	def label_for_cards_left(self, others):
+		left_cards_text = "Your cards left: " + str(len(self.hand_cards))
+		pl = 0
+		for x in others:
+			if pl != self.identity:
+				left_cards_text += "\n Player "+str(pl) + " has " + str(x) + " cards left"
+			pl += 1
+		return left_cards_text

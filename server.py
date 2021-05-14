@@ -28,12 +28,13 @@ while "bla" in first_card:
 	shuffle(pile)
 	first_card = pile.pop(7*num_players)
 
-
+left_cards = [7]*num_players
 # Skeleton of json to be sent
 data_to_send = {"stage": INIT,
 				"played": first_card,
 				"pile": pile[0:7],
 				"num_left": 7,
+				"other_left": left_cards,
 				"color": first_card[0:3],
 				"all_played": [],
 				"player": 0,
@@ -63,6 +64,7 @@ for i in range(num_players):
 		data_to_send['player'] = 1
 		current_player = i
 		reverse = "reverse" in first_card
+		prev_player = i-1 % num_players if reverse else i+1 % num_players
 	else:
 		data_to_send['player'] = 0
 	socks[i].sendto(dumps(data_to_send).encode(), addresses[i])
@@ -89,6 +91,7 @@ while True:
 		print("PLAYED CARD: ", card)
 		print("FROM player: ", current_player)
 
+		left_cards[current_player] = message['num_left']
 		if message['stage'] == DEBUG:
 			print("DEBUGGING ERROR INFORMATION------------")
 			for x in message:
@@ -97,6 +100,7 @@ while True:
 		data = {"pile": message["pile"],
 				"num_left": message['num_left'],
 				"played": message['played'],
+				"other_left": left_cards,
 				"stage": GO,
 				"player": 1,
 				"all_played": message['all_played'],
@@ -140,12 +144,14 @@ while True:
 
 		if "stop" not in message['played']:
 			previous = message
-
+		prev_player = current_player
 	elif message['stage'] == CHALLENGE:
 		#From a current player to the previous player; need to send to previous player only
 		print("UNO has not been said")
-		rulebreaker = (current_player - 1) % num_players if not reverse else (current_player + 1)\
-																			 % num_players
+		#todo what if skipped?. sendt o previous player only if their uno not said. in main
+		#rulebreaker = (current_player - 1) % num_players if not reverse else (current_player + 1)\
+		#																	 % num_players
+		rulebreaker = prev_player
 		socks[rulebreaker].sendto(dumps(message).encode(), addresses[rulebreaker])
 		print("Sent to player who forgot to take UNO")
 		current_player = rulebreaker
