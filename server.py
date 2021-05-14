@@ -19,6 +19,7 @@ reverse = False
 d = Deck().deck
 pile = [c.name for c in d]
 print(pile)
+resulting_points = 0
 first_card = pile.pop(7*num_players)
 previous = {}
 # Black card will not be played first. If popped, reshuffle and get new
@@ -26,10 +27,7 @@ while "bla" in first_card:
 	pile.append(first_card)
 	shuffle(pile)
 	first_card = pile.pop(7*num_players)
-while "reverse" not in first_card:
-	pile.append(first_card)
-	shuffle(pile)
-	first_card = pile.pop(7*num_players)
+
 
 # Skeleton of json to be sent
 data_to_send = {"stage": INIT,
@@ -152,7 +150,7 @@ while True:
 		print("Sent to player who forgot to take UNO")
 		current_player = rulebreaker
 
-'''
+
 	elif message['stage'] == ZEROCARDS:
 		print("ENDING")
 		taking_cards = "plus" in message['played']
@@ -164,32 +162,22 @@ while True:
 				"color": message['color'],
 				"to_take" : taking_cards
 				}
-		if current == 1:
-			# Relay to player 2
-			sock2.sendto(dumps(data).encode(), (ip, port2))
-			print("Sent to player 2")
-			current = 2
-			if taking_cards:
-				waiting = {"stage" : TAKECARDS}
-				sock.sendto(dumps(waiting).encode(), (ip, port))
+		# Either: next takes cards, then all send. Or: all send
+		for i in range(num_players):
+			if i != current_player:
+				if ((i == (current_player + 1) % num_players and not reverse) or
+						(reverse and i == (current_player - 1) % num_players)) and taking_cards:
+					socks[i].sendto(dumps(data).encode(), addresses[i])
+					pts, a = socks[i].recvfrom(8000)
+					resulting_points += loads(pts.decode())['points']
+					print(resulting_points)
+				else:
+					data["to_take"] = False
+					socks[i].sendto(dumps(data).encode(), addresses[i])
+					pts, a = socks[i].recvfrom(8000)
+					resulting_points += loads(pts.decode())['points']
+					print(resulting_points)
 
-		else:
-			print("Sent to player 1")
-			sock.sendto(dumps(data).encode(), (ip, port))
-			current = 1
-			if taking_cards:
-				waiting = {"stage" : TAKECARDS}
-				sock2.sendto(dumps(waiting).encode(), (ip, port2))
-	elif message['stage'] == CALC:
-		data = message
-		if current == 1:
-			# Relay to player 2
-			sock2.sendto(dumps(message).encode(), (ip, port2))
-			print("Sent to player 2")
-			current = 2
-
-		else:
-			print("Sent to player 1")
-			sock.sendto(dumps(message).encode(), (ip, port))
-			current = 1
-'''
+		for i in range(num_players):
+			msg = {'stage': CALC, 'points': resulting_points, 'winner': current_player}
+			socks[i].sendto(dumps(msg).encode(), addresses[i])

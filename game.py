@@ -47,6 +47,7 @@ class Game(Frame):
 		#Take one card only
 		self.card_counter = 1
 		self.q = queue
+		self.identity = message['whoami']
 		self.last = None
 		self.challenge = None
 		self.turn = Label(text="Your turn" if message['player'] == 1 else "Waiting...",
@@ -265,7 +266,7 @@ class Game(Frame):
 
 		# Send the points from the cards if you had to take them at the end (last played was +,
 			# but game is over)
-		if self.card_counter <= 0 and 'stage' in message.keys() and message['stage'] == TAKECARDS:
+		if self.card_counter <= 0 and 'stage' in message.keys() and message['stage'] == ZEROCARDS:
 			data_to_send = {"stage": CALC, "points": self.calculate_points()}
 			self.sendInfo(data_to_send)
 
@@ -398,11 +399,6 @@ class Game(Frame):
 					messagebox.showinfo("UNO not said!", "You forgot to click UNO, "
 																 "so take 2 cards!")
 					self.turn.config(text="Your turn")
-				# Final stage - very last played card is a plus, so need to take cards before
-					# game ends. While the other player is doing that, show information
-				elif msg['stage'] == TAKECARDS:
-					# print 'waiting for player to take cards'
-					messagebox.showinfo("Waiting", "The player is taking more cards, please wait")
 
 				# Another player has finished the game; you either take cards if last is a plus,
 				# or automatically send the remaining points for the other player
@@ -411,16 +407,21 @@ class Game(Frame):
 					if msg['to_take']:
 						#enable taking cards
 						print('taking')
+						self.turn.config(text='Your turn, take cards!')
 						self.new_card.config(state='normal')
 						self.card_counter = 2
 					else:
 						points = {"stage" : CALC, "points" : self.calculate_points()}
 						self.sock.send(dumps(points).encode())
-						sleep(5)
+						#sleep(5)
 						#close_window()
 				# Get points from the opponent and show them
 				elif msg['stage'] == CALC:
-					messagebox.showinfo("Win", "You get "+str(msg['points'])+" points")
+					if msg['winner'] == self.identity:
+						messagebox.showinfo("Win", "You won "+str(msg['points'])+" points!")
+					else:
+						messagebox.showinfo("Win", "Player "+str(msg['winner'])
+										+" won "+str(msg['points'])+" points!")
 					#close_window()
 				#q.queue.clear()
 			except queue.Empty:
@@ -483,7 +484,7 @@ class Game(Frame):
 		self.card_counter = 1
 		self.uno_but.config(fg="red", bg="white", state='disabled')
 		self.uno_but.place_forget()
-		self.turn.config(text="Waiting for the other player to finish up!")
+		self.turn.config(text="Waiting for the results!")
 		self.sock.send(dumps(data_to_send).encode())
 
 

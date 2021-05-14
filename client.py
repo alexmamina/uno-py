@@ -37,11 +37,7 @@ except error as e:
 
 init, addr = sock.recvfrom(8000)
 message = loads(init.decode())
-#root.title("UNO - port " + port + " player - " + (str(1) if (message['player'] == 1 and
-#															 "stop" not in message['played']) or
-#															 ('stop' in message['played']
-#
-#																								  and message['player'] == 0) else str(2)))
+
 root.title("UNO - player "+ str(message['whoami']))
 
 q = queue.Queue()
