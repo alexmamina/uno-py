@@ -13,7 +13,6 @@ addresses = []
 current_player = 0
 sock.listen(5)
 player_counter = 0
-reverse = False
 
 # Deck initialisation
 d = Deck().deck
@@ -21,7 +20,7 @@ pile = [c.name for c in d]
 print(pile)
 resulting_points = 0
 first_card = pile.pop(7*num_players)
-previous = {}
+previous_message = {}
 # Black card will not be played first. If popped, reshuffle and get new
 while "bla" in first_card:
 	pile.append(first_card)
@@ -39,18 +38,21 @@ data_to_send = {"stage": INIT,
 				"all_played": [],
 				"player": 0,
 				"said_uno": False}
-previous = data_to_send
+previous_message = data_to_send
 # End of initialisation
-
+list_of_players = []
 
 # Wait for clients to connect, save them
 while player_counter < num_players:
 	player, addr = sock.accept()
 	socks.append(player)
 	addresses.append(addr)
-	player_counter += 1
+	list_of_players.append(player_counter)
 	print("Connected player ", player_counter)
-
+	player_counter += 1
+curr_list_index = 0
+if 'reverse' in first_card:
+	list_of_players.reverse()
 # Send the data: pile is first 7 + rest of pile common for all.
 # Player 3 is current if reverse True
 # Player 2 is current if stop True
@@ -58,13 +60,12 @@ while player_counter < num_players:
 for i in range(num_players):
 	data_to_send['pile'] = pile[0:7] + pile[7*(num_players-i):]
 	data_to_send['whoami'] = i
-	if (i == 0 and "stop" not in first_card and "reverse" not in first_card) or \
-			(i == 1 and "stop" in first_card) or \
-		(i == num_players-1 and "reverse" in first_card):
+	if (i == list_of_players[0] and "stop" not in first_card) or \
+			(i == 1 and "stop" in first_card):
 		data_to_send['player'] = 1
 		current_player = i
-		reverse = "reverse" in first_card
-		prev_player = i-1 % num_players if reverse else i+1 % num_players
+		curr_list_index = 1 if i == 1 else 0
+		prev_player = list_of_players[num_players-1]
 	else:
 		data_to_send['player'] = 0
 	socks[i].sendto(dumps(data_to_send).encode(), addresses[i])
@@ -110,40 +111,36 @@ while True:
 		if 'taken' in message:
 			data['taken'] = message['taken']
 		if "reverse" in card and 'taken' not in message:
-			reverse = not reverse
+			list_of_players.reverse()
+			curr_list_index = num_players - 1 - curr_list_index
 		# If the last played card is stop
 		if "stop" in card and 'taken' not in message:
 			# Current+2 is 1, rest are 0 (as skip in between)
-
-			# If reverse, current -2
 			for i in range(num_players):
-				if (i == ((current_player + 2) % num_players) and not reverse) or (reverse and
-										i == ((current_player - 2) % num_players)):
+				if (i == list_of_players[(curr_list_index+2) % num_players]):
 					data['player'] = 1
-					print(current_player)
 				else:
 					data['player'] = 0
-				data['num_left'] = previous['num_left']
+				data['num_left'] = previous_message['num_left']
 				socks[i].sendto(dumps(data).encode(), addresses[i])
-			current_player = ((current_player - 2) % num_players) if reverse \
-				else ((current_player + 2) % num_players)
+			current_player = list_of_players[(curr_list_index+2) % num_players]
+			curr_list_index = (curr_list_index + 2) % num_players
 
 		# Not stop, so just relay info
 		else:
 			for i in range(num_players):
 				if i != current_player:
-					if (i == ((current_player + 1) % num_players) and not reverse) or\
-						(i == ((current_player - 1) % num_players) and reverse):
+					if i == list_of_players[(curr_list_index+1) % num_players]:
 						data['player'] = 1
 					else:
 						data['player'] = 0
 					socks[i].sendto(dumps(data).encode(), addresses[i])
 					print("Sent to player ", i)
-			current_player = ((current_player + 1) % num_players) if not reverse\
-							else ((current_player - 1) % num_players)
+			current_player = list_of_players[(curr_list_index+1) % num_players]
+			curr_list_index = (curr_list_index + 1) % num_players
 
 		if "stop" not in message['played']:
-			previous = message
+			previous_message = message
 		prev_player = current_player
 	elif message['stage'] == CHALLENGE:
 		#From a current player to the previous player; need to send to previous player only
@@ -171,8 +168,7 @@ while True:
 		# Either: next takes cards, then all send. Or: all send
 		for i in range(num_players):
 			if i != current_player:
-				if ((i == (current_player + 1) % num_players and not reverse) or
-						(reverse and i == (current_player - 1) % num_players)) and taking_cards:
+				if (i == list_of_players[(curr_list_index+1) % num_players]) and taking_cards:
 					socks[i].sendto(dumps(data).encode(), addresses[i])
 					pts, a = socks[i].recvfrom(8000)
 					resulting_points += loads(pts.decode())['points']
