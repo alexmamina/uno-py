@@ -437,8 +437,8 @@ class Game(Frame):
 				pass
 	#todo save to file; new  game; load prevous game
 	#todo change so that client send first msg, so that server won't need to be stopped
-	#todo several num lefts in each message if more than 2 players - fix again if stop played
-	#todo change file path for card imgs in deck
+	#todo challenge uno button server-side; show up for next player only
+
 
 	# Put received message in queue for async processing
 	def receive(self):
@@ -509,6 +509,8 @@ class Game(Frame):
 		return move
 
 
+	# From a list of numbers of cards left from other players return the text to show
+	# in the label
 	def label_for_cards_left(self, others):
 		left_cards_text = "Your cards left: " + str(len(self.hand_cards))
 		pl = 0

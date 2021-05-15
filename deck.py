@@ -13,24 +13,24 @@ import copy
 class Deck:
 
 	global backofcard, special_blacks
-	backofcard = Image.open("/Users/alexmamina/IdeaProjects/uno/backofcard.jpg")
+	backofcard = Image.open("Cards/backofcard.jpg")
 	backofcard = backofcard.resize((117, 183), Image.ANTIALIAS)
 
-	redplus = Image.open("/Users/alexmamina/IdeaProjects/uno/redplusfour.jpeg")
+	redplus = Image.open("Cards/redplusfour.jpeg")
 	redplus = redplus.resize((117, 183), Image.ANTIALIAS)
-	redblack = Image.open("/Users/alexmamina/IdeaProjects/uno/redblack.jpeg")
+	redblack = Image.open("Cards/redblack.jpeg")
 	redblack = redblack.resize((117, 183), Image.ANTIALIAS)
-	bluplus = Image.open("/Users/alexmamina/IdeaProjects/uno/bluplusfour.jpeg")
+	bluplus = Image.open("Cards/bluplusfour.jpeg")
 	bluplus = bluplus.resize((117, 183), Image.ANTIALIAS)
-	blublack = Image.open("/Users/alexmamina/IdeaProjects/uno/blublack.jpeg")
+	blublack = Image.open("Cards/blublack.jpeg")
 	blublack = blublack.resize((117, 183), Image.ANTIALIAS)
-	greplus = Image.open("/Users/alexmamina/IdeaProjects/uno/greplusfour.jpeg")
+	greplus = Image.open("Cards/greplusfour.jpeg")
 	greplus = greplus.resize((117, 183), Image.ANTIALIAS)
-	greblack = Image.open("/Users/alexmamina/IdeaProjects/uno/greblack.jpeg")
+	greblack = Image.open("Cards/greblack.jpeg")
 	greblack = greblack.resize((117, 183), Image.ANTIALIAS)
-	yelplus = Image.open("/Users/alexmamina/IdeaProjects/uno/yelplusfour.jpeg")
+	yelplus = Image.open("Cards/yelplusfour.jpeg")
 	yelplus = yelplus.resize((117, 183), Image.ANTIALIAS)
-	yelblack = Image.open("/Users/alexmamina/IdeaProjects/uno/yelblack.jpeg")
+	yelblack = Image.open("Cards/yelblack.jpeg")
 	yelblack = yelblack.resize((117, 183), Image.ANTIALIAS)
 
 	special_blacks = {"redplus": redplus, "greplus": greplus, "bluplus": bluplus, 'yelplus' :
@@ -40,13 +40,13 @@ class Deck:
 #List of all Card objects
 	def __init__(self):
 		self.deck = []
-		files = listdir("/Users/alexmamina/IdeaProjects/uno/UNO")
+		files = listdir("Cards/UNO")
 		if len(files) == 0:
 			print("No files found")
 			return
 		for f in files:
 			if ((f != ".DS_Store") and (f != ".idea")):
-				card_pic = Image.open("/Users/alexmamina/IdeaProjects/uno/UNO/"+f)
+				card_pic = Image.open("Cards/UNO/"+f)
 				card = Card(card_pic, f)
 				#print(card)
 				self.deck.append(card)
