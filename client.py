@@ -18,11 +18,25 @@ def checkPeriodically(w):
 	w.after(100, checkPeriodically, w)
 
 def close_window():
+	sock.send("bye".encode())
 	window.sock.close()
 	root.destroy()
-	print()
+	print("Bye")
 
-	#def __init__(self):
+
+def new_game(w):
+	w.destroy()
+	w.master.destroy()
+
+	root = Tk()
+	q = queue.Queue()
+	init = {'stage': INIT}
+	sock.send(dumps(init).encode())
+	message = sock.recvfrom(8000)
+	newgame = Game(root, q, message, sock, addr)
+	newgame.mainloop()
+
+
 root = Tk()
 root.configure(bg='white')
 root.geometry("700x553")
@@ -33,6 +47,7 @@ try:
 	sock.connect(('', int(port)))
 	print("Connected to server")
 except error as e:
+	print("ERROR")
 	print(str(e))
 
 init, addr = sock.recvfrom(8000)

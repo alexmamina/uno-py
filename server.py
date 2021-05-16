@@ -36,8 +36,7 @@ data_to_send = {"stage": INIT,
 				"other_left": left_cards,
 				"color": first_card[0:3],
 				"all_played": [],
-				"player": 0,
-				"said_uno": False}
+				"player": 0}
 previous_message = data_to_send
 # End of initialisation
 list_of_players = []
@@ -79,12 +78,14 @@ for i in range(num_players):
 # Challenge - only send packet to make player take two cards
 # Zerocards - one player is out of cards, forward to the other who will either take cards or send
 	# points
-# Takecards - send back to player out of cards while waiting for the other to take more
 # Calc - other player sends points
 while True:
 	print("Waiting for player ", current_player)
 	json, addr = socks[current_player].recvfrom(8000)
-	message = loads(json.decode())
+	try:
+		message = loads(json.decode())
+	except JSONDecodeError:
+		break
 
 
 	if message['stage'] == GO or message['stage'] == DEBUG:
@@ -105,14 +106,17 @@ while True:
 				"stage": GO,
 				"player": 1,
 				"all_played": message['all_played'],
-				"color": message['color'],
-				"said_uno": message['said_uno']
+				"color": message['color']
 				}
 		if 'taken' in message:
 			data['taken'] = message['taken']
 		if "reverse" in card and 'taken' not in message:
 			list_of_players.reverse()
 			curr_list_index = num_players - 1 - curr_list_index
+		if message['num_left'] == 1 and 'said_uno' not in message.keys():
+			data['said_uno'] = False
+		elif 'said_uno' in message.keys() and message['said_uno']:
+			data['said_uno'] = True
 		# If the last played card is stop
 		if "stop" in card and 'taken' not in message:
 			# Current+2 is 1, rest are 0 (as skip in between)
@@ -123,6 +127,7 @@ while True:
 					data['player'] = 0
 				data['num_left'] = previous_message['num_left']
 				socks[i].sendto(dumps(data).encode(), addresses[i])
+			prev_player = current_player
 			current_player = list_of_players[(curr_list_index+2) % num_players]
 			curr_list_index = (curr_list_index + 2) % num_players
 
@@ -136,22 +141,44 @@ while True:
 						data['player'] = 0
 					socks[i].sendto(dumps(data).encode(), addresses[i])
 					print("Sent to player ", i)
+			prev_player = current_player
 			current_player = list_of_players[(curr_list_index+1) % num_players]
 			curr_list_index = (curr_list_index + 1) % num_players
 
 		if "stop" not in message['played']:
 			previous_message = message
-		prev_player = current_player
 	elif message['stage'] == CHALLENGE:
 		#From a current player to the previous player; need to send to previous player only
 		print("UNO has not been said")
-		#todo what if skipped?. sendt o previous player only if their uno not said. in main
-		#rulebreaker = (current_player - 1) % num_players if not reverse else (current_player + 1)\
-		#																	 % num_players
+
 		rulebreaker = prev_player
 		socks[rulebreaker].sendto(dumps(message).encode(), addresses[rulebreaker])
 		print("Sent to player who forgot to take UNO")
+		prev_player = current_player
 		current_player = rulebreaker
+
+	elif message['stage'] == CHALLENGE_TAKEN:
+		old = current_player
+		current_player = prev_player
+		prev_player = old
+		left_cards[prev_player] = message['num_left']
+		data = {"pile": message["pile"],
+				"num_left": message['num_left'],
+				"played": message['played'],
+				"other_left": left_cards,
+				"stage": GO,
+				"player": 1,
+				"all_played": message['all_played'],
+				"color": message['color']
+				}
+		for i in range(num_players):
+			if i != prev_player:
+				if i == current_player:
+					data['player'] = 1
+				else:
+					data['player'] = 0
+				socks[i].sendto(dumps(data).encode(), addresses[i])
+				print("Sent to player ", i)
 
 
 	elif message['stage'] == ZEROCARDS:
@@ -183,3 +210,63 @@ while True:
 		for i in range(num_players):
 			msg = {'stage': CALC, 'points': resulting_points, 'winner': current_player}
 			socks[i].sendto(dumps(msg).encode(), addresses[i])
+
+	elif message['stage'] == INIT:
+		print("New game!")
+		# Deck initialisation
+		d = Deck().deck
+		pile = [c.name for c in d]
+		print(pile)
+		resulting_points = 0
+		first_card = pile.pop(7*num_players)
+		previous_message = {}
+		# Black card will not be played first. If popped, reshuffle and get new
+		while "bla" in first_card:
+			pile.append(first_card)
+			shuffle(pile)
+			first_card = pile.pop(7*num_players)
+
+		left_cards = [7]*num_players
+		# Skeleton of json to be sent
+		data_to_send = {"stage": INIT,
+						"played": first_card,
+						"pile": pile[0:7],
+						"num_left": 7,
+						"other_left": left_cards,
+						"color": first_card[0:3],
+						"all_played": [],
+						"player": 0}
+		previous_message = data_to_send
+		# End of initialisation
+		list_of_players = []
+
+		if 'reverse' in first_card:
+			list_of_players.reverse()
+		# Send the data: pile is first 7 + rest of pile common for all.
+		# Player 3 is current if reverse True
+		# Player 2 is current if stop True
+		# Else player 1 is current
+		for i in range(num_players):
+			data_to_send['pile'] = pile[0:7] + pile[7*(num_players-i):]
+			data_to_send['whoami'] = i
+			if (i == list_of_players[0] and "stop" not in first_card) or \
+					(i == 1 and "stop" in first_card):
+				data_to_send['player'] = 1
+				current_player = i
+				curr_list_index = 1 if i == 1 else 0
+				prev_player = list_of_players[num_players-1]
+			else:
+				data_to_send['player'] = 0
+			socks[i].sendto(dumps(data_to_send).encode(), addresses[i])
+			print("Sent init to player ", i)
+			pile = pile[7:]
+
+
+	else:
+		break
+for i in range(num_players):
+	socks[i].close()
+sock.close()
+
+
+# current has 1 card, uno not said

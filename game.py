@@ -39,6 +39,7 @@ class Game(Frame):
 
 	# Initialise a frame. Setup the pile, hand, last played card and all gui
 	def __init__(self, master, queue, message, sock, addr):
+		message = message
 		super().__init__(master)
 		self.pack()
 		self.addr = addr
@@ -209,11 +210,12 @@ class Game(Frame):
 				"played" : card,
 				"pile" : self.pile,
 				"stage" : GO,
-				"said_uno" : self.uno,
 				"color" : card_col,
 				"all_played" : all_played,
 				"num_left" : len(self.hand_cards)
 			}
+			if self.uno:
+				data_to_send['said_uno'] = True
 			# Send all the information either in progress of the game, or to end it
 			if len(self.hand_cards) > 0:
 				self.sendInfo(data_to_send)
@@ -261,7 +263,7 @@ class Game(Frame):
 			b.place(x=coords[1], y=coords[2])
 			ctr += 1
 		# Make UNO button appear as uno is possible
-		if len(self.hand_cards) == 2 and possible_move:
+		if len(self.hand_cards) == 2 and possible_move: #todo don't add if taking more cards
 			self.uno_but.place(x=50,y=150)
 			self.uno_but.config(state='normal')
 		# Remove UNO button if many cards (should be unnecessary)
@@ -283,13 +285,15 @@ class Game(Frame):
 				"played" : self.last['text'],
 				"pile" : self.pile,
 				"stage" : GO,
-				"said_uno" : self.uno,
 				"color" : self.last['text'][0:3],
 				"all_played" : all_played,
 				"num_left" : len(self.hand_cards)
 			}
+			#todo here if taking first card message isn't seen
 			if message['stage'] != CHALLENGE:
 				data_to_send['taken'] = True
+			else:
+				data_to_send['stage'] = CHALLENGE_TAKEN
 			self.sendInfo(data_to_send)
 
 	# Remove UNO button when clicked, set the value to True to be sent
@@ -366,6 +370,18 @@ class Game(Frame):
 					self.pile = msg['pile']
 					# Check if other player said UNO; place the challenge button if not said
 					# Update label to show that
+					if 'said_uno' in msg.keys() and not msg['said_uno']:
+						uno_said = "\nUNO not said!"
+						self.challenge = but(text="UNO not said!", bg='red', fg='white',
+											 width=150, height=30,command=self.challengeUno)
+						if msg['player'] == 1:
+							self.challenge.place(x=50, y=120)
+					elif 'said_uno' in msg.keys() and msg['said_uno']:
+						uno_said = "\nUNO said!"
+					else:
+						uno_said = ""
+
+					'''
 					if (self.all_nums_of_cards[self.identity-1 % len(self.all_nums_of_cards)] == 1
 						and 'stop' not in newC) or ('stop' in newC and
 						self.all_nums_of_cards[self.identity-2 % len(self.all_nums_of_cards)] == 1):
@@ -380,7 +396,7 @@ class Game(Frame):
 								self.challenge.place(x=50, y=120)
 					else:
 						uno_said = ""
-
+					'''
 
 					self.all_nums_of_cards = msg['other_left']
 					left_cards_text = self.label_for_cards_left(msg['other_left'])
@@ -431,13 +447,17 @@ class Game(Frame):
 					else:
 						messagebox.showinfo("Win", "Player "+str(msg['winner'])
 										+" won "+str(msg['points'])+" points!")
+					ans = messagebox.askyesno("new", "new?")
+					print(ans)
+					if ans == 1:
+						self.new_game()
 					#close_window()
 				#q.queue.clear()
 			except queue.Empty:
 				pass
-	#todo save to file; new  game; load prevous game
+	#todo save to file;
+	#todo new  game;
 	#todo change so that client send first msg, so that server won't need to be stopped
-	#todo challenge uno button server-side; show up for next player only
 
 
 	# Put received message in queue for async processing
@@ -462,7 +482,7 @@ class Game(Frame):
 			self.hand_btns[i].config(state='disabled')
 		self.turn.config(text="Waiting...")
 
-	# Notify opponent that they forgot to say UNO
+	# Notify opponent that they forgot to say UNO; when clicking button
 	def challengeUno(self):
 		data = {"stage" : CHALLENGE}
 		self.sendInfo(data)
@@ -480,7 +500,6 @@ class Game(Frame):
 				"num_left" : len(self.hand_cards),
 				"all_played" : all_played,
 				"color" : self.last['text'],
-				"said_uno" : False,
 				"taken" : True
 				}
 		self.sendInfo(data)
@@ -519,3 +538,18 @@ class Game(Frame):
 				left_cards_text += "\n Player "+str(pl) + " has " + str(x) + " cards left"
 			pl += 1
 		return left_cards_text
+
+
+	def new_game(self):
+		sock = self.sock
+		addr = self.addr
+		self.destroy()
+		self.master.destroy()
+
+		root = Tk()
+		q = queue.Queue()
+		init = {'stage': INIT}
+		sock.send(dumps(init).encode())
+		message = sock.recvfrom(8000)
+		newgame = Game(root, q, message, sock, addr)
+		newgame.mainloop()
