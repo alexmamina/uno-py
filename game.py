@@ -381,23 +381,6 @@ class Game(Frame):
 					else:
 						uno_said = ""
 
-					'''
-					if (self.all_nums_of_cards[self.identity-1 % len(self.all_nums_of_cards)] == 1
-						and 'stop' not in newC) or ('stop' in newC and
-						self.all_nums_of_cards[self.identity-2 % len(self.all_nums_of_cards)] == 1):
-						#todo dont show if not said but stop was there as skipeed turn
-						if msg['said_uno']:
-							uno_said = "\nUNO said!"
-						else:
-							uno_said = "\nUNO not said!"
-							self.challenge = but(text="UNO not said!", bg='red', fg='white',
-												  width=150, height=30,command=self.challengeUno)
-							if msg['player'] == 1:
-								self.challenge.place(x=50, y=120)
-					else:
-						uno_said = ""
-					'''
-
 					self.all_nums_of_cards = msg['other_left']
 					left_cards_text = self.label_for_cards_left(msg['other_left'])
 					left_cards_text += uno_said
@@ -457,7 +440,8 @@ class Game(Frame):
 				pass
 	#todo save to file;
 	#todo new  game;
-	#todo change so that client send first msg, so that server won't need to be stopped
+	#todo after new game change so that client send first msg, so that server won't need to be
+	# stopped
 
 
 	# Put received message in queue for async processing
@@ -465,10 +449,15 @@ class Game(Frame):
 			global message, root
 			while True:
 				print("Waiting")
-				json, addr = self.sock.recvfrom(8000)
-				message = loads(json.decode())
+				try:
+					json, addr = self.sock.recvfrom(8000)
+					message = loads(json.decode())
+				except (JSONDecodeError, OSError) as er:
+					break
 				print(message)
 				self.q.put(message)
+			self.sock.close()
+			print("Closing socket")
 
 	# Disable all buttons when sending information and when it's not your turn anymore
 	def sendInfo(self, data_to_send):
