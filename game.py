@@ -38,8 +38,9 @@ class Game(Frame):
 
 
 	# Initialise a frame. Setup the pile, hand, last played card and all gui
-	def __init__(self, master, queue, message, sock, addr):
-		message = message
+	def __init__(self, master, queue, msg, sock, addr):
+		global message
+		message = msg
 		super().__init__(master)
 		self.pack()
 		self.addr = addr
@@ -48,18 +49,18 @@ class Game(Frame):
 		#Take one card only
 		self.card_counter = 1
 		self.q = queue
-		self.identity = message['whoami']
+		self.identity = msg['whoami']
 		self.last = None
 		self.challenge = None
-		self.turn = Label(text="Your turn" if message['player'] == 1 else "Waiting...",
+		self.turn = Label(text="Your turn" if msg['player'] == 1 else "Waiting...",
 						  fg='blue', bg='white', width=30, height=1)
 		self.turn.place(x=300,y=0)
 		self.hand_cards = {}
-		self.pile = message['pile']
-		self.all_nums_of_cards = message['other_left']
+		self.pile = msg['pile']
+		self.all_nums_of_cards = msg['other_left']
 		text_cards_left = "Your cards left: " + str(7)
 		pl = 0
-		for x in message['other_left']:
+		for x in msg['other_left']:
 			if pl != self.identity:
 				text_cards_left += "\n Player "+str(pl) + " has " + str(x) + " cards left"
 			pl += 1
@@ -70,8 +71,8 @@ class Game(Frame):
 		self.uno = False
 		self.new_card = None
 		self.setup_menu()
-		self.setup_pile(message)
-		self.cards = self.deal_cards(message)
+		self.setup_pile(msg)
+		self.cards = self.deal_cards(msg)
 		# Button for debugging
 		self.debug = but(text="Not my turn", fg='red', bg='white', borderless=1, width=100,
 						 height=30,
@@ -223,7 +224,7 @@ class Game(Frame):
 				self.sendFinal(data_to_send)
 
 	def take_card(self):
-		global all_played, new_deck
+		global all_played, new_deck, message
 		print("CARD")
 		# If pile is empty, reshuffle the all_played cards
 		if len(self.pile) < 1 or self.pile is None:
@@ -263,7 +264,8 @@ class Game(Frame):
 			b.place(x=coords[1], y=coords[2])
 			ctr += 1
 		# Make UNO button appear as uno is possible
-		if len(self.hand_cards) == 2 and possible_move: #todo don't add if taking more cards
+		if len(self.hand_cards) == 2 and possible_move\
+				and message['stage'] != CHALLENGE:
 			self.uno_but.place(x=50,y=150)
 			self.uno_but.config(state='normal')
 		# Remove UNO button if many cards (should be unnecessary)
@@ -289,7 +291,6 @@ class Game(Frame):
 				"all_played" : all_played,
 				"num_left" : len(self.hand_cards)
 			}
-			#todo here if taking first card message isn't seen
 			if message['stage'] != CHALLENGE:
 				data_to_send['taken'] = True
 			else:

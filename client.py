@@ -18,7 +18,10 @@ def checkPeriodically(w):
 	w.after(100, checkPeriodically, w)
 
 def close_window():
-	sock.send("bye".encode())
+	try:
+		sock.send("bye".encode())
+	except OSError:
+		pass
 	window.sock.close()
 	root.destroy()
 	print("Bye")
