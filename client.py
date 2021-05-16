@@ -74,3 +74,4 @@ thread.start()
 checkPeriodically(window)
 root.protocol("WM_DELETE_WINDOW", close_window)
 window.mainloop()
+#hello
