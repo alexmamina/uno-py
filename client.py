@@ -5,13 +5,7 @@ from sys import *
 import queue
 from game import *
 
-
-
-
 port = argv[1]
-
-#class Client():
-
 
 def checkPeriodically(w):
 	w.incoming()
@@ -80,8 +74,3 @@ thread.start()
 checkPeriodically(window)
 root.protocol("WM_DELETE_WINDOW", close_window)
 window.mainloop()
-
-
-
-#if __name__ == "main":
-#	c = Client()
