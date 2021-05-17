@@ -6,9 +6,7 @@ import card
 from card import *
 from random import *
 import copy
-#frame = Tk()
-#b = Button(frame, "Hello")
-#b.place(50,50)
+
 
 class Deck:
 

@@ -428,21 +428,23 @@ class Game(Frame):
 				elif msg['stage'] == CALC:
 					if msg['winner'] == self.identity:
 						messagebox.showinfo("Win", "You won "+str(msg['points'])+" points!")
+						ans = messagebox.askyesno("new", "new?")
+						print(ans)
+						if ans == 1:
+							init = {'stage': INIT}
+							self.sock.send(dumps(init).encode())
 					else:
 						messagebox.showinfo("Win", "Player "+str(msg['winner'])
 										+" won "+str(msg['points'])+" points!")
-					ans = messagebox.askyesno("new", "new?")
-					print(ans)
-					if ans == 1:
-						self.new_game()
-					#close_window()
-				#q.queue.clear()
+
+				elif msg['stage'] == INIT:
+					print("New game apparently")
+					self.start_new(msg)
 			except queue.Empty:
 				pass
 	#todo save to file;
 	#todo new  game;
-	#todo after new game change so that client send first msg, so that server won't need to be
-	# stopped
+
 
 
 	# Put received message in queue for async processing
@@ -530,16 +532,33 @@ class Game(Frame):
 		return left_cards_text
 
 
-	def new_game(self):
-		sock = self.sock
-		addr = self.addr
-		self.destroy()
-		self.master.destroy()
+	def checkPeriodically(self):
+		self.incoming()
+		self.after(100, self.checkPeriodically)
 
-		root = Tk()
-		q = queue.Queue()
-		init = {'stage': INIT}
-		sock.send(dumps(init).encode())
-		message = sock.recvfrom(8000)
-		newgame = Game(root, q, message, sock, addr)
-		newgame.mainloop()
+	def start_new(self, message):
+		#todo remove all old buttons
+		for k in self.hand_btns:
+			self.hand_btns[k].destroy()
+		self = Game(self.master, self.q, message, self.sock, self.addr)
+		self.config_start_btns()
+		self.checkPeriodically()
+
+
+	def config_start_btns(self):
+		if message['player'] == 0:
+			self.new_card.config(state="disabled")
+			self.uno = False
+			self.uno_but.config(fg="red", bg="white", state='disabled')
+			for i in self.hand_btns:
+				self.hand_btns[i].config(state='disabled')
+		elif "plus" in message['played']:
+			self.card_counter = 2
+			self.uno = False
+			self.uno_but.config(fg="red", bg="white", state='disabled')
+			for i in self.hand_btns:
+				self.hand_btns[i].config(state='disabled')
+		elif self.possible_move():
+			self.new_card.config(state="disabled")
+
+

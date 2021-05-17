@@ -225,7 +225,7 @@ while True:
 			pile.append(first_card)
 			shuffle(pile)
 			first_card = pile.pop(7*num_players)
-
+		list_of_players.sort()
 		left_cards = [7]*num_players
 		# Skeleton of json to be sent
 		data_to_send = {"stage": INIT,
@@ -238,7 +238,7 @@ while True:
 						"player": 0}
 		previous_message = data_to_send
 		# End of initialisation
-		list_of_players = []
+		#list_of_players = []
 
 		if 'reverse' in first_card:
 			list_of_players.reverse()
