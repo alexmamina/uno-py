@@ -11,8 +11,6 @@ port = argv[1]
 root = Tk()
 root.configure(bg='white')
 root.geometry("700x553")
-#todo remove this line after testing:
-root.geometry("650x553")
 sock = socket(AF_INET, SOCK_STREAM)
 try:
 	sock.connect(('', int(port)))
