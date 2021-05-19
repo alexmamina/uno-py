@@ -199,23 +199,17 @@ while True:
 		# Either: next takes cards, then all send. Or: all send
 		for i in range(num_players):
 			if i != current_player:
-				if (i == list_of_players[(curr_list_index+1) % num_players]) and taking_cards:
-					socks[i].sendto(dumps(data).encode(), addresses[i])
-					pts, a = socks[i].recvfrom(8000)
-					resulting_points += loads(pts.decode())['points']
-					print(resulting_points)
-					#todo line below shouldn't be in a loop bc it keeps adding extra from each
-					# player (e.g. 102+4=142 it goes 102+4+142)
-					all_players_points[current_player] += resulting_points
-					print(all_players_points)
-				else:
+				if not ((i == list_of_players[(curr_list_index+1) % num_players]) and taking_cards):
 					data["to_take"] = False
-					socks[i].sendto(dumps(data).encode(), addresses[i])
-					pts, a = socks[i].recvfrom(8000)
-					resulting_points += loads(pts.decode())['points']
-					print(resulting_points)
-					all_players_points[current_player] += resulting_points
-					print(all_players_points)
+
+				socks[i].sendto(dumps(data).encode(), addresses[i])
+				pts, a = socks[i].recvfrom(8000)
+				resulting_points += loads(pts.decode())['points']
+				print(resulting_points)
+
+		all_players_points[current_player] += resulting_points
+		print(all_players_points)
+
 
 		for i in range(num_players):
 			msg = {'stage': CALC, 'points': resulting_points,
@@ -274,6 +268,9 @@ while True:
 			pile = pile[7:]
 
 	else:
+		for i in range(num_players):
+			data = message
+			socks[i].sendto(dumps(data).encode(), addresses[i])
 		break
 for i in range(num_players):
 	socks[i].close()

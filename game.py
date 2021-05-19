@@ -343,6 +343,7 @@ class Game(Frame):
 
 	def incoming(self):
 		global all_played
+		quit = False
 		while self.q.qsize():
 			try:
 				msg = self.q.get(0)
@@ -421,10 +422,12 @@ class Game(Frame):
 										" Total this session: \n"+table_of_points)
 						ans = messagebox.askyesno("New", "Would you like to continue with a new "
 														 "game?")
-						print(ans)
 						if ans == 1:
 							init = {'stage': INIT}
 							self.sock.send(dumps(init).encode())
+						else:
+							# Don't want the new game
+							quit = True
 					else:
 						messagebox.showinfo("Win", "Player "+str(msg['winner'])
 										+" won "+str(msg['points'])+" points!\n"+
@@ -433,8 +436,21 @@ class Game(Frame):
 				elif msg['stage'] == INIT:
 					print("New game!")
 					self.start_new(msg)
+				else:
+					quit = True
 			except queue.Empty:
 				pass
+		if quit:
+			bye = {'stage': BYE}
+			try:
+				self.sock.send(dumps(bye).encode())
+			except OSError:
+				pass
+			self.sock.close()
+			exit(0)
+			print("Quitting incoming")
+
+
 
 	def set_played_img(self, msg):
 		newC = msg['played']
@@ -466,10 +482,10 @@ class Game(Frame):
 					message = loads(json.decode())
 				except (JSONDecodeError, OSError) as er:
 					break
-				#print(message)
 				self.q.put(message)
-			self.sock.close()
 			print("Closing socket")
+			self.sock.close()
+			exit(0)
 
 	# Disable all buttons when sending information and when it's not your turn anymore
 	def sendInfo(self, data_to_send):
@@ -562,8 +578,6 @@ class Game(Frame):
 		new.config_start_btns()
 		new.checkPeriodically()
 		new.mainloop()
-
-
 
 	def config_start_btns(self):
 		if message['player'] == 0:
