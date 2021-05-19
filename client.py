@@ -4,16 +4,23 @@ from json import *
 from sys import *
 import queue
 from game import *
+from tkinter.simpledialog import *
 
-port = argv[1]
-
+#port = argv[2]
+#host = argv[1]
+small_window = Tk()
+small_window.withdraw()
+address = askstring("Address", "Paste the \"CONNECT TO\" information you see on the "
+												   "server:")
+small_window.destroy()
+host, port = address.split()
 
 root = Tk()
 root.configure(bg='white')
 root.geometry("700x553")
 sock = socket(AF_INET, SOCK_STREAM)
 try:
-	sock.connect(('', int(port)))
+	sock.connect((host, int(port)))
 	print("Connected to server")
 except error as e:
 	print("ERROR")

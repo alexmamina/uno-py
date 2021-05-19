@@ -23,8 +23,8 @@ from tkinter.simpledialog import *
 import copy
 from tkmacosx import Button as but
 
-port = argv[1]
-
+#port = argv[1]
+#todo check that tkmacosx button can work with windows; else use other butt
 
 
 class Game(Frame):
@@ -87,7 +87,7 @@ class Game(Frame):
 		global new_deck
 		hand = []
 		self.pile = message['pile']
-		for i in range(3):
+		for i in range(7):
 			c = self.pile.pop(0)
 			#Lookup the card name from pile to get card itself
 			card = new_deck.get_card(c)

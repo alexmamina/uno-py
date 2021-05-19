@@ -6,9 +6,10 @@ from deck import *
 from stages import *
 sock = socket(AF_INET, SOCK_STREAM)
 
-ip = ''
+ip = gethostbyname(gethostname())
 port = int(argv[1])
 sock.bind((ip, port))
+print("CONNECT TO: \n", gethostbyname(gethostname()), " ", port)
 num_players = int(argv[2])
 socks = []
 addresses = []
@@ -19,7 +20,7 @@ player_counter = 0
 # Deck initialisation
 d = Deck().deck
 pile = [c.name for c in d]
-print(pile)
+#print(pile)
 resulting_points = 0
 first_card = pile.pop(7*num_players)
 previous_message = {}
