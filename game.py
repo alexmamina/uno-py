@@ -346,33 +346,16 @@ class Game(Frame):
 		while self.q.qsize():
 			try:
 				msg = self.q.get(0)
-				#Played, pile, num_left, color, all_played, player, saiduno, taken
+				# Played, pile, num_left, color, all_played, player, saiduno, taken
 				print("LOOKING AT MESSAGE")
 				show(msg)
 				# Normal play stage
 				if msg['stage'] == GO:
+					# Set the last played card and configure the pile + card counter
+					self.set_played_img(msg)
 					newC = msg['played']
-
-					# Set the image for the played card (find fancy if it's black)
-					# Set the counter for how many cards can be taken
-					if 'four' in newC:
-						newC = msg['color'][0:3] + "plusfour.png"
-						img = ImageTk.PhotoImage(new_deck.get_special(newC))
-						if 'taken' not in msg:
-							self.card_counter = 4
-						else:
-							self.card_counter = 1
-					elif 'bla' in newC:
-						newC = msg['color'][0:3] + "black.png"
-						img = ImageTk.PhotoImage(new_deck.get_special(newC))
-					else:
-						img = ImageTk.PhotoImage(new_deck.get_card(newC).card_pic)
-						self.card_counter = 1
 					if "plustwo" in newC and 'taken' not in msg:
 						self.card_counter = 2
-					self.last.config(image=img, text=newC)
-					self.last.image = img
-					self.pile = msg['pile']
 					# Check if other player said UNO; place the challenge button if not said
 					# Update label to show that
 					if 'said_uno' in msg.keys() and not msg['said_uno']:
@@ -389,7 +372,7 @@ class Game(Frame):
 					self.all_nums_of_cards = msg['other_left']
 					left_cards_text = self.label_for_cards_left(msg['other_left'])
 					left_cards_text += uno_said
-					print("Setting up the label")
+					# Set up label with number of remaining cards
 					self.cards_left.config(text=left_cards_text)
 					all_played = msg['all_played']
 					# Enable buttons for cards if your turn; make UNO show if necessary
@@ -398,7 +381,6 @@ class Game(Frame):
 						if not self.possible_move() or self.card_counter > 1:
 							self.new_card.config(state='normal')
 						self.turn.config(text="Your turn")
-						print("Your turn configured")
 						if self.card_counter < 2: # Here can add stack option later
 							if self.possible_move() and len(self.hand_cards) == 2:
 								self.uno_but.place(x=50,y=150)
@@ -417,18 +399,17 @@ class Game(Frame):
 				# Another player has finished the game; you either take cards if last is a plus,
 				# or automatically send the remaining points for the other player
 				elif msg['stage'] == ZEROCARDS:
-					# if plus take cards else send points
+					self.set_played_img(msg)
 					if msg['to_take']:
-						#enable taking cards
-						print('taking')
+						# Enable taking cards
 						self.turn.config(text='Your turn, take cards!')
 						self.new_card.config(state='normal')
 						self.card_counter = 2 if "two" in msg['played'] else 4
 					else:
+						# No cards need to be taken, send current points
 						points = {"stage" : CALC, "points" : self.calculate_points()}
 						self.sock.send(dumps(points).encode())
-						#sleep(5)
-						#close_window()
+
 					self.cards_left.config(text='Game over!')
 				# Get points from the opponent and show them
 				elif msg['stage'] == CALC:
@@ -450,10 +431,30 @@ class Game(Frame):
 											" Total this session: \n"+table_of_points)
 
 				elif msg['stage'] == INIT:
-					print("New game apparently")
+					print("New game!")
 					self.start_new(msg)
 			except queue.Empty:
 				pass
+
+	def set_played_img(self, msg):
+		newC = msg['played']
+		# if plus take cards else send points
+		if 'four' in newC:
+			newC = msg['color'][0:3] + "plusfour.png"
+			img = ImageTk.PhotoImage(new_deck.get_special(newC))
+			if 'taken' not in msg:
+				self.card_counter = 4
+			else:
+				self.card_counter = 1
+		elif 'bla' in newC:
+			newC = msg['color'][0:3] + "black.png"
+			img = ImageTk.PhotoImage(new_deck.get_special(newC))
+		else:
+			img = ImageTk.PhotoImage(new_deck.get_card(newC).card_pic)
+			self.card_counter = 1
+		self.last.config(image=img, text=newC)
+		self.last.image = img
+		self.pile = msg['pile']
 
 	# Put received message in queue for async processing
 	def receive(self):
@@ -604,5 +605,3 @@ def show(m):
 		print("PLAYER: ", m['player'])
 	else:
 		print("Special message")
-
-#todo  last card isn't sent

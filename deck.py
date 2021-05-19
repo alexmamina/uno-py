@@ -9,7 +9,6 @@ import copy
 
 
 class Deck:
-
 	global backofcard, special_blacks
 	backofcard = Image.open("Cards/backofcard.jpg")
 	backofcard = backofcard.resize((117, 183), Image.ANTIALIAS)
@@ -31,11 +30,11 @@ class Deck:
 	yelblack = Image.open("Cards/yelblack.jpeg")
 	yelblack = yelblack.resize((117, 183), Image.ANTIALIAS)
 
-	special_blacks = {"redplus": redplus, "greplus": greplus, "bluplus": bluplus, 'yelplus' :
-		yelplus, 'redblack': redblack,  'blublack': blublack,  'yelblack': yelblack,  'greblack':
-		greblack }
+	special_blacks = {"redplus": redplus, "greplus": greplus, "bluplus": bluplus, 'yelplus':
+		yelplus, 'redblack': redblack, 'blublack': blublack, 'yelblack': yelblack, 'greblack':
+						  greblack}
 
-#List of all Card objects
+	# List of all Card objects
 	def __init__(self):
 		self.deck = []
 		files = listdir("Cards/UNO")
@@ -43,27 +42,26 @@ class Deck:
 			print("No files found")
 			return
 		for f in files:
-			if ((f != ".DS_Store") and (f != ".idea")):
-				card_pic = Image.open("Cards/UNO/"+f)
+			if (f != ".DS_Store") and (f != ".idea"):
+				card_pic = Image.open("Cards/UNO/" + f)
 				card = Card(card_pic, f)
-				#print(card)
+				# print(card)
 				self.deck.append(card)
 				if "0" not in f:
-				#Non-zero cards appear twice
+					# Non-zero cards appear twice
 					self.deck.append(card)
 				if "black" in f:
 					self.deck.append(card)
 					self.deck.append(card)
-		#Shuffles the deck in place
+		# Shuffles the deck in place
 		shuffle(self.deck)
-	
-			
+
 	def get_card(self, name):
 		for c in self.deck:
 			if c.name == name:
 				return c
 		return None
-				
+
 	def get_special(self, name):
 		for i in special_blacks:
 			if i in name:
@@ -77,11 +75,10 @@ class Deck:
 			str += c.name
 			str += ", "
 		return str
-		
+
 	def __repr__(self):
 		str = ""
 		for c in self.deck:
 			str += c.name
 			str += ", "
 		return str
-
