@@ -66,8 +66,8 @@ class Deck:
 				
 	def get_special(self, name):
 		for i in special_blacks:
-			print(i, " ", name)
 			if i in name:
+				print("Got colored black")
 				return special_blacks[i]
 		return None
 

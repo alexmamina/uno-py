@@ -46,6 +46,7 @@ class Game(Frame):
 		self.addr = addr
 		self.sock = sock
 		self.parent = master
+		self.master.protocol("WM_DELETE_WINDOW", self.close_window)
 		#Take one card only
 		self.card_counter = 1
 		self.q = queue
@@ -86,7 +87,7 @@ class Game(Frame):
 		global new_deck
 		hand = []
 		self.pile = message['pile']
-		for i in range(7):
+		for i in range(3):
 			c = self.pile.pop(0)
 			#Lookup the card name from pile to get card itself
 			card = new_deck.get_card(c)
@@ -114,14 +115,14 @@ class Game(Frame):
 	# Add the pile and last played buttons
 	def setup_pile(self, message):
 		photo = ImageTk.PhotoImage(deck.backofcard)
-		#Button to take a card (so a pile)
+		# Button to take a card (so a pile)
 		self.new_card = Button(image=photo, width=117, height=183, command=self.take_card)
 		self.new_card.image = photo
 		self.new_card.place(x=300, y=50)
-		#Last played card from the message
-		lastplayed2 = message['played'] #this is a name!!
+		# Last played card from the message
+		lastplayed2 = message['played'] # this is a name!!
 		photo2 = ImageTk.PhotoImage(new_deck.get_card(lastplayed2).card_pic)
-		#Last is a disabled button with the last played card shown
+		# Last is a disabled button with the last played card shown
 		self.last = Button(text=lastplayed2, image=photo2, width=117, height=183, border=0,
 					  state="disabled")
 		self.last.image = photo2
@@ -130,7 +131,7 @@ class Game(Frame):
 	def setup_hand(self, dealt_cards):
 		n = len(dealt_cards)
 		for i in range(n):
-			#Create a button for each card in dealt cards, add a command
+			# Create a button for each card in dealt cards, add a command
 			photo = ImageTk.PhotoImage(dealt_cards[i].card_pic)
 			b = Button(text=dealt_cards[i].name, image=photo, width=117, height=183, border=0,
 					   bg="white")
@@ -142,8 +143,8 @@ class Game(Frame):
 			b.place(x=coords[1], y=coords[2])
 
 	def get_card_placement(self,num_cards, i):
-		#Returns coordinates of a button  given specific parameters
-		#Like the width and length of cards, as well as how apart they should be
+		# Returns coordinates of a button  given specific parameters
+		# Like the width and length of cards, as well as how apart they should be
 		result = []
 		if num_cards == 1:
 			num_cards = 2
@@ -164,12 +165,13 @@ class Game(Frame):
 			self.challenge.place_forget()
 		card = self.hand_cards[ind].name
 		old_card = self.last['text']
-		print("OLD: ", old_card, " NEW: ", card)
-		#Same color (0:3), same symbol (3:), black
+		print("Clicked on card")
+		# Same color (0:3), same symbol (3:), black
 		if (card[0:3] == old_card[0:3] or card[3:] == old_card[3:] or "bla" in card[0:3]):
+			print("OLD: ", old_card, " NEW: ", card)
 			binst.destroy()
 			all_played.append(self.hand_cards[ind].name)
-			#Changes the black card to black with a color to show which one to play next
+			# Changes the black card to black with a color to show which one to play next
 			if "bla" in card[0:3]:
 				picker = Picker(self, "New color", "Which one?", ['Red','Green','Blue',
 																	 'Yellow'])
@@ -184,8 +186,6 @@ class Game(Frame):
 					new_color += "black"
 					card_col = new_color+"black.png"
 					photocard = new_deck.get_special(new_color)
-
-
 			else: # Not a black card
 				photocard = self.hand_cards[ind].card_pic
 				card_col = card
@@ -196,6 +196,9 @@ class Game(Frame):
 			# Remove card from 'hand', update label with number
 			self.hand_cards.pop(ind)
 			self.hand_btns.pop(ind)
+			print(self.hand_cards)
+			for i in self.hand_btns:
+				print(self.hand_btns[i]['text'])
 			text = self.label_for_cards_left(self.all_nums_of_cards)
 			self.cards_left.config(text=text)
 			ctr = 0
@@ -205,8 +208,7 @@ class Game(Frame):
 				coords = self.get_card_placement(len(self.hand_btns),ctr)
 				b.place(x=coords[1], y=coords[2])
 				ctr += 1
-			#if len(self.hand_cards) <= 2:
-			#	self.uno_but.place(x=50, y=150)
+
 			data_to_send = {
 				"played" : card,
 				"pile" : self.pile,
@@ -225,7 +227,7 @@ class Game(Frame):
 
 	def take_card(self):
 		global all_played, new_deck, message
-		print("CARD")
+		print("Card is being taken?")
 		# If pile is empty, reshuffle the all_played cards
 		if len(self.pile) < 1 or self.pile is None:
 			print(all_played)
@@ -246,6 +248,7 @@ class Game(Frame):
 		ind = max(list(self.hand_cards.keys())) + 1
 		# Add new card to the 'hand', create new button, update number
 		self.hand_cards[ind] = new
+		print(self.hand_cards)
 		photo = ImageTk.PhotoImage(new.card_pic)
 		b = Button(text=new.name, image=photo, width=117, height=183, border=0,
 				   bg="white")
@@ -344,7 +347,8 @@ class Game(Frame):
 			try:
 				msg = self.q.get(0)
 				#Played, pile, num_left, color, all_played, player, saiduno, taken
-
+				print("LOOKING AT MESSAGE")
+				show(msg)
 				# Normal play stage
 				if msg['stage'] == GO:
 					newC = msg['played']
@@ -385,14 +389,16 @@ class Game(Frame):
 					self.all_nums_of_cards = msg['other_left']
 					left_cards_text = self.label_for_cards_left(msg['other_left'])
 					left_cards_text += uno_said
-
+					print("Setting up the label")
 					self.cards_left.config(text=left_cards_text)
 					all_played = msg['all_played']
 					# Enable buttons for cards if your turn; make UNO show if necessary
 					if int(msg['player']) == 1:
+						print("You are player 1, enabling buttons")
 						if not self.possible_move() or self.card_counter > 1:
 							self.new_card.config(state='normal')
 						self.turn.config(text="Your turn")
+						print("Your turn configured")
 						if self.card_counter < 2: # Here can add stack option later
 							if self.possible_move() and len(self.hand_cards) == 2:
 								self.uno_but.place(x=50,y=150)
@@ -417,7 +423,7 @@ class Game(Frame):
 						print('taking')
 						self.turn.config(text='Your turn, take cards!')
 						self.new_card.config(state='normal')
-						self.card_counter = 2
+						self.card_counter = 2 if "two" in msg['played'] else 4
 					else:
 						points = {"stage" : CALC, "points" : self.calculate_points()}
 						self.sock.send(dumps(points).encode())
@@ -426,26 +432,28 @@ class Game(Frame):
 					self.cards_left.config(text='Game over!')
 				# Get points from the opponent and show them
 				elif msg['stage'] == CALC:
+					table_of_points = ""
+					for i in range(len(msg['total'])):
+						table_of_points += "Player "+str(i)+": "+str(msg['total'][i])+" points\n"
 					if msg['winner'] == self.identity:
-						messagebox.showinfo("Win", "You won "+str(msg['points'])+" points!")
-						ans = messagebox.askyesno("new", "new?")
+						messagebox.showinfo("Win", "You won "+str(msg['points'])+" points!\n"
+										" Total this session: \n"+table_of_points)
+						ans = messagebox.askyesno("New", "Would you like to continue with a new "
+														 "game?")
 						print(ans)
 						if ans == 1:
 							init = {'stage': INIT}
 							self.sock.send(dumps(init).encode())
 					else:
 						messagebox.showinfo("Win", "Player "+str(msg['winner'])
-										+" won "+str(msg['points'])+" points!")
+										+" won "+str(msg['points'])+" points!\n"+
+											" Total this session: \n"+table_of_points)
 
 				elif msg['stage'] == INIT:
 					print("New game apparently")
 					self.start_new(msg)
 			except queue.Empty:
 				pass
-	#todo save to file;
-	#todo new  game;
-
-
 
 	# Put received message in queue for async processing
 	def receive(self):
@@ -457,7 +465,7 @@ class Game(Frame):
 					message = loads(json.decode())
 				except (JSONDecodeError, OSError) as er:
 					break
-				print(message)
+				#print(message)
 				self.q.put(message)
 			self.sock.close()
 			print("Closing socket")
@@ -537,12 +545,23 @@ class Game(Frame):
 		self.after(100, self.checkPeriodically)
 
 	def start_new(self, message):
-		#todo remove all old buttons
-		for k in self.hand_btns:
-			self.hand_btns[k].destroy()
-		self = Game(self.master, self.q, message, self.sock, self.addr)
-		self.config_start_btns()
-		self.checkPeriodically()
+		global all_played
+
+		print("Destroying...")
+		self.master.destroy()
+
+		root = Tk()
+		print("New root")
+		root.configure(bg='white')
+		root.geometry("700x553")
+		root.title("UNO - player "+ str(message['whoami']))
+		root.protocol("WM_DELETE_WINDOW", self.close_window)
+		all_played = []
+		new = Game(root, self.q, message, self.sock, self.addr)
+		new.config_start_btns()
+		new.checkPeriodically()
+		new.mainloop()
+
 
 
 	def config_start_btns(self):
@@ -562,3 +581,28 @@ class Game(Frame):
 			self.new_card.config(state="disabled")
 
 
+
+	def close_window(self):
+		try:
+			self.sock.send("bye".encode())
+		except OSError:
+			pass
+		self.sock.close()
+		print("I am closing")
+		self.master.destroy()
+		print("Bye")
+
+
+def show(m):
+	if m['stage'] == GO:
+		print("PLAYED: ", m['played'])
+		if 'other_left' in m:
+			print("ALL LEFT: ", m['other_left'])
+		else:
+			print("Zero cards left")
+		print("STAGE: ", m['stage'])
+		print("PLAYER: ", m['player'])
+	else:
+		print("Special message")
+
+#todo  last card isn't sent

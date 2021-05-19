@@ -8,17 +8,6 @@ from game import *
 port = argv[1]
 
 
-
-def close_window():
-	try:
-		sock.send("bye".encode())
-	except OSError:
-		pass
-	window.sock.close()
-	root.destroy()
-	print("Bye")
-
-
 root = Tk()
 root.configure(bg='white')
 root.geometry("700x553")
@@ -44,5 +33,4 @@ window.config_start_btns()
 thread = Thread(target=window.receive)
 thread.start()
 window.checkPeriodically()
-root.protocol("WM_DELETE_WINDOW", close_window)
 window.mainloop()

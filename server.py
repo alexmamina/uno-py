@@ -1,5 +1,7 @@
 from socket import *
 from sys import *
+
+import game
 from deck import *
 from stages import *
 sock = socket(AF_INET, SOCK_STREAM)
@@ -21,6 +23,8 @@ print(pile)
 resulting_points = 0
 first_card = pile.pop(7*num_players)
 previous_message = {}
+all_players_points = [0]*num_players
+total_games_played = 0
 # Black card will not be played first. If popped, reshuffle and get new
 while "bla" in first_card:
 	pile.append(first_card)
@@ -63,7 +67,7 @@ for i in range(num_players):
 			(i == 1 and "stop" in first_card):
 		data_to_send['player'] = 1
 		current_player = i
-		curr_list_index = 1 if i == 1 else 0
+		curr_list_index = 1 if (i == 1 and 'stop' in first_card) else 0
 		prev_player = list_of_players[num_players-1]
 	else:
 		data_to_send['player'] = 0
@@ -86,8 +90,7 @@ while True:
 		message = loads(json.decode())
 	except JSONDecodeError:
 		break
-
-
+	print(message)
 	if message['stage'] == GO or message['stage'] == DEBUG:
 		card = message['played']
 		print("PLAYED CARD: ", card)
@@ -143,6 +146,7 @@ while True:
 					print("Sent to player ", i)
 			prev_player = current_player
 			current_player = list_of_players[(curr_list_index+1) % num_players]
+			print(prev_player, " and now ", current_player)
 			curr_list_index = (curr_list_index + 1) % num_players
 
 		if "stop" not in message['played']:
@@ -200,19 +204,27 @@ while True:
 					pts, a = socks[i].recvfrom(8000)
 					resulting_points += loads(pts.decode())['points']
 					print(resulting_points)
+					#todo line below shouldn't be in a loop bc it keeps adding extra from each
+					# player (e.g. 102+4=142 it goes 102+4+142)
+					all_players_points[current_player] += resulting_points
+					print(all_players_points)
 				else:
 					data["to_take"] = False
 					socks[i].sendto(dumps(data).encode(), addresses[i])
 					pts, a = socks[i].recvfrom(8000)
 					resulting_points += loads(pts.decode())['points']
 					print(resulting_points)
+					all_players_points[current_player] += resulting_points
+					print(all_players_points)
 
 		for i in range(num_players):
-			msg = {'stage': CALC, 'points': resulting_points, 'winner': current_player}
+			msg = {'stage': CALC, 'points': resulting_points,
+				   'total': all_players_points , 'winner': current_player}
 			socks[i].sendto(dumps(msg).encode(), addresses[i])
 
 	elif message['stage'] == INIT:
-		print("New game!")
+		total_games_played += 1
+		print("New game! Total played: ", total_games_played)
 		# Deck initialisation
 		d = Deck().deck
 		pile = [c.name for c in d]
@@ -253,7 +265,7 @@ while True:
 					(i == 1 and "stop" in first_card):
 				data_to_send['player'] = 1
 				current_player = i
-				curr_list_index = 1 if i == 1 else 0
+				curr_list_index = 1 if (i == 1 and 'stop' in first_card) else 0
 				prev_player = list_of_players[num_players-1]
 			else:
 				data_to_send['player'] = 0
@@ -261,12 +273,8 @@ while True:
 			print("Sent init to player ", i)
 			pile = pile[7:]
 
-
 	else:
 		break
 for i in range(num_players):
 	socks[i].close()
 sock.close()
-
-
-# current has 1 card, uno not said
