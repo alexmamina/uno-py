@@ -24,7 +24,6 @@ import copy
 from tkmacosx import Button as but
 
 #port = argv[1]
-#todo check that tkmacosx button can work with windows; else use other butt
 
 
 class Game(Frame):
@@ -416,9 +415,9 @@ class Game(Frame):
 				elif msg['stage'] == CALC:
 					table_of_points = ""
 					for i in range(len(msg['total'])):
-						table_of_points += "Player "+str(i)+": "+str(msg['total'][i])+" points\n"
+						table_of_points += "\nPlayer "+str(i)+": "+str(msg['total'][i])+" points\n"
 					if msg['winner'] == self.identity:
-						messagebox.showinfo("Win", "You won "+str(msg['points'])+" points!\n"
+						messagebox.showinfo("Win", "You won "+str(msg['points'])+" points!\n\n"
 										" Total this session: \n"+table_of_points)
 						ans = messagebox.askyesno("New", "Would you like to continue with a new "
 														 "game?")
