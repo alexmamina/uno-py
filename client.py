@@ -4,44 +4,23 @@ from json import *
 from sys import *
 import queue
 from game import *
+from tkinter.simpledialog import *
 
-port = argv[1]
-
-def checkPeriodically(w):
-	w.incoming()
-	w.after(100, checkPeriodically, w)
-
-def close_window():
-	try:
-		sock.send("bye".encode())
-	except OSError:
-		pass
-	window.sock.close()
-	root.destroy()
-	print("Bye")
-
-
-def new_game(w):
-	w.destroy()
-	w.master.destroy()
-
-	root = Tk()
-	q = queue.Queue()
-	init = {'stage': INIT}
-	sock.send(dumps(init).encode())
-	message = sock.recvfrom(8000)
-	newgame = Game(root, q, message, sock, addr)
-	newgame.mainloop()
-
+#port = argv[2]
+#host = argv[1]
+small_window = Tk()
+small_window.withdraw()
+address = askstring("Address", "Paste the \"CONNECT TO\" information you see on the "
+												   "server:")
+small_window.destroy()
+host, port = address.split()
 
 root = Tk()
 root.configure(bg='white')
 root.geometry("700x553")
-#todo remove this line after testing:
-root.geometry("650x553")
 sock = socket(AF_INET, SOCK_STREAM)
 try:
-	sock.connect(('', int(port)))
+	sock.connect((host, int(port)))
 	print("Connected to server")
 except error as e:
 	print("ERROR")
@@ -54,24 +33,10 @@ root.title("UNO - player "+ str(message['whoami']))
 
 q = queue.Queue()
 window = Game(root, q, message, sock, addr)
-if message['player'] == 0:
-	window.new_card.config(state="disabled")
-	window.uno = False
-	window.uno_but.config(fg="red", bg="white", state='disabled')
-	for i in window.hand_btns:
-		window.hand_btns[i].config(state='disabled')
-elif "plus" in message['played']:
-	window.card_counter = 2
-	window.uno = False
-	window.uno_but.config(fg="red", bg="white", state='disabled')
-	for i in window.hand_btns:
-		window.hand_btns[i].config(state='disabled')
-elif window.possible_move():
-	window.new_card.config(state="disabled")
+window.config_start_btns()
 
 thread = Thread(target=window.receive)
 thread.start()
-checkPeriodically(window)
-root.protocol("WM_DELETE_WINDOW", close_window)
+window.checkPeriodically()
 window.mainloop()
 #hello
