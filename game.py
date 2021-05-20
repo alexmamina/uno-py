@@ -617,4 +617,5 @@ def show(m):
 		print("STAGE: ", m['stage'])
 		print("PLAYER: ", m['player'])
 	else:
+		print("STAGE:", m['stage'])
 		print("Special message")
