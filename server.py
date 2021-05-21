@@ -6,11 +6,12 @@ from deck import *
 from stages import *
 sock = socket(AF_INET, SOCK_STREAM)
 
-ip = gethostbyname(gethostname())
-port = int(argv[1])
+#ip = gethostbyname(gethostname())
+ip = argv[1]
+port = int(argv[2])
 sock.bind((ip, port))
-print("CONNECT TO: \n", gethostbyname(gethostname()), " ", port)
-num_players = int(argv[2])
+#print("CONNECT TO: \n", gethostbyname(gethostname()), " ", port)
+num_players = int(argv[3])
 socks = []
 addresses = []
 current_player = 0
