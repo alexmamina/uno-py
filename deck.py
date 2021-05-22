@@ -45,7 +45,6 @@ class Deck:
 			if (f != ".DS_Store") and (f != ".idea"):
 				card_pic = Image.open("Cards/UNO/" + f)
 				card = Card(card_pic, f)
-				# print(card)
 				self.deck.append(card)
 				if "0" not in f:
 					# Non-zero cards appear twice
@@ -65,7 +64,6 @@ class Deck:
 	def get_special(self, name):
 		for i in special_blacks:
 			if i in name:
-				print("Got colored black")
 				return special_blacks[i]
 		return None
 

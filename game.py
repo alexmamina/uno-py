@@ -6,11 +6,11 @@ from PIL import ImageTk, Image
 from os import *
 import card
 import deck
-import events
+import webbrowser
 from socket import *
 from sys import *
 
-from events import *
+
 from time import *
 from picker import *
 from stages import *
@@ -164,10 +164,8 @@ class Game(Frame):
 			self.challenge.place_forget()
 		card = self.hand_cards[ind].name
 		old_card = self.last['text']
-		print("Clicked on card")
 		# Same color (0:3), same symbol (3:), black
 		if (card[0:3] == old_card[0:3] or card[3:] == old_card[3:] or "bla" in card[0:3]):
-			print("OLD: ", old_card, " NEW: ", card)
 			binst.destroy()
 			all_played.append(self.hand_cards[ind].name)
 			# Changes the black card to black with a color to show which one to play next
@@ -195,9 +193,6 @@ class Game(Frame):
 			# Remove card from 'hand', update label with number
 			self.hand_cards.pop(ind)
 			self.hand_btns.pop(ind)
-			print(self.hand_cards)
-			for i in self.hand_btns:
-				print(self.hand_btns[i]['text'])
 			text = self.label_for_cards_left(self.all_nums_of_cards)
 			self.cards_left.config(text=text)
 			ctr = 0
@@ -226,15 +221,11 @@ class Game(Frame):
 
 	def take_card(self):
 		global all_played, new_deck, message
-		print("Card is being taken?")
 		# If pile is empty, reshuffle the all_played cards
 		if len(self.pile) < 1 or self.pile is None:
-			print(all_played)
-			print("Shuffling those cards")
 			self.pile = copy.deepcopy(all_played)
 			shuffle(self.pile)
 			all_played = all_played[-1:]
-			print(self.pile)
 		# Take new card
 		new = new_deck.get_card(self.pile.pop(0))
 		# Remove the 'uno not placed' button as was ignored
@@ -247,7 +238,6 @@ class Game(Frame):
 		ind = max(list(self.hand_cards.keys())) + 1
 		# Add new card to the 'hand', create new button, update number
 		self.hand_cards[ind] = new
-		print(self.hand_cards)
 		photo = ImageTk.PhotoImage(new.card_pic)
 		b = Button(text=new.name, image=photo, width=117, height=183, border=0,
 				   bg="white")
@@ -348,7 +338,7 @@ class Game(Frame):
 				msg = self.q.get(0)
 				# Played, pile, num_left, color, all_played, player, saiduno, taken
 				print("LOOKING AT MESSAGE")
-				show(msg)
+				#show(msg)
 				# Normal play stage
 				if msg['stage'] == GO:
 					# Set the last played card and configure the pile + card counter
@@ -377,7 +367,7 @@ class Game(Frame):
 					all_played = msg['all_played']
 					# Enable buttons for cards if your turn; make UNO show if necessary
 					if int(msg['player']) == 1:
-						print("You are player 1, enabling buttons")
+						print("Your turn, enabling buttons")
 						if not self.possible_move() or self.card_counter > 1:
 							self.new_card.config(state='normal')
 						self.turn.config(text="Your turn")
@@ -408,7 +398,7 @@ class Game(Frame):
 					else:
 						# No cards need to be taken, send current points
 						points = {"stage" : CALC, "points" : self.calculate_points()}
-						self.sock.send(dumps(points).encode())
+						self.sock.send(dumps(points).encode('utf-8'))
 
 					self.cards_left.config(text='Game over!')
 				# Get points from the opponent and show them
@@ -423,7 +413,7 @@ class Game(Frame):
 														 "game?")
 						if ans == 1:
 							init = {'stage': INIT}
-							self.sock.send(dumps(init).encode())
+							self.sock.send(dumps(init).encode('utf-8'))
 						else:
 							# Don't want the new game
 							quit = True
@@ -442,12 +432,11 @@ class Game(Frame):
 		if quit:
 			bye = {'stage': BYE}
 			try:
-				self.sock.send(dumps(bye).encode())
+				self.sock.send(dumps(bye).encode('utf-8'))
 			except OSError:
 				pass
 			self.sock.close()
 			exit(0)
-			print("Quitting incoming")
 
 
 
@@ -478,7 +467,7 @@ class Game(Frame):
 				print("Waiting")
 				try:
 					json, addr = self.sock.recvfrom(8000)
-					message = loads(json.decode())
+					message = loads(json.decode('utf-8'))
 				except (JSONDecodeError, OSError) as er:
 					break
 				self.q.put(message)
@@ -488,7 +477,7 @@ class Game(Frame):
 
 	# Disable all buttons when sending information and when it's not your turn anymore
 	def sendInfo(self, data_to_send):
-		self.sock.send(dumps(data_to_send).encode())
+		self.sock.send(dumps(data_to_send).encode('utf-8'))
 		self.new_card.config(state="disabled")
 		self.uno = False
 		self.card_counter = 1
@@ -530,7 +519,7 @@ class Game(Frame):
 		self.uno_but.config(fg="red", bg="white", state='disabled')
 		self.uno_but.place_forget()
 		self.turn.config(text="Waiting for the results!")
-		self.sock.send(dumps(data_to_send).encode())
+		self.sock.send(dumps(data_to_send).encode('utf-8'))
 
 
 	# Go through the hand and see if there are cards that could be played
@@ -567,7 +556,6 @@ class Game(Frame):
 		self.master.destroy()
 
 		root = Tk()
-		print("New root")
 		root.configure(bg='white')
 		root.geometry("700x553")
 		root.title("UNO - player "+ str(message['whoami']))
@@ -598,7 +586,7 @@ class Game(Frame):
 
 	def close_window(self):
 		try:
-			self.sock.send("bye".encode())
+			self.sock.send("bye".encode('utf-8'))
 		except OSError:
 			pass
 		self.sock.close()
@@ -619,3 +607,16 @@ def show(m):
 	else:
 		print("STAGE:", m['stage'])
 		print("Special message")
+
+
+
+def show_rules():
+	print("RULES")
+	answer = messagebox.askyesno("Rules", "No stacking, take one card only. You can click on "
+			"cards when it's your turn. Press the UNO button BEFORE making the move, not after - "
+				"otherwise you'll have to take 2 cards. The \"Not my turn\" button is used for "
+										  "bug reporting and to change your turn to someone else."
+										  "\n Would you like to "
+										  "visit Wiki for official rules?")
+	if answer:
+		webbrowser.open("https://www.ultraboardgames.com/uno/game-rules.php")

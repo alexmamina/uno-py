@@ -10,7 +10,7 @@ sock = socket(AF_INET, SOCK_STREAM)
 ip = argv[1]
 port = int(argv[2])
 sock.bind((ip, port))
-#print("CONNECT TO: \n", gethostbyname(gethostname()), " ", port)
+#print("CONNECT TO: \n", ip, " ", port)
 num_players = int(argv[3])
 socks = []
 addresses = []
@@ -73,7 +73,7 @@ for i in range(num_players):
 		prev_player = list_of_players[num_players-1]
 	else:
 		data_to_send['player'] = 0
-	socks[i].sendto(dumps(data_to_send).encode(), addresses[i])
+	socks[i].sendto(dumps(data_to_send).encode('utf-8'), addresses[i])
 	print("Sent init to player ", i)
 	pile = pile[7:]
 
@@ -89,14 +89,14 @@ while True:
 	print("Waiting for player ", current_player)
 	json, addr = socks[current_player].recvfrom(8000)
 	try:
-		message = loads(json.decode())
+		message = loads(json.decode('utf-8'))
 	except JSONDecodeError:
 		break
-	print(message)
+	#print(message)
 	if message['stage'] == GO or message['stage'] == DEBUG:
 		card = message['played']
-		print("PLAYED CARD: ", card)
-		print("FROM player: ", current_player)
+		#print("PLAYED CARD: ", card)
+		#print("FROM player: ", current_player)
 
 		left_cards[current_player] = message['num_left']
 		if message['stage'] == DEBUG:
@@ -131,7 +131,7 @@ while True:
 				else:
 					data['player'] = 0
 				data['num_left'] = previous_message['num_left']
-				socks[i].sendto(dumps(data).encode(), addresses[i])
+				socks[i].sendto(dumps(data).encode('utf-8'), addresses[i])
 			prev_player = current_player
 			current_player = list_of_players[(curr_list_index+2) % num_players]
 			curr_list_index = (curr_list_index + 2) % num_players
@@ -144,11 +144,11 @@ while True:
 						data['player'] = 1
 					else:
 						data['player'] = 0
-					socks[i].sendto(dumps(data).encode(), addresses[i])
+					socks[i].sendto(dumps(data).encode('utf-8'), addresses[i])
 					print("Sent to player ", i)
 			prev_player = current_player
 			current_player = list_of_players[(curr_list_index+1) % num_players]
-			print(prev_player, " and now ", current_player)
+			#print(prev_player, " and now ", current_player)
 			curr_list_index = (curr_list_index + 1) % num_players
 
 		if "stop" not in message['played']:
@@ -158,8 +158,8 @@ while True:
 		print("UNO has not been said")
 
 		rulebreaker = prev_player
-		socks[rulebreaker].sendto(dumps(message).encode(), addresses[rulebreaker])
-		print("Sent to player who forgot to take UNO")
+		socks[rulebreaker].sendto(dumps(message).encode('utf-8'), addresses[rulebreaker])
+		#print("Sent to player who forgot to take UNO")
 		prev_player = current_player
 		current_player = rulebreaker
 
@@ -183,8 +183,8 @@ while True:
 					data['player'] = 1
 				else:
 					data['player'] = 0
-				socks[i].sendto(dumps(data).encode(), addresses[i])
-				print("Sent to player ", i)
+				socks[i].sendto(dumps(data).encode('utf-8'), addresses[i])
+				#print("Sent to player ", i)
 
 
 	elif message['stage'] == ZEROCARDS:
@@ -204,19 +204,19 @@ while True:
 				if not ((i == list_of_players[(curr_list_index+1) % num_players]) and taking_cards):
 					data["to_take"] = False
 
-				socks[i].sendto(dumps(data).encode(), addresses[i])
+				socks[i].sendto(dumps(data).encode('utf-8'), addresses[i])
 				pts, a = socks[i].recvfrom(8000)
-				resulting_points += loads(pts.decode())['points']
-				print(resulting_points)
+				resulting_points += loads(pts.decode('utf-8'))['points']
+				#print(resulting_points)
 
 		all_players_points[current_player] += resulting_points
-		print(all_players_points)
+		#print(all_players_points)
 
 
 		for i in range(num_players):
 			msg = {'stage': CALC, 'points': resulting_points,
 				   'total': all_players_points , 'winner': current_player}
-			socks[i].sendto(dumps(msg).encode(), addresses[i])
+			socks[i].sendto(dumps(msg).encode('utf-8'), addresses[i])
 
 	elif message['stage'] == INIT:
 		total_games_played += 1
@@ -224,7 +224,7 @@ while True:
 		# Deck initialisation
 		d = Deck().deck
 		pile = [c.name for c in d]
-		print(pile)
+		#print(pile)
 		resulting_points = 0
 		first_card = pile.pop(7*num_players)
 		previous_message = {}
@@ -265,14 +265,14 @@ while True:
 				prev_player = list_of_players[num_players-1]
 			else:
 				data_to_send['player'] = 0
-			socks[i].sendto(dumps(data_to_send).encode(), addresses[i])
-			print("Sent init to player ", i)
+			socks[i].sendto(dumps(data_to_send).encode('utf-8'), addresses[i])
+			#print("Sent init to player ", i)
 			pile = pile[7:]
 
 	else:
 		for i in range(num_players):
 			data = message
-			socks[i].sendto(dumps(data).encode(), addresses[i])
+			socks[i].sendto(dumps(data).encode('utf-8'), addresses[i])
 		break
 for i in range(num_players):
 	socks[i].close()

@@ -23,11 +23,15 @@ try:
 	sock.connect((host, int(port)))
 	print("Connected to server")
 except error as e:
-	print("ERROR")
+	print("ERROR CONNECTING TO SERVER:")
 	print(str(e))
 
 init, addr = sock.recvfrom(8000)
-message = loads(init.decode())
+try:
+	message = loads(init.decode('utf-8'))
+except JSONDecodeError:
+	print("Check that you have input a correct port! Or that the server is running before you "
+		  "start.")
 
 root.title("UNO - player "+ str(message['whoami']))
 
@@ -39,4 +43,3 @@ thread = Thread(target=window.receive)
 thread.start()
 window.checkPeriodically()
 window.mainloop()
-#hello
