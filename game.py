@@ -52,21 +52,27 @@ class Game(Frame):
 		self.identity = msg['whoami']
 		self.last = None
 		self.challenge = None
-		self.turn = Label(text="Your turn" if msg['player'] == 1 else "Waiting...",
-						  fg='blue', bg='white', width=30, height=1)
+		if msg['player'] == 1:
+			self.turn = Label(text="Your turn",
+						  fg='white', bg='green', width=30, height=1)
+		else:
+			self.turn = Label(text="Your turn" if msg['player'] == 1 else "Wait for other players!",
+							  fg='white', bg='red', width=30, height=1)
 		self.turn.place(x=300,y=0)
 		self.hand_cards = {}
 		self.pile = msg['pile']
 		self.all_nums_of_cards = msg['other_left']
-		text_cards_left = "Your cards left: " + str(7)
+		text_cards_left = "Your cards: " + str(7)
 		pl = 0
 		for x in msg['other_left']:
 			if pl != self.identity:
-				text_cards_left += "\n Player "+str(pl) + " has " + str(x) + " cards left"
+				text_cards_left += "\n Player "+str(pl) + ": " + str(x) + " cards"
 			pl += 1
-		self.cards_left = Label(text=text_cards_left, fg="blue", bg="white", width=20, height=5)
+		self.cards_left = Label(text=text_cards_left, fg="blue", bg="pale green", width=20,
+								height=5)
 		self.cards_left.place(x=10, y=30)
-		self.uno_but = but(text="UNO?", fg="red", bg="white", width=100, height=80, borderless=1,
+		self.uno_but = but(text="UNO", fg="black", bg="deep sky blue", width=100, height=80,
+						   borderless=1,
 						   command=self.one_card)
 		self.uno = False
 		self.new_card = None
@@ -259,7 +265,7 @@ class Game(Frame):
 		if len(self.hand_cards) == 2 and possible_move\
 				and message['stage'] != CHALLENGE:
 			self.uno_but.place(x=50,y=150)
-			self.uno_but.config(state='normal')
+			#self.uno_but.config(state='normal')
 		# Remove UNO button if many cards (should be unnecessary)
 		if len(self.hand_cards) > 2:
 			self.uno_but.place_forget()
@@ -293,10 +299,8 @@ class Game(Frame):
 	def one_card(self):
 		if self.uno:
 			self.uno = False
-			self.uno_but.config(fg="red", bg="white")
 		else:
 			self.uno = True
-			self.uno_but.config(fg="green", bg="white")
 			self.uno_but.place_forget()
 		print("UNO")
 
@@ -353,12 +357,14 @@ class Game(Frame):
 						self.challenge = but(text="UNO not said!", bg='red', fg='white',
 											 width=150, height=30,command=self.challengeUno)
 						if msg['player'] == 1:
-							self.challenge.place(x=50, y=120)
+							self.challenge.place(x=30, y=120)
 					elif 'said_uno' in msg.keys() and msg['said_uno']:
 						uno_said = "\nUNO said!"
+						p = msg['other_left'].index(1)
+						#todo test if this works with many players having uno
+						messagebox.showinfo("UNO", "Player "+str(p)+" has only 1 card left!")
 					else:
 						uno_said = ""
-
 					self.all_nums_of_cards = msg['other_left']
 					left_cards_text = self.label_for_cards_left(msg['other_left'])
 					left_cards_text += uno_said
@@ -370,21 +376,22 @@ class Game(Frame):
 						print("Your turn, enabling buttons")
 						if not self.possible_move() or self.card_counter > 1:
 							self.new_card.config(state='normal')
-						self.turn.config(text="Your turn")
 						if self.card_counter < 2: # Here can add stack option later
+							self.turn.config(text="Your turn", bg='green')
 							if self.possible_move() and len(self.hand_cards) == 2:
 								self.uno_but.place(x=50,y=150)
-								self.uno_but.config(state='normal')
+								#self.uno_but.config(state='normal')
 							for i in self.hand_btns:
 									self.hand_btns[i].config(state='normal')
-
+						else:
+							self.turn.config(text="Your turn, take cards!", bg='green')
 				# Forgot to say UNO - enable taking new cards only
 				elif msg['stage'] == CHALLENGE:
 					self.new_card.config(state='normal')
 					self.card_counter = 2
 					messagebox.showinfo("UNO not said!", "You forgot to click UNO, "
 																 "so take 2 cards!")
-					self.turn.config(text="Your turn")
+					self.turn.config(text="Your turn, take 2 cards!", bg='orange')
 
 				# Another player has finished the game; you either take cards if last is a plus,
 				# or automatically send the remaining points for the other player
@@ -392,7 +399,7 @@ class Game(Frame):
 					self.set_played_img(msg)
 					if msg['to_take']:
 						# Enable taking cards
-						self.turn.config(text='Your turn, take cards!')
+						self.turn.config(text='Your turn, take cards!', bg='green')
 						self.new_card.config(state='normal')
 						self.card_counter = 2 if "two" in msg['played'] else 4
 					else:
@@ -481,11 +488,11 @@ class Game(Frame):
 		self.new_card.config(state="disabled")
 		self.uno = False
 		self.card_counter = 1
-		self.uno_but.config(fg="red", bg="white", state='disabled')
+		#self.uno_but.config(fg="red", bg="white", state='disabled')
 		self.uno_but.place_forget()
 		for i in self.hand_btns:
 			self.hand_btns[i].config(state='disabled')
-		self.turn.config(text="Waiting...")
+		self.turn.config(text="Wait for other players!", bg='red')
 
 	# Notify opponent that they forgot to say UNO; when clicking button
 	def challengeUno(self):
@@ -516,9 +523,9 @@ class Game(Frame):
 		self.new_card.config(state="disabled")
 		self.uno = False
 		self.card_counter = 1
-		self.uno_but.config(fg="red", bg="white", state='disabled')
+		#self.uno_but.config(fg="red", bg="white", state='disabled')
 		self.uno_but.place_forget()
-		self.turn.config(text="Waiting for the results!")
+		self.turn.config(text="Waiting for the results!",bg='white',fg='blue')
 		self.sock.send(dumps(data_to_send).encode('utf-8'))
 
 
@@ -536,11 +543,11 @@ class Game(Frame):
 	# From a list of numbers of cards left from other players return the text to show
 	# in the label
 	def label_for_cards_left(self, others):
-		left_cards_text = "Your cards left: " + str(len(self.hand_cards))
+		left_cards_text = "Your cards: " + str(len(self.hand_cards))
 		pl = 0
 		for x in others:
 			if pl != self.identity:
-				left_cards_text += "\n Player "+str(pl) + " has " + str(x) + " cards left"
+				left_cards_text += "\n Player "+str(pl) + ": " + str(x) + " cards"
 			pl += 1
 		return left_cards_text
 
@@ -570,13 +577,13 @@ class Game(Frame):
 		if message['player'] == 0:
 			self.new_card.config(state="disabled")
 			self.uno = False
-			self.uno_but.config(fg="red", bg="white", state='disabled')
+			#self.uno_but.config(fg="red", bg="white", state='disabled')
 			for i in self.hand_btns:
 				self.hand_btns[i].config(state='disabled')
 		elif "plus" in message['played']:
 			self.card_counter = 2
 			self.uno = False
-			self.uno_but.config(fg="red", bg="white", state='disabled')
+			#self.uno_but.config(fg="red", bg="white", state='disabled')
 			for i in self.hand_btns:
 				self.hand_btns[i].config(state='disabled')
 		elif self.possible_move():

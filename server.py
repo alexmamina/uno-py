@@ -54,6 +54,8 @@ while player_counter < num_players:
 	addresses.append(addr)
 	list_of_players.append(player_counter)
 	print("Connected player ", player_counter)
+	n = num_players - 1 - player_counter
+	print("Waiting for "+str(n)+" more players")
 	player_counter += 1
 curr_list_index = 0
 if 'reverse' in first_card:
@@ -95,8 +97,8 @@ while True:
 	#print(message)
 	if message['stage'] == GO or message['stage'] == DEBUG:
 		card = message['played']
-		#print("PLAYED CARD: ", card)
-		#print("FROM player: ", current_player)
+		print("PLAYED CARD: ", card)
+		print("FROM player: ", current_player)
 
 		left_cards[current_player] = message['num_left']
 		if message['stage'] == DEBUG:

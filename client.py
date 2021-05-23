@@ -13,19 +13,21 @@ small_window.withdraw()
 address = askstring("Address", "Paste the \"CONNECT TO\" information you see on the "
 												   "server:")
 small_window.destroy()
-host, port = address.split()
-
+if address is not None and len(address) > 0:
+	host, port = address.split()
+else:
+	host, port = 'localhost', 44444
 root = Tk()
 root.configure(bg='white')
 root.geometry("700x553")
 sock = socket(AF_INET, SOCK_STREAM)
 try:
 	sock.connect((host, int(port)))
-	print("Connected to server")
+	print("Connected to server. Waiting for other players to connect before we can show you "
+		  "your cards!")
 except error as e:
 	print("ERROR CONNECTING TO SERVER:")
 	print(str(e))
-
 init, addr = sock.recvfrom(8000)
 try:
 	message = loads(init.decode('utf-8'))
