@@ -89,7 +89,7 @@ for i in range(num_players):
 # Calc - other player sends points
 while True:
 	print("Waiting for player ", current_player)
-	json, addr = socks[current_player].recvfrom(8000)
+	json, addr = socks[current_player].recvfrom(16000)
 	try:
 		message = loads(json.decode('utf-8'))
 	except JSONDecodeError as e:

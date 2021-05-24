@@ -473,7 +473,7 @@ class Game(Frame):
 			while True:
 				print("Waiting")
 				try:
-					json, addr = self.sock.recvfrom(8000)
+					json, addr = self.sock.recvfrom(16000)
 					message = loads(json.decode('utf-8'))
 				except (JSONDecodeError, OSError) as er:
 					break

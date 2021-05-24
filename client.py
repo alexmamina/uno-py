@@ -28,7 +28,7 @@ try:
 except error as e:
 	print("ERROR CONNECTING TO SERVER:")
 	print(str(e))
-init, addr = sock.recvfrom(8000)
+init, addr = sock.recvfrom(16000)
 try:
 	message = loads(init.decode('utf-8'))
 	root.title("UNO - player "+ str(message['whoami']))
