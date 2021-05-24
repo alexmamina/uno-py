@@ -15,7 +15,7 @@ num_players = int(argv[3])
 socks = []
 addresses = []
 current_player = 0
-sock.listen(5)
+sock.listen(128)
 player_counter = 0
 
 # Deck initialisation

@@ -476,6 +476,7 @@ class Game(Frame):
 					json, addr = self.sock.recvfrom(16000)
 					message = loads(json.decode('utf-8'))
 				except (JSONDecodeError, OSError) as er:
+					print(str(er))
 					break
 				self.q.put(message)
 			print("Closing socket")
