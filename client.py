@@ -31,17 +31,18 @@ except error as e:
 init, addr = sock.recvfrom(8000)
 try:
 	message = loads(init.decode('utf-8'))
-except JSONDecodeError:
+	root.title("UNO - player "+ str(message['whoami']))
+	q = queue.Queue()
+	window = Game(root, q, message, sock, addr)
+	window.config_start_btns()
+
+	thread = Thread(target=window.receive)
+	thread.start()
+	window.checkPeriodically()
+	window.mainloop()
+except JSONDecodeError as e:
+	print(str(e))
 	print("Check that you have input a correct port! Or that the server is running before you "
-		  "start.")
+		  "start. Or something else went wrong")
 
-root.title("UNO - player "+ str(message['whoami']))
 
-q = queue.Queue()
-window = Game(root, q, message, sock, addr)
-window.config_start_btns()
-
-thread = Thread(target=window.receive)
-thread.start()
-window.checkPeriodically()
-window.mainloop()

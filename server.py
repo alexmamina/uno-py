@@ -92,7 +92,8 @@ while True:
 	json, addr = socks[current_player].recvfrom(8000)
 	try:
 		message = loads(json.decode('utf-8'))
-	except JSONDecodeError:
+	except JSONDecodeError as e:
+		print(str(e))
 		break
 	#print(message)
 	if message['stage'] == GO or message['stage'] == DEBUG:
@@ -275,6 +276,7 @@ while True:
 		for i in range(num_players):
 			data = message
 			socks[i].sendto(dumps(data).encode('utf-8'), addresses[i])
+		print('What is this message??')
 		break
 for i in range(num_players):
 	socks[i].close()
