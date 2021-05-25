@@ -274,9 +274,10 @@ while True:
 
 	else:
 		for i in range(num_players):
-			data = message
-			socks[i].sendto(dumps(data).encode('utf-8'), addresses[i])
-		print('What is this message??')
+			if i != current_player:
+				data = message
+				socks[i].sendto(dumps(data).encode('utf-8'), addresses[i])
+		print('Sending BYE message')
 		break
 for i in range(num_players):
 	socks[i].close()

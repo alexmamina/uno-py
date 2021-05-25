@@ -49,6 +49,7 @@ class Game(Frame):
 		#Take one card only
 		self.card_counter = 1
 		self.q = queue
+		self.quit = False
 		self.identity = msg['whoami']
 		self.last = None
 		self.challenge = None
@@ -306,6 +307,7 @@ class Game(Frame):
 
 	# Show the points that you have with your cards right now (option in menu)
 	def show_points(self):
+		#todo change this so that shows leaderboard of points
 		result = 0
 		ans = messagebox.askyesno("Points",
 							"0-9 - 0-9\n"
@@ -336,7 +338,6 @@ class Game(Frame):
 
 	def incoming(self):
 		global all_played
-		quit = False
 		while self.q.qsize():
 			try:
 				msg = self.q.get(0)
@@ -362,7 +363,9 @@ class Game(Frame):
 						uno_said = "\nUNO said!"
 						p = msg['other_left'].index(1)
 						#todo test if this works with many players having uno
-						messagebox.showinfo("UNO", "Player "+str(p)+" has only 1 card left!")
+
+						if p != self.identity:
+							messagebox.showinfo("UNO", "Player "+str(p)+" has only 1 card left!")
 					else:
 						uno_said = ""
 					self.all_nums_of_cards = msg['other_left']
@@ -423,7 +426,12 @@ class Game(Frame):
 							self.sock.send(dumps(init).encode('utf-8'))
 						else:
 							# Don't want the new game
-							quit = True
+							bye = {'stage': BYE}
+							self.sock.send(dumps(bye).encode('utf-8'))
+							print("No new game, sending a BYE message")
+							self.quit = True
+							break
+
 					else:
 						messagebox.showinfo("Win", "Player "+str(msg['winner'])
 										+" won "+str(msg['points'])+" points!\n"+
@@ -432,18 +440,16 @@ class Game(Frame):
 				elif msg['stage'] == INIT:
 					print("New game!")
 					self.start_new(msg)
-				else:
-					quit = True
+				elif msg['stage'] == BYE:
+					print("Received a BYE message, closing (another player decided to stop)")
+					self.quit = True
+					break
+
 			except queue.Empty:
 				pass
-		if quit:
-			bye = {'stage': BYE}
-			try:
-				self.sock.send(dumps(bye).encode('utf-8'))
-			except OSError:
-				pass
-			self.sock.close()
-			exit(0)
+		if self.quit:
+			print("Loop ended")
+			self.close_window()
 
 
 
@@ -470,18 +476,26 @@ class Game(Frame):
 	# Put received message in queue for async processing
 	def receive(self):
 			global message, root
-			while True:
+			while not self.quit:
 				print("Waiting")
 				try:
 					json, addr = self.sock.recvfrom(16000)
 					message = loads(json.decode('utf-8'))
-				except (JSONDecodeError, OSError) as er:
-					print(str(er))
+					self.q.put(message)
+				except JSONDecodeError as er:
+					if "Expecting value" in str(er):
+						print("Another player's socket has been closed")
+					else:
+						print(er)
 					break
-				self.q.put(message)
-			print("Closing socket")
-			self.sock.close()
-			exit(0)
+				except OSError as o:
+					if o.errno == 9:
+						print("Socket closed, no more receiving messages")
+						break
+				except:
+					raise
+			print("No more receiving messages")
+
 
 	# Disable all buttons when sending information and when it's not your turn anymore
 	def sendInfo(self, data_to_send):
@@ -494,6 +508,7 @@ class Game(Frame):
 		for i in self.hand_btns:
 			self.hand_btns[i].config(state='disabled')
 		self.turn.config(text="Wait for other players!", bg='red')
+		print("Not your turn anymore")
 
 	# Notify opponent that they forgot to say UNO; when clicking button
 	def challengeUno(self):
@@ -528,6 +543,7 @@ class Game(Frame):
 		self.uno_but.place_forget()
 		self.turn.config(text="Waiting for the results!",bg='white',fg='blue')
 		self.sock.send(dumps(data_to_send).encode('utf-8'))
+		print("Not your turn anymore")
 
 
 	# Go through the hand and see if there are cards that could be played
@@ -555,7 +571,8 @@ class Game(Frame):
 
 	def checkPeriodically(self):
 		self.incoming()
-		self.after(100, self.checkPeriodically)
+		if not self.quit:
+			self.after(100, self.checkPeriodically)
 
 	def start_new(self, message):
 		global all_played
@@ -594,10 +611,13 @@ class Game(Frame):
 
 	def close_window(self):
 		try:
-			self.sock.send("bye".encode('utf-8'))
+			bye = {"stage": BYE}
+			self.sock.send(dumps(bye).encode('utf-8'))
+			self.sock.close()
 		except OSError:
 			pass
-		self.sock.close()
+		self.quit = True
+
 		print("I am closing")
 		self.master.destroy()
 		print("Bye")
