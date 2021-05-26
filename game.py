@@ -3,13 +3,11 @@ from tkinter import *
 from tkinter import simpledialog
 from math import *
 from PIL import ImageTk, Image
-from os import *
 import card
 import deck
 import webbrowser
 from socket import *
 from sys import *
-
 
 from time import *
 from picker import *
@@ -37,13 +35,13 @@ class Game(Frame):
 
 
 	# Initialise a frame. Setup the pile, hand, last played card and all gui
-	def __init__(self, master, queue, msg, sock, addr):
+	def __init__(self, master, queue, msg, sock, all_points):
 		global message
 		message = msg
 		super().__init__(master)
 		self.pack()
-		self.addr = addr
 		self.sock = sock
+		self.all_points = all_points
 		self.parent = master
 		self.master.protocol("WM_DELETE_WINDOW", self.close_window)
 		#Take one card only
@@ -307,18 +305,12 @@ class Game(Frame):
 
 	# Show the points that you have with your cards right now (option in menu)
 	def show_points(self):
-		#todo change this so that shows leaderboard of points
-		result = 0
-		ans = messagebox.askyesno("Points",
-							"0-9 - 0-9\n"
-							" Reverse - 20\n"
-							" Stop - 20\n"
-							" +2 - 20\n"
-							" Black - 50\n"
-							"Calculate automatically?")
-		if ans:
-			result = self.calculate_points()
-			messagebox.showinfo("Points", "Your points are: "+str(result))
+		text = "Your points this session: "+str(self.all_points[self.identity])+"\n"
+		for i in range(len(self.all_points)):
+			if i == self.identity:
+				text += "(You) "
+			text += "Player {}: {} points\n".format(i,self.all_points[i])
+		messagebox.showinfo("Points", text)
 
 	# Go through the hand and calculate points; regex is for finding numbers
 	def calculate_points(self):
@@ -414,6 +406,7 @@ class Game(Frame):
 				# Get points from the opponent and show them
 				elif msg['stage'] == CALC:
 					table_of_points = ""
+					self.all_points = msg['total']
 					for i in range(len(msg['total'])):
 						table_of_points += "\nPlayer "+str(i)+": "+str(msg['total'][i])+" points\n"
 					if msg['winner'] == self.identity:
@@ -480,13 +473,16 @@ class Game(Frame):
 				print("Waiting")
 				try:
 					json, addr = self.sock.recvfrom(16000)
-					message = loads(json.decode('utf-8'))
+					data = json.decode('utf-8')
+					message = loads(data)
 					self.q.put(message)
 				except JSONDecodeError as er:
 					if "Expecting value" in str(er):
 						print("Another player's socket has been closed")
 					else:
 						print(er)
+						print("Different decoding error line 491")
+						print(message)
 					break
 				except OSError as o:
 					if o.errno == 9:
@@ -577,7 +573,7 @@ class Game(Frame):
 	def start_new(self, message):
 		global all_played
 
-		print("Destroying...")
+		print("Destroying old game...")
 		self.master.destroy()
 
 		root = Tk()
@@ -586,7 +582,7 @@ class Game(Frame):
 		root.title("UNO - player "+ str(message['whoami']))
 		root.protocol("WM_DELETE_WINDOW", self.close_window)
 		all_played = []
-		new = Game(root, self.q, message, self.sock, self.addr)
+		new = Game(root, self.q, message, self.sock, self.all_points)
 		new.config_start_btns()
 		new.checkPeriodically()
 		new.mainloop()

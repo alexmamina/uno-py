@@ -1,12 +1,11 @@
 from tkinter import *
 from math import *
 from PIL import ImageTk, Image
-from os import *
 import card
 from card import *
 from random import *
 import copy
-
+from os import listdir
 
 class Deck:
 	global backofcard, special_blacks

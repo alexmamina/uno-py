@@ -1,7 +1,6 @@
 from tkinter import *
 from math import *
 from PIL import ImageTk, Image
-from os import *
 from json import *
 
 class Card():

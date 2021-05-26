@@ -91,7 +91,8 @@ while True:
 	print("Waiting for player ", current_player)
 	json, addr = socks[current_player].recvfrom(16000)
 	try:
-		message = loads(json.decode('utf-8'))
+		dec_json = json.decode('utf-8')
+		message = loads(dec_json)
 	except JSONDecodeError as e:
 		print(str(e))
 		break
