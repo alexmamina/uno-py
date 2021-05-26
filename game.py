@@ -237,7 +237,7 @@ class Game(Frame):
 		self.hand_cards[ind] = new
 		photo = ImageTk.PhotoImage(new.card_pic)
 		b = Button(text=new.name, image=photo, width=117, height=183, border=0,
-				   bg="white")
+				   bg="white",state='disabled')
 		b['command'] = lambda ind=ind, binst=b: self.place_card(ind, binst)
 		b.image = photo
 		self.hand_btns[ind] = b
@@ -246,6 +246,9 @@ class Game(Frame):
 		ctr = 0
 		# Is it possible to place a card right now?
 		possible_move = self.possible_move()
+		if possible_move and self.card_counter == 0:
+			self.new_card.config(state='disabled')
+			b.config(state='normal')
 		for i in self.hand_btns.keys():
 			# Move all buttons
 			b = self.hand_btns[i]
