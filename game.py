@@ -30,8 +30,7 @@ class Game(Frame):
 	pile = new_deck.deck
 	global message
 	message = {}
-	global all_played
-	all_played = []
+
 
 
 	# Initialise a frame. Setup the pile, hand, last played card and all gui
@@ -161,10 +160,9 @@ class Game(Frame):
 		result.append(280+40*(floor(i/15)))
 		return result
 
-
+#todo if card taken and move possible, disable button
 	##################################### EVENTS ##################################
 	def place_card(self,ind, binst):
-		global all_played
 		if self.challenge:
 			self.challenge.place_forget()
 		card = self.hand_cards[ind].name
@@ -172,7 +170,6 @@ class Game(Frame):
 		# Same color (0:3), same symbol (3:), black
 		if (card[0:3] == old_card[0:3] or card[3:] == old_card[3:] or "bla" in card[0:3]):
 			binst.destroy()
-			all_played.append(self.hand_cards[ind].name)
 			# Changes the black card to black with a color to show which one to play next
 			if "bla" in card[0:3]:
 				picker = Picker(self, "New color", "Which one?", ['Red','Green','Blue',
@@ -213,7 +210,6 @@ class Game(Frame):
 				"pile" : self.pile,
 				"stage" : GO,
 				"color" : card_col,
-				"all_played" : all_played,
 				"num_left" : len(self.hand_cards)
 			}
 			if self.uno:
@@ -225,12 +221,8 @@ class Game(Frame):
 				self.sendFinal(data_to_send)
 
 	def take_card(self):
-		global all_played, new_deck, message
-		# If pile is empty, reshuffle the all_played cards
-		if len(self.pile) < 1 or self.pile is None:
-			self.pile = copy.deepcopy(all_played)
-			shuffle(self.pile)
-			all_played = all_played[-1:]
+		global new_deck, message
+
 		# Take new card
 		new = new_deck.get_card(self.pile.pop(0))
 		# Remove the 'uno not placed' button as was ignored
@@ -285,7 +277,6 @@ class Game(Frame):
 				"pile" : self.pile,
 				"stage" : GO,
 				"color" : self.last['text'][0:3],
-				"all_played" : all_played,
 				"num_left" : len(self.hand_cards)
 			}
 			if message['stage'] != CHALLENGE:
@@ -329,11 +320,10 @@ class Game(Frame):
 		return result
 
 	def incoming(self):
-		global all_played
 		while self.q.qsize():
 			try:
 				msg = self.q.get(0)
-				# Played, pile, num_left, color, all_played, player, saiduno, taken
+				# Played, pile, num_left, color, player, saiduno, taken
 				print("LOOKING AT MESSAGE")
 				#show(msg)
 				# Normal play stage
@@ -365,7 +355,6 @@ class Game(Frame):
 					left_cards_text += uno_said
 					# Set up label with number of remaining cards
 					self.cards_left.config(text=left_cards_text)
-					all_played = msg['all_played']
 					# Enable buttons for cards if your turn; make UNO show if necessary
 					if int(msg['player']) == 1:
 						print("Your turn, enabling buttons")
@@ -473,6 +462,7 @@ class Game(Frame):
 				print("Waiting")
 				try:
 					json, addr = self.sock.recvfrom(16000)
+					print("LENGTH: ", len(json))
 					data = json.decode('utf-8')
 					message = loads(data)
 					self.q.put(message)
@@ -482,7 +472,7 @@ class Game(Frame):
 					else:
 						print(er)
 						print("Different decoding error line 491")
-						print(message)
+						print(data)
 					break
 				except OSError as o:
 					if o.errno == 9:
@@ -515,14 +505,12 @@ class Game(Frame):
 	# If for some reason the turn didn't change, this sends current info to server who prints it
 	# out and changes turns
 	def send_debug(self):
-		global all_played
 		print("Changing turns")
 		data = {'stage' : DEBUG,
 				"played" : self.last['text'],
 				"pile" : self.pile,
 				"hand" : [self.hand_cards[x].name for x in self.hand_cards],
 				"num_left" : len(self.hand_cards),
-				"all_played" : all_played,
 				"color" : self.last['text'],
 				"taken" : True
 				}
@@ -571,7 +559,6 @@ class Game(Frame):
 			self.after(100, self.checkPeriodically)
 
 	def start_new(self, message):
-		global all_played
 
 		print("Destroying old game...")
 		self.master.destroy()
@@ -581,7 +568,6 @@ class Game(Frame):
 		root.geometry("700x553")
 		root.title("UNO - player "+ str(message['whoami']))
 		root.protocol("WM_DELETE_WINDOW", self.close_window)
-		all_played = []
 		new = Game(root, self.q, message, self.sock, self.all_points)
 		new.config_start_btns()
 		new.checkPeriodically()

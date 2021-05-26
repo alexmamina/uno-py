@@ -18,6 +18,15 @@ current_player = 0
 sock.listen(128)
 player_counter = 0
 
+# Reshuffle pile and all_played if few cards left, else just return original pile
+def fit_pile_to_size(pile, all_played):
+	if len(pile) < 10:
+		shuffle(all_played)
+		pile += all_played
+		all_played = []
+	return pile, all_played
+
+
 # Deck initialisation
 d = Deck().deck
 pile = [c.name for c in d]
@@ -25,6 +34,7 @@ pile = [c.name for c in d]
 resulting_points = 0
 first_card = pile.pop(7*num_players)
 previous_message = {}
+all_played = []
 all_players_points = [0]*num_players
 total_games_played = 0
 # Black card will not be played first. If popped, reshuffle and get new
@@ -41,7 +51,6 @@ data_to_send = {"stage": INIT,
 				"num_left": 7,
 				"other_left": left_cards,
 				"color": first_card[0:3],
-				"all_played": [],
 				"player": 0}
 previous_message = data_to_send
 # End of initialisation
@@ -65,7 +74,7 @@ if 'reverse' in first_card:
 # Player 2 is current if stop True
 # Else player 1 is current
 for i in range(num_players):
-	data_to_send['pile'] = pile[0:7] + pile[7*(num_players-i):]
+	data_to_send['pile'] = pile[0:7] + pile[7*(num_players-i):7*(num_players-i)+10]
 	data_to_send['whoami'] = i
 	if (i == list_of_players[0] and "stop" not in first_card) or \
 			(i == 1 and "stop" in first_card):
@@ -78,7 +87,6 @@ for i in range(num_players):
 	socks[i].sendto(dumps(data_to_send).encode('utf-8'), addresses[i])
 	print("Sent init to player ", i)
 	pile = pile[7:]
-
 
 # ALL SENT
 # Go - regular play, regular relay
@@ -93,32 +101,48 @@ while True:
 	try:
 		dec_json = json.decode('utf-8')
 		message = loads(dec_json)
+		#print(pile)
 	except JSONDecodeError as e:
 		print(str(e))
 		break
 	#print(message)
 	if message['stage'] == GO or message['stage'] == DEBUG:
 		card = message['played']
+
 		print("PLAYED CARD: ", card)
 		print("FROM player: ", current_player)
 
-		left_cards[current_player] = message['num_left']
 		if message['stage'] == DEBUG:
 			print("DEBUGGING ERROR INFORMATION------------")
 			for x in message:
 				print(x, "  --  ", message[x])
 			print("---------------------------------------")
-		data = {"pile": message["pile"],
+
+		data = {"pile": pile,
 				"num_left": message['num_left'],
 				"played": message['played'],
 				"other_left": left_cards,
 				"stage": GO,
 				"player": 1,
-				"all_played": message['all_played'],
+
 				"color": message['color']
 				}
-		if 'taken' in message:
+		if 'taken' not in message:
+			all_played.append(card)
+			#print(all_played)
+			if not (pile[0:5] == message['pile'][0:5]):
+				pile.pop(0)
+		else:
 			data['taken'] = message['taken']
+			num_taken = message['num_left'] - left_cards[current_player]
+			#print(num_taken)
+			for i in range(num_taken):
+				pile.pop(0)
+		pile, all_played = fit_pile_to_size(pile, all_played)
+		#print(pile, all_played)
+		data['pile'] = pile[:10]
+		left_cards[current_player] = message['num_left']
+		data['other_left'] = left_cards
 		if "reverse" in card and 'taken' not in message:
 			list_of_players.reverse()
 			curr_list_index = num_players - 1 - curr_list_index
@@ -158,9 +182,11 @@ while True:
 		if "stop" not in message['played']:
 			previous_message = message
 	elif message['stage'] == CHALLENGE:
-		#From a current player to the previous player; need to send to previous player only
+		# From a current player to the previous player; need to send to previous player only
 		print("UNO has not been said")
-
+		pile, all_played = fit_pile_to_size(pile, all_played)
+		data = message
+		data['pile'] = pile[:10]
 		rulebreaker = prev_player
 		socks[rulebreaker].sendto(dumps(message).encode('utf-8'), addresses[rulebreaker])
 		#print("Sent to player who forgot to take UNO")
@@ -172,13 +198,17 @@ while True:
 		current_player = prev_player
 		prev_player = old
 		left_cards[prev_player] = message['num_left']
-		data = {"pile": message["pile"],
+		pile.pop(0)
+		pile.pop(0)
+		pile, all_played = fit_pile_to_size(pile, all_played)
+		#print(pile, all_played)
+
+		data = {"pile": pile[:10],
 				"num_left": message['num_left'],
 				"played": message['played'],
 				"other_left": left_cards,
 				"stage": GO,
 				"player": 1,
-				"all_played": message['all_played'],
 				"color": message['color']
 				}
 		for i in range(num_players):
@@ -194,11 +224,13 @@ while True:
 	elif message['stage'] == ZEROCARDS:
 		print("ENDING")
 		taking_cards = "plus" in message['played']
-		data = {"pile": message["pile"],
+		pile, all_played = fit_pile_to_size(pile, all_played)
+		#print(pile, all_played)
+
+		data = {"pile": pile[0:10],
 				"played": message['played'],
 				"stage": ZEROCARDS,
 				"player": 1,
-				"all_played": message['all_played'],
 				"color": message['color'],
 				"to_take" : taking_cards
 				}
@@ -228,6 +260,7 @@ while True:
 		# Deck initialisation
 		d = Deck().deck
 		pile = [c.name for c in d]
+		all_played = []
 		#print(pile)
 		resulting_points = 0
 		first_card = pile.pop(7*num_players)
@@ -246,20 +279,14 @@ while True:
 						"num_left": 7,
 						"other_left": left_cards,
 						"color": first_card[0:3],
-						"all_played": [],
 						"player": 0}
 		previous_message = data_to_send
-		# End of initialisation
-		#list_of_players = []
 
 		if 'reverse' in first_card:
 			list_of_players.reverse()
-		# Send the data: pile is first 7 + rest of pile common for all.
-		# Player 3 is current if reverse True
-		# Player 2 is current if stop True
-		# Else player 1 is current
+
 		for i in range(num_players):
-			data_to_send['pile'] = pile[0:7] + pile[7*(num_players-i):]
+			data_to_send['pile'] = pile[0:7] + pile[7*(num_players-i):7*(num_players-i)+10]
 			data_to_send['whoami'] = i
 			if (i == list_of_players[0] and "stop" not in first_card) or \
 					(i == 1 and "stop" in first_card):
