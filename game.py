@@ -31,20 +31,22 @@ class Game(Frame):
 	global message
 	message = {}
 
+	#todo plus4 not possible until no other moves
 
-
+#todo stack
 	# Initialise a frame. Setup the pile, hand, last played card and all gui
 	def __init__(self, master, queue, msg, sock, all_points):
 		global message
 		message = msg
 		super().__init__(master)
 		self.pack()
+		self.modes = msg['modes']
 		self.sock = sock
 		self.all_points = all_points
 		self.parent = master
 		self.master.protocol("WM_DELETE_WINDOW", self.close_window)
 		#Take one card only
-		self.card_counter = 1
+		self.card_counter = 1 if not self.modes[2] else 500
 		self.q = queue
 		self.quit = False
 		self.identity = msg['whoami']
@@ -72,6 +74,7 @@ class Game(Frame):
 		self.uno_but = but(text="UNO", fg="black", bg="deep sky blue", width=100, height=80,
 						   borderless=1,
 						   command=self.one_card)
+		self.uno_but.place(x=50,y=150)
 		self.uno = False
 		self.new_card = None
 		self.setup_menu()
@@ -107,11 +110,16 @@ class Game(Frame):
 		menubar.add_cascade(label="Menu", menu=menu)
 		mode = Menu(menubar)
 		# This is not working yet, so not added to the menu
-		mode.add_command(label="Regular")
-		mode.add_command(label="Stack")
-		mode.add_command(label="Jump-in")
-		mode.add_command(label="7-0")
-		#menubar.add_cascade(label="Game mode", menu=mode)
+		if not any(self.modes):
+			mode.add_command(label="Regular enabled")
+		else:
+			if self.modes[1]:
+				mode.add_command(label="Stack enabled")
+			if self.modes[2]:
+				mode.add_command(label="7-0 enabled")
+			if self.modes[0]:
+				mode.add_command(label="Take many cards enabled")
+		menubar.add_cascade(label="Game mode", menu=mode)
 
 		self.parent.configure(menu=menubar)
 
@@ -159,14 +167,22 @@ class Game(Frame):
 		result.append(25+overlap*(i%15)+15*(floor(i/15)))
 		result.append(280+40*(floor(i/15)))
 		return result
-
-#todo if card taken and move possible, disable button
+#todo look at different buffers and see which doesn't throw extra data/decode errors
 	##################################### EVENTS ##################################
 	def place_card(self,ind, binst):
 		if self.challenge:
 			self.challenge.place_forget()
 		card = self.hand_cards[ind].name
 		old_card = self.last['text']
+
+		'''
+		if 'four' in card and not self.can_put_plusfour():
+			print("Can't put plus 4")
+			messagebox.showinfo("Wrong move", "You can't put plus 4, take cards")
+			self.card_counter = 4
+		else:
+		'''
+
 		# Same color (0:3), same symbol (3:), black
 		if (card[0:3] == old_card[0:3] or card[3:] == old_card[3:] or "bla" in card[0:3]):
 			binst.destroy()
@@ -195,6 +211,7 @@ class Game(Frame):
 			# Remove card from 'hand', update label with number
 			self.hand_cards.pop(ind)
 			self.hand_btns.pop(ind)
+			self.all_nums_of_cards[self.identity] -= 1
 			text = self.label_for_cards_left(self.all_nums_of_cards)
 			self.cards_left.config(text=text)
 			ctr = 0
@@ -212,6 +229,19 @@ class Game(Frame):
 				"color" : card_col,
 				"num_left" : len(self.hand_cards)
 			}
+			if str(7) in card and self.modes[0] and len(self.hand_cards) > 0:
+				players = ["Player "+str(x) for x in range(len(self.all_nums_of_cards))
+						   if not x == self.identity]
+				swap = Picker(self,"Swap", "Who would you like to swap your cards with?",
+					  players)
+				data_to_send['swapwith'] = int(re.search(r'\d+', swap.result).group())
+				print(data_to_send['swapwith'])
+				#data_to_send['stage'] = SEVEN
+				data_to_send['hand'] = [self.hand_cards[c].name for c in self.hand_cards]
+			if str(0) in card and self.modes[0] and len(self.hand_cards) > 0:
+				print("Zero")
+				data_to_send['hand'] = [self.hand_cards[c].name for c in self.hand_cards]
+
 			if self.uno:
 				data_to_send['said_uno'] = True
 			# Send all the information either in progress of the game, or to end it
@@ -241,12 +271,14 @@ class Game(Frame):
 		b['command'] = lambda ind=ind, binst=b: self.place_card(ind, binst)
 		b.image = photo
 		self.hand_btns[ind] = b
+		self.all_nums_of_cards[self.identity] += 1
 		text = self.label_for_cards_left(self.all_nums_of_cards)
 		self.cards_left.config(text=text)
 		ctr = 0
 		# Is it possible to place a card right now?
 		possible_move = self.possible_move()
-		if possible_move and self.card_counter == 0:
+
+		if possible_move and (self.card_counter == 0 or (self.modes[2] and self.card_counter > 4)):
 			self.new_card.config(state='disabled')
 			b.config(state='normal')
 		for i in self.hand_btns.keys():
@@ -256,13 +288,10 @@ class Game(Frame):
 			b.place(x=coords[1], y=coords[2])
 			ctr += 1
 		# Make UNO button appear as uno is possible
-		if len(self.hand_cards) == 2 and possible_move\
-				and message['stage'] != CHALLENGE:
-			self.uno_but.place(x=50,y=150)
-			#self.uno_but.config(state='normal')
-		# Remove UNO button if many cards (should be unnecessary)
-		if len(self.hand_cards) > 2:
-			self.uno_but.place_forget()
+		#if len(self.hand_cards) == 2 and possible_move\
+		#		and message['stage'] != CHALLENGE:
+			#self.uno_but.place(x=50,y=150)
+
 
 		# Send the points from the cards if you had to take them at the end (last played was +,
 			# but game is over)
@@ -292,9 +321,13 @@ class Game(Frame):
 	def one_card(self):
 		if self.uno:
 			self.uno = False
+			self.uno_but.config(bg="white")
+			self.uno_but.config(bg='deep sky blue')
+
 		else:
 			self.uno = True
-			self.uno_but.place_forget()
+			self.uno_but.config(bg="lime green")
+			#self.uno_but.place_forget()
 		print("UNO")
 
 	# Show the points that you have with your cards right now (option in menu)
@@ -334,6 +367,7 @@ class Game(Frame):
 					# Set the last played card and configure the pile + card counter
 					self.set_played_img(msg)
 					newC = msg['played']
+					#todo change this for modes
 					if "plustwo" in newC and 'taken' not in msg:
 						self.card_counter = 2
 					# Check if other player said UNO; place the challenge button if not said
@@ -344,10 +378,10 @@ class Game(Frame):
 											 width=150, height=30,command=self.challengeUno)
 						if msg['player'] == 1:
 							self.challenge.place(x=30, y=120)
-					elif 'said_uno' in msg.keys() and msg['said_uno']:
+					elif 'said_uno' in msg.keys() and msg['said_uno'] and 1 in msg['other_left']:
 						uno_said = "\nUNO said!"
 						p = msg['other_left'].index(1)
-						#todo test if this works with many players having uno
+						#todo this doens't work with many players having uno as only shows first
 
 						if p != self.identity:
 							messagebox.showinfo("UNO", "Player "+str(p)+" has only 1 card left!")
@@ -361,13 +395,17 @@ class Game(Frame):
 					# Enable buttons for cards if your turn; make UNO show if necessary
 					if int(msg['player']) == 1:
 						print("Your turn, enabling buttons")
-						if not self.possible_move() or self.card_counter > 1:
+						# No moves possible, or move possible but need to take cards
+						if not self.possible_move() or (self.card_counter == 2
+														or self.card_counter == 4):
 							self.new_card.config(state='normal')
-						if self.card_counter < 2: # Here can add stack option later
+						# Say your turn if either mode is normal, or take forever and not plus
+						if (self.card_counter < 2 and not self.modes[2]) or\
+							(self.modes[2] and not self.card_counter == 4 and not
+							self.card_counter == 2):
 							self.turn.config(text="Your turn", bg='green')
-							if self.possible_move() and len(self.hand_cards) == 2:
-								self.uno_but.place(x=50,y=150)
-								#self.uno_but.config(state='normal')
+							#if self.possible_move() and len(self.hand_cards) == 2:
+							#	self.uno_but.place(x=50,y=150)
 							for i in self.hand_btns:
 									self.hand_btns[i].config(state='normal')
 						else:
@@ -407,11 +445,16 @@ class Game(Frame):
 						ans = messagebox.askyesno("New", "Would you like to continue with a new "
 														 "game?")
 						if ans == 1:
-							init = {'stage': INIT}
+							modes = simpledialog.askstring("Modes", "Input the modes that you'd "
+									"like to use this game (or press enter for a normal game):\n"
+									"1. 7/0\n"
+									"2. Stack +2\n"
+									"3. Take many cards at once")
+							init = {'stage': INIT, "modes": modes}
 							self.sock.send(dumps(init).encode('utf-8'))
 						else:
 							# Don't want the new game
-							bye = {'stage': BYE}
+							bye = {"stage": BYE, 'body': ['b']*190}
 							self.sock.send(dumps(bye).encode('utf-8'))
 							print("No new game, sending a BYE message")
 							self.quit = True
@@ -421,6 +464,24 @@ class Game(Frame):
 						messagebox.showinfo("Win", "Player "+str(msg['winner'])
 										+" won "+str(msg['points'])+" points!\n"+
 											" Total this session: \n"+table_of_points)
+
+
+				elif msg['stage'] == SEVEN or msg['stage'] == ZERO:
+					# Show hand, say who from, send back own hand
+					hand = {'stage': msg['stage'],
+							'hand': [self.hand_cards[c].name for c in self.hand_cards],
+							'from': self.identity}
+
+					self.update_btns(msg['hand'], msg['from'])
+					messagebox.showinfo("New cards", "You swapped cards with player "
+										+str(msg['from']))
+					m = dumps(hand)
+					if not 'end' in msg:
+						self.sock.send(m.encode('utf-8'))
+
+
+				elif msg['stage'] == NUMUPDATE:
+					self.cards_left.config(text=self.label_for_cards_left(msg['other_left']))
 
 				elif msg['stage'] == INIT:
 					print("New game!")
@@ -447,13 +508,13 @@ class Game(Frame):
 			if 'taken' not in msg:
 				self.card_counter = 4
 			else:
-				self.card_counter = 1
+				self.card_counter = 1 if not self.modes[2] else 500
 		elif 'bla' in newC:
 			newC = msg['color'][0:3] + "black.png"
 			img = ImageTk.PhotoImage(new_deck.get_special(newC))
 		else:
 			img = ImageTk.PhotoImage(new_deck.get_card(newC).card_pic)
-			self.card_counter = 1
+			self.card_counter = 1 if not self.modes[2] else 500
 		self.last.config(image=img, text=newC)
 		self.last.image = img
 		self.pile = msg['pile']
@@ -464,7 +525,7 @@ class Game(Frame):
 			while not self.quit:
 				print("Waiting")
 				try:
-					json, addr = self.sock.recvfrom(16000)
+					json, addr = self.sock.recvfrom(5000)
 					print("LENGTH: ", len(json))
 					data = json.decode('utf-8')
 					message = loads(data)
@@ -491,9 +552,9 @@ class Game(Frame):
 		self.sock.send(dumps(data_to_send).encode('utf-8'))
 		self.new_card.config(state="disabled")
 		self.uno = False
-		self.card_counter = 1
-		#self.uno_but.config(fg="red", bg="white", state='disabled')
-		self.uno_but.place_forget()
+		self.card_counter = 1 if not self.modes[2] else 500
+		self.uno_but.config(bg="deep sky blue")
+		#self.uno_but.place_forget()
 		for i in self.hand_btns:
 			self.hand_btns[i].config(state='disabled')
 		self.turn.config(text="Wait for other players!", bg='red')
@@ -525,9 +586,9 @@ class Game(Frame):
 		data_to_send['stage'] = ZEROCARDS
 		self.new_card.config(state="disabled")
 		self.uno = False
-		self.card_counter = 1
+		self.card_counter = 1 if not self.modes[2] else 500
 		#self.uno_but.config(fg="red", bg="white", state='disabled')
-		self.uno_but.place_forget()
+		#self.uno_but.place_forget()
 		self.turn.config(text="Waiting for the results!",bg='white',fg='blue')
 		self.sock.send(dumps(data_to_send).encode('utf-8'))
 		print("Not your turn anymore")
@@ -543,17 +604,48 @@ class Game(Frame):
 				move = move or True
 		return move
 
+	def can_put_plusfour(self):
+		result = True
+		curr = self.last['text']
+		for i in self.hand_cards:
+			c = self.hand_cards[i]
+			if curr[0:3] in c.name or curr[3:] in c.name or ('bla' in c.name and
+					not 'plus' in c.name): # Color or value or black that's not plus
+				result = False
+				break
+			else:
+				result = True
+
+		return result
 
 	# From a list of numbers of cards left from other players return the text to show
 	# in the label
 	def label_for_cards_left(self, others):
-		left_cards_text = "Your cards: " + str(len(self.hand_cards))
+		#left_cards_text = "Your cards: " + str(len(self.hand_cards))
+		left_cards_text = "Your cards: " + str(others[self.identity])
 		pl = 0
 		for x in others:
 			if pl != self.identity:
 				left_cards_text += "\n Player "+str(pl) + ": " + str(x) + " cards"
 			pl += 1
 		return left_cards_text
+
+	def update_btns(self, new_hand, player):
+		global new_deck
+		old = len(self.hand_btns)
+		new = len(new_hand)
+		for i in self.hand_btns:
+			self.hand_btns[i].destroy()
+		self.hand_btns = {}
+		self.hand_cards = {}
+		for i in range(len(new_hand)):
+			#Add new card
+			c = new_hand[i]
+			self.hand_cards[i] = new_deck.get_card(c)
+		self.setup_hand(self.hand_cards)
+		self.all_nums_of_cards[self.identity] = new
+		self.all_nums_of_cards[player] = old
+		self.cards_left.config(text=self.label_for_cards_left(self.all_nums_of_cards))
 
 
 	def checkPeriodically(self):
@@ -568,7 +660,7 @@ class Game(Frame):
 
 		root = Tk()
 		root.configure(bg='white')
-		root.geometry("700x553")
+		root.geometry("700x553+250+120")
 		root.title("UNO - player "+ str(message['whoami']))
 		root.protocol("WM_DELETE_WINDOW", self.close_window)
 		new = Game(root, self.q, message, self.sock, self.all_points)
@@ -596,7 +688,7 @@ class Game(Frame):
 
 	def close_window(self):
 		try:
-			bye = {"stage": BYE}
+			bye = {"stage": BYE, 'body':['b']*190}
 			self.sock.send(dumps(bye).encode('utf-8'))
 			self.sock.close()
 		except OSError:
@@ -620,7 +712,6 @@ def show(m):
 	else:
 		print("STAGE:", m['stage'])
 		print("Special message")
-
 
 
 def show_rules():

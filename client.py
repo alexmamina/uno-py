@@ -19,7 +19,7 @@ else:
 	host, port = 'localhost', 44444
 root = Tk()
 root.configure(bg='white')
-root.geometry("700x553")
+root.geometry("700x553+250+120")
 sock = socket(AF_INET, SOCK_STREAM)
 try:
 	sock.connect((host, int(port)))
@@ -28,7 +28,7 @@ try:
 except error as e:
 	print("ERROR CONNECTING TO SERVER:")
 	print(str(e))
-init, addr = sock.recvfrom(16000)
+init, addr = sock.recvfrom(5000)
 try:
 	data = init.decode('utf-8')
 	message = loads(data)

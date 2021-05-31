@@ -9,6 +9,9 @@ class Picker(Toplevel):
 	def __init__(self,parent,title,question,options):
 		Toplevel.__init__(self,parent)
 		self.title(title)
+		x = parent.winfo_x()
+		y = parent.winfo_y()
+		self.geometry("+%d+%d" % (x + 60, y + 300))
 		self.question = question
 		self.transient(parent)
 		self.protocol("WM_DELETE_WINDOW",self.cancel)

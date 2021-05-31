@@ -5,8 +5,18 @@ import game
 from deck import *
 from stages import *
 sock = socket(AF_INET, SOCK_STREAM)
-
-#ip = gethostbyname(gethostname())
+#[0] = 7/0, [1] = stack, [2] = take forever
+modes = [False]*3
+if str(0) not in argv[4]:
+	modes[0] = str(1) in argv[4]
+	if modes[0]:
+		print("7/0 enabled")
+	modes[1] = str(2) in argv[4]
+	if modes[1]:
+		print("Stacking enabled")
+	modes[2] = str(3) in argv[4]
+	if modes[2]:
+		print("Taking many cards enabled")
 ip = argv[1]
 port = int(argv[2])
 sock.bind((ip, port))
@@ -20,7 +30,7 @@ player_counter = 0
 
 # Reshuffle pile and all_played if few cards left, else just return original pile
 def fit_pile_to_size(pile, all_played):
-	if len(pile) < 10:
+	if len(pile) < 20:
 		shuffle(all_played)
 		pile += all_played
 		all_played = []
@@ -46,6 +56,7 @@ while "bla" in first_card:
 left_cards = [7]*num_players
 # Skeleton of json to be sent
 data_to_send = {"stage": INIT,
+				"modes": modes,
 				"played": first_card,
 				"pile": pile[0:7],
 				"num_left": 7,
@@ -74,7 +85,7 @@ if 'reverse' in first_card:
 # Player 2 is current if stop True
 # Else player 1 is current
 for i in range(num_players):
-	data_to_send['pile'] = pile[0:7] + pile[7*(num_players-i):7*(num_players-i)+10]
+	data_to_send['pile'] = pile[0:7] + pile[7*(num_players-i):7*(num_players-i)+20]
 	data_to_send['whoami'] = i
 	if (i == list_of_players[0] and "stop" not in first_card) or \
 			(i == 1 and "stop" in first_card):
@@ -95,15 +106,17 @@ for i in range(num_players):
 # Zerocards - one player is out of cards, forward to the other who will either take cards or send
 	# points
 # Calc - other player sends points
+#todo uno not said if stopped played sent to curr player on 2 (can't be fixed now)
 while True:
 	print("Waiting for player ", current_player)
-	json, addr = socks[current_player].recvfrom(16000)
+	json, addr = socks[current_player].recvfrom(5000)
 	try:
 		dec_json = json.decode('utf-8')
 		message = loads(dec_json)
 		#print(pile)
 	except JSONDecodeError as e:
 		print(str(e))
+		print(json)
 		break
 	#print(message)
 	if message['stage'] == GO or message['stage'] == DEBUG:
@@ -132,17 +145,73 @@ while True:
 			#print(all_played)
 			if not (pile[0:5] == message['pile'][0:5]):
 				pile.pop(0)
+				#print("Popped")
+			if modes[2]:
+				num_taken = message['num_left'] - left_cards[current_player]
+				for i in range(num_taken):
+					pile.pop(0)
 		else:
 			data['taken'] = message['taken']
 			num_taken = message['num_left'] - left_cards[current_player]
-			#print(num_taken)
+			#print("Taken ", str(num_taken))
 			for i in range(num_taken):
 				pile.pop(0)
 		pile, all_played = fit_pile_to_size(pile, all_played)
 		#print(pile, all_played)
-		data['pile'] = pile[:10]
+		data['pile'] = pile[:20]
 		left_cards[current_player] = message['num_left']
 		data['other_left'] = left_cards
+		if str(7) in card and modes[0] and 'taken' not in message:
+			swapped_player = message['swapwith']
+			hand = message['hand']
+			print("Swapping hands")
+			left_cards[swapped_player] = message['num_left']
+			ask = {'stage': SEVEN,
+				   "hand": hand,
+				   "from": current_player}
+			# Ask cards from the swapped player, send those to current, msg['cards'] to swapped
+			socks[swapped_player].sendto(dumps(ask).encode('utf-8'),addresses[swapped_player])
+			new_hand, add = socks[swapped_player].recvfrom(5000)
+			js = new_hand.decode('utf-8')
+			js = loads(js)
+			js['end'] = True
+			socks[current_player].sendto(dumps(js).encode('utf-8'), addresses[current_player])
+			# Swap number of cards
+			left_cards[current_player] = len(loads(new_hand.decode('utf-8'))['hand'])
+
+			data['other_left'] = left_cards
+
+		if str(0) in card and modes[0] and 'taken' not in message:
+			hand = message['hand']
+			i = list_of_players.index(current_player)
+			next = (i + 1) % num_players
+			swap = {'stage': ZERO,
+					'hand': hand,
+					'from': i}
+			j = dumps(swap)
+			left_cards[next] = len(hand)
+			socks[next].sendto(j.encode('utf-8'), addresses[next])
+			other, ad = socks[next].recvfrom(2000)
+			j = other.decode('utf-8')
+			j2 = loads(j)
+			hand = j2['hand']
+			i = (i + 1) % num_players
+			next = (i + 1) % num_players
+			while not (i == list_of_players.index(current_player)):
+				swap = {'stage': ZERO,
+						'hand': hand,
+						'from': i}
+				j = dumps(swap)
+				left_cards[list_of_players[next]] = len(hand)
+				socks[list_of_players[next]].sendto(j.encode('utf-8'), addresses[list_of_players[next]])
+				other, ad = socks[list_of_players[next]].recvfrom(2000)
+				j = other.decode('utf-8')
+				j2 = loads(j)
+				hand = j2['hand']
+				i = (i + 1) % num_players
+				next = (i + 1) % num_players
+		data_to_send['other_left'] = left_cards
+
 		if "reverse" in card and 'taken' not in message:
 			list_of_players.reverse()
 			curr_list_index = num_players - 1 - curr_list_index
@@ -154,7 +223,7 @@ while True:
 		if "stop" in card and 'taken' not in message:
 			# Current+2 is 1, rest are 0 (as skip in between)
 			for i in range(num_players):
-				if (i == list_of_players[(curr_list_index+2) % num_players]):
+				if i == list_of_players[(curr_list_index + 2) % num_players]:
 					data['player'] = 1
 				else:
 					data['player'] = 0
@@ -174,6 +243,10 @@ while True:
 						data['player'] = 0
 					socks[i].sendto(dumps(data).encode('utf-8'), addresses[i])
 					print("Sent to player ", i)
+				else:
+					left = {'stage': NUMUPDATE, 'other_left': left_cards}
+					socks[i].sendto(dumps(left).encode('utf-8'), addresses[i])
+
 			prev_player = current_player
 			current_player = list_of_players[(curr_list_index+1) % num_players]
 			#print(prev_player, " and now ", current_player)
@@ -186,7 +259,7 @@ while True:
 		print("UNO has not been said")
 		pile, all_played = fit_pile_to_size(pile, all_played)
 		data = message
-		data['pile'] = pile[:10]
+		data['pile'] = pile[:20]
 		rulebreaker = prev_player
 		socks[rulebreaker].sendto(dumps(message).encode('utf-8'), addresses[rulebreaker])
 		#print("Sent to player who forgot to take UNO")
@@ -203,7 +276,7 @@ while True:
 		pile, all_played = fit_pile_to_size(pile, all_played)
 		#print(pile, all_played)
 
-		data = {"pile": pile[:10],
+		data = {"pile": pile[:20],
 				"num_left": message['num_left'],
 				"played": message['played'],
 				"other_left": left_cards,
@@ -227,7 +300,7 @@ while True:
 		pile, all_played = fit_pile_to_size(pile, all_played)
 		#print(pile, all_played)
 
-		data = {"pile": pile[0:10],
+		data = {"pile": pile[0:20],
 				"played": message['played'],
 				"stage": ZEROCARDS,
 				"player": 1,
@@ -239,7 +312,8 @@ while True:
 			if i != current_player:
 				if not ((i == list_of_players[(curr_list_index+1) % num_players]) and taking_cards):
 					data["to_take"] = False
-
+				else:
+					data['to_take'] = True
 				socks[i].sendto(dumps(data).encode('utf-8'), addresses[i])
 				pts, a = socks[i].recvfrom(8000)
 				resulting_points += loads(pts.decode('utf-8'))['points']
@@ -261,7 +335,13 @@ while True:
 		d = Deck().deck
 		pile = [c.name for c in d]
 		all_played = []
+		modes = [False]*3
+		if message['modes'] is not None and len(message['modes']) > 0:
+			modes[0] = '1' in message['modes']
+			modes[1] = '2' in message['modes']
+			modes[2] = '3' in message['modes']
 		#print(pile)
+		#print(modes)
 		resulting_points = 0
 		first_card = pile.pop(7*num_players)
 		previous_message = {}
@@ -274,6 +354,7 @@ while True:
 		left_cards = [7]*num_players
 		# Skeleton of json to be sent
 		data_to_send = {"stage": INIT,
+						"modes": modes,
 						"played": first_card,
 						"pile": pile[0:7],
 						"num_left": 7,
@@ -286,7 +367,7 @@ while True:
 			list_of_players.reverse()
 
 		for i in range(num_players):
-			data_to_send['pile'] = pile[0:7] + pile[7*(num_players-i):7*(num_players-i)+10]
+			data_to_send['pile'] = pile[0:7] + pile[7*(num_players-i):7*(num_players-i)+20]
 			data_to_send['whoami'] = i
 			if (i == list_of_players[0] and "stop" not in first_card) or \
 					(i == 1 and "stop" in first_card):
