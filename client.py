@@ -28,7 +28,7 @@ try:
 except error as e:
 	print("ERROR CONNECTING TO SERVER:")
 	print(str(e))
-init, addr = sock.recvfrom(5000)
+init, addr = sock.recvfrom(1000)
 try:
 	data = init.decode('utf-8')
 	message = loads(data)

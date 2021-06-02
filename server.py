@@ -1,6 +1,6 @@
 from socket import *
 from sys import *
-
+import time
 import game
 from deck import *
 from stages import *
@@ -95,6 +95,7 @@ for i in range(num_players):
 		prev_player = list_of_players[num_players-1]
 	else:
 		data_to_send['player'] = 0
+	data_to_send['padding'] = 'a'*(685-len(str(data_to_send)))
 	socks[i].sendto(dumps(data_to_send).encode('utf-8'), addresses[i])
 	print("Sent init to player ", i)
 	pile = pile[7:]
@@ -109,7 +110,7 @@ for i in range(num_players):
 #todo uno not said if stopped played sent to curr player on 2 (can't be fixed now)
 while True:
 	print("Waiting for player ", current_player)
-	json, addr = socks[current_player].recvfrom(5000)
+	json, addr = socks[current_player].recvfrom(1000)
 	try:
 		dec_json = json.decode('utf-8')
 		message = loads(dec_json)
@@ -137,9 +138,10 @@ while True:
 				"other_left": left_cards,
 				"stage": GO,
 				"player": 1,
-
 				"color": message['color']
 				}
+		if 'plusfour' in card and 'taken' not in message:
+			data['wild'] = message['wild']
 		if 'taken' not in message:
 			all_played.append(card)
 			#print(all_played)
@@ -164,17 +166,22 @@ while True:
 		if str(7) in card and modes[0] and 'taken' not in message:
 			swapped_player = message['swapwith']
 			hand = message['hand']
+			print("Player {} has {}".format(current_player, hand))
 			print("Swapping hands")
 			left_cards[swapped_player] = message['num_left']
 			ask = {'stage': SEVEN,
 				   "hand": hand,
 				   "from": current_player}
 			# Ask cards from the swapped player, send those to current, msg['cards'] to swapped
+			ask['padding'] = 'a'*(685-len(str(ask)))
 			socks[swapped_player].sendto(dumps(ask).encode('utf-8'),addresses[swapped_player])
-			new_hand, add = socks[swapped_player].recvfrom(5000)
-			js = new_hand.decode('utf-8')
-			js = loads(js)
+			new_hand, add = socks[swapped_player].recvfrom(1000)
+			js = loads(new_hand.decode('utf-8'))
+			js.pop('padding')
+			print("Player {} has {}".format(swapped_player, js['hand']))
+
 			js['end'] = True
+			js['padding'] = 'a'*(685-len(str(js)))
 			socks[current_player].sendto(dumps(js).encode('utf-8'), addresses[current_player])
 			# Swap number of cards
 			left_cards[current_player] = len(loads(new_hand.decode('utf-8'))['hand'])
@@ -188,10 +195,13 @@ while True:
 			swap = {'stage': ZERO,
 					'hand': hand,
 					'from': i}
+			swap['padding'] = 'a'*(685-len(str(swap)))
 			j = dumps(swap)
 			left_cards[next] = len(hand)
-			socks[next].sendto(j.encode('utf-8'), addresses[next])
-			other, ad = socks[next].recvfrom(2000)
+			print("{} goes to player {}".format(hand, list_of_players[next]))
+
+			socks[list_of_players[next]].sendto(j.encode('utf-8'), addresses[list_of_players[next]])
+			other, ad = socks[list_of_players[next]].recvfrom(2000)
 			j = other.decode('utf-8')
 			j2 = loads(j)
 			hand = j2['hand']
@@ -201,6 +211,9 @@ while True:
 				swap = {'stage': ZERO,
 						'hand': hand,
 						'from': i}
+				swap['padding'] = 'a'*(685-len(str(swap)))
+				print("{} goes to player {}".format(hand, list_of_players[next]))
+
 				j = dumps(swap)
 				left_cards[list_of_players[next]] = len(hand)
 				socks[list_of_players[next]].sendto(j.encode('utf-8'), addresses[list_of_players[next]])
@@ -210,7 +223,7 @@ while True:
 				hand = j2['hand']
 				i = (i + 1) % num_players
 				next = (i + 1) % num_players
-		data_to_send['other_left'] = left_cards
+		data['other_left'] = left_cards
 
 		if "reverse" in card and 'taken' not in message:
 			list_of_players.reverse()
@@ -222,19 +235,29 @@ while True:
 		# If the last played card is stop
 		if "stop" in card and 'taken' not in message:
 			# Current+2 is 1, rest are 0 (as skip in between)
+
 			for i in range(num_players):
 				if i == list_of_players[(curr_list_index + 2) % num_players]:
 					data['player'] = 1
 				else:
 					data['player'] = 0
 				data['num_left'] = previous_message['num_left']
+				if 'padding' in data:
+					data.pop('padding')
+				data['padding'] = 'a'*(685-len(str(data)))
+
+				print('in stop, ',len(str(data)))
 				socks[i].sendto(dumps(data).encode('utf-8'), addresses[i])
 			prev_player = current_player
-			current_player = list_of_players[(curr_list_index+2) % num_players]
+			current_player = list_of_players[((curr_list_index+2) % num_players)]
 			curr_list_index = (curr_list_index + 2) % num_players
 
 		# Not stop, so just relay info
 		else:
+			if 'padding' in data:
+				data.pop('padding')
+			data['padding'] = 'a'*(685-len(str(data)))
+
 			for i in range(num_players):
 				if i != current_player:
 					if i == list_of_players[(curr_list_index+1) % num_players]:
@@ -244,7 +267,10 @@ while True:
 					socks[i].sendto(dumps(data).encode('utf-8'), addresses[i])
 					print("Sent to player ", i)
 				else:
+					#todo fix update sent straight after hand msg, so that extra data in buffer
+					# client - seems ok with very strict buffer size
 					left = {'stage': NUMUPDATE, 'other_left': left_cards}
+					left['padding'] = 'a'*(685-len(str(left)))
 					socks[i].sendto(dumps(left).encode('utf-8'), addresses[i])
 
 			prev_player = current_player
@@ -256,12 +282,15 @@ while True:
 			previous_message = message
 	elif message['stage'] == CHALLENGE:
 		# From a current player to the previous player; need to send to previous player only
-		print("UNO has not been said")
+		print("UNO has not been said or +4")
 		pile, all_played = fit_pile_to_size(pile, all_played)
 		data = message
 		data['pile'] = pile[:20]
+		data.pop('padding')
 		rulebreaker = prev_player
-		socks[rulebreaker].sendto(dumps(message).encode('utf-8'), addresses[rulebreaker])
+		data['padding'] = 'a'*(685-len(str(data)))
+		#print("CHAL ", len(dumps(data)))
+		socks[rulebreaker].sendto(dumps(data).encode('utf-8'), addresses[rulebreaker])
 		#print("Sent to player who forgot to take UNO")
 		prev_player = current_player
 		current_player = rulebreaker
@@ -273,6 +302,10 @@ while True:
 		left_cards[prev_player] = message['num_left']
 		pile.pop(0)
 		pile.pop(0)
+		if 'why' in message and message['why'] == 4:
+			pile.pop(0)
+			pile.pop(0)
+
 		pile, all_played = fit_pile_to_size(pile, all_played)
 		#print(pile, all_played)
 
@@ -284,7 +317,14 @@ while True:
 				"player": 1,
 				"color": message['color']
 				}
+
+		if 'why' in message and message['why'] == 4:
+			data['taken'] = True
+
+		data['padding'] = 'a'*(685-len(str(data)))
+
 		for i in range(num_players):
+
 			if i != prev_player:
 				if i == current_player:
 					data['player'] = 1
@@ -308,12 +348,15 @@ while True:
 				"to_take" : taking_cards
 				}
 		# Either: next takes cards, then all send. Or: all send
+		data['padding'] = 'a'*(685-len(str(data)))
+
 		for i in range(num_players):
 			if i != current_player:
 				if not ((i == list_of_players[(curr_list_index+1) % num_players]) and taking_cards):
 					data["to_take"] = False
 				else:
 					data['to_take'] = True
+				#print(685-len(str(data)))
 				socks[i].sendto(dumps(data).encode('utf-8'), addresses[i])
 				pts, a = socks[i].recvfrom(8000)
 				resulting_points += loads(pts.decode('utf-8'))['points']
@@ -326,6 +369,7 @@ while True:
 		for i in range(num_players):
 			msg = {'stage': CALC, 'points': resulting_points,
 				   'total': all_players_points , 'winner': current_player}
+			msg['padding'] = 'a'*(685-len(str(msg)))
 			socks[i].sendto(dumps(msg).encode('utf-8'), addresses[i])
 
 	elif message['stage'] == INIT:
@@ -366,7 +410,11 @@ while True:
 		if 'reverse' in first_card:
 			list_of_players.reverse()
 
+		data_to_send['padding'] = ''
+		#data_to_send['padding'] = 'a'*(685-len(str(data_to_send)))
+
 		for i in range(num_players):
+			data_to_send.pop('padding')
 			data_to_send['pile'] = pile[0:7] + pile[7*(num_players-i):7*(num_players-i)+20]
 			data_to_send['whoami'] = i
 			if (i == list_of_players[0] and "stop" not in first_card) or \
@@ -377,6 +425,7 @@ while True:
 				prev_player = list_of_players[num_players-1]
 			else:
 				data_to_send['player'] = 0
+			data_to_send['padding'] = 'a'*(685-len(str(data_to_send)))
 			socks[i].sendto(dumps(data_to_send).encode('utf-8'), addresses[i])
 			#print("Sent init to player ", i)
 			pile = pile[7:]
