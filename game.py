@@ -34,7 +34,6 @@ class Game(Frame):
 
 #todo stack
 #todo show direction (who goes next)
-#todo check that 0 follows the direction
 	# Initialise a frame. Setup the pile, hand, last played card and all gui
 	def __init__(self, master, queue, msg, sock, all_points):
 		global message
@@ -42,7 +41,6 @@ class Game(Frame):
 		super().__init__(master)
 		self.pack()
 		self.peeps = message['peeps']
-		print(self.peeps)
 		self.move_id = '0'
 		self.modes = msg['modes']
 		self.sock = sock
@@ -165,7 +163,7 @@ class Game(Frame):
 			x = origx+(dx/20)*i
 			y = origy+(dy/20)*i
 			binst.place(x=x, y=y)
-			#todo make so that elf.last only updates image at the end, not start
+			#todo make so that elf.last only updates image at the end, not start -ANIM
 			i += 1
 			self.move_id = self.after(5,self.move, origx, origy, dx, dy, i,binst, img)
 		else:
@@ -191,7 +189,7 @@ class Game(Frame):
 
 
 #todo look at different buffers and see which doesn't throw extra data/decode errors
-# strict 700 looks fine for now
+# strict 700 looks fine for now - OK
 
 
 	##################################### EVENTS ##################################
@@ -207,7 +205,7 @@ class Game(Frame):
 		# Same color (0:3), same symbol (3:), black
 		if (card[0:3] == old_card[0:3] or card[3:] == old_card[3:] or "bla" in card[0:3]):
 
-			#todo fix this animation, not used right now
+			#todo fix this animation, not used right now - ANIM
 			dest_x = self.last.winfo_x()
 			dest_y = self.last.winfo_y()
 			orig_x = binst.winfo_x()
@@ -417,9 +415,7 @@ class Game(Frame):
 							self.challenge.place(x=30, y=120)
 					elif 'said_uno' in msg.keys() and msg['said_uno'] and 1 in msg['other_left']:
 						uno_said = "\nUNO said!"
-						p = msg['other_left'].index(1)
-						#todo this doens't work with many players having uno as only shows first
-
+						p = msg['from']
 						if p != self.identity:
 							messagebox.showinfo("UNO", self.peeps[p]+" has only 1 card left!")
 					else:
@@ -574,8 +570,8 @@ class Game(Frame):
 		self.last.config(image=img, text=newC)
 		self.last.image = img
 		self.pile = msg['pile']
-#todo fix disabled buttons from texts on +2 and windows
-#todo windows no new game says waiting forever
+#todo fix disabled buttons from texts on +2 and windows - OK
+#todo windows no new game says waiting forever - OK
 
 	# Put received message in queue for async processing
 	def receive(self):

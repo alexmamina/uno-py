@@ -237,6 +237,7 @@ while True:
 			data['said_uno'] = False
 		elif 'said_uno' in message.keys() and message['said_uno']:
 			data['said_uno'] = True
+			data['from'] = current_player
 		# If the last played card is stop
 		if "stop" in card and 'taken' not in message:
 			# Current+2 is 1, rest are 0 (as skip in between)
@@ -273,7 +274,7 @@ while True:
 					print("Sent to player ", i)
 				else:
 					#todo fix update sent straight after hand msg, so that extra data in buffer
-					# client - seems ok with very strict buffer size
+					# client - seems ok with very strict buffer size - OK
 					left = {'stage': NUMUPDATE, 'other_left': left_cards}
 					left['padding'] = 'a'*(685-len(str(left)))
 					socks[i].sendto(dumps(left).encode('utf-8'), addresses[i])
