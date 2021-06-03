@@ -33,12 +33,16 @@ class Game(Frame):
 
 
 #todo stack
+#todo show direction (who goes next)
+#todo check that 0 follows the direction
 	# Initialise a frame. Setup the pile, hand, last played card and all gui
 	def __init__(self, master, queue, msg, sock, all_points):
 		global message
 		message = msg
 		super().__init__(master)
 		self.pack()
+		self.peeps = message['peeps']
+		print(self.peeps)
 		self.move_id = '0'
 		self.modes = msg['modes']
 		self.sock = sock
@@ -67,7 +71,7 @@ class Game(Frame):
 		pl = 0
 		for x in msg['other_left']:
 			if pl != self.identity:
-				text_cards_left += "\n Player "+str(pl) + ": " + str(x) + " cards"
+				text_cards_left += "\n "+self.peeps[pl] + ": " + str(x) + " cards"
 			pl += 1
 		self.cards_left = Label(text=text_cards_left, fg="blue", bg="pale green", width=20,
 								height=5)
@@ -262,11 +266,10 @@ class Game(Frame):
 			if 'plusfour' in card:
 				data_to_send['wild'] = is_valid_plus
 			if str(7) in card and self.modes[0] and len(self.hand_cards) > 0:
-				players = ["Player "+str(x) for x in range(len(self.all_nums_of_cards))
-						   if not x == self.identity]
+				players = [x for x in self.peeps if not self.peeps.index(x) == self.identity]
 				swap = Picker(self,"Swap", "Who would you like to swap your cards with?",
 					  players)
-				data_to_send['swapwith'] = int(re.search(r'\d+', swap.result).group())
+				data_to_send['swapwith'] = self.peeps.index(swap.result)
 				#data_to_send['stage'] = SEVEN
 				data_to_send['hand'] = [self.hand_cards[c].name for c in self.hand_cards]
 			if str(0) in card and self.modes[0] and len(self.hand_cards) > 0:
@@ -370,7 +373,7 @@ class Game(Frame):
 		for i in range(len(self.all_points)):
 			if i == self.identity:
 				text += "(You) "
-			text += "Player {}: {} points\n".format(i,self.all_points[i])
+			text += "{}: {} points\n".format(self.peeps[i],self.all_points[i])
 		messagebox.showinfo("Points", text)
 
 	# Go through the hand and calculate points; regex is for finding numbers
@@ -418,7 +421,7 @@ class Game(Frame):
 						#todo this doens't work with many players having uno as only shows first
 
 						if p != self.identity:
-							messagebox.showinfo("UNO", "Player "+str(p)+" has only 1 card left!")
+							messagebox.showinfo("UNO", self.peeps[p]+" has only 1 card left!")
 					else:
 						uno_said = ""
 					self.all_nums_of_cards = msg['other_left']
@@ -486,7 +489,7 @@ class Game(Frame):
 					table_of_points = ""
 					self.all_points = msg['total']
 					for i in range(len(msg['total'])):
-						table_of_points += "\nPlayer "+str(i)+": "+str(msg['total'][i])+" points\n"
+						table_of_points += "\n"+self.peeps[i]+": "+str(msg['total'][i])+" points\n"
 					if msg['winner'] == self.identity:
 						messagebox.showinfo("Win", "You won "+str(msg['points'])+" points!\n\n"
 										" Total this session: \n"+table_of_points)
@@ -512,7 +515,7 @@ class Game(Frame):
 							break
 
 					else:
-						messagebox.showinfo("Win", "Player "+str(msg['winner'])
+						messagebox.showinfo("Win", self.peeps[msg['winner']]
 										+" won "+str(msg['points'])+" points!\n"+
 											" Total this session: \n"+table_of_points)
 
@@ -526,7 +529,7 @@ class Game(Frame):
 					self.update_btns(msg['hand'], msg['from'])
 					what_played = str(7) if msg['stage'] == SEVEN else str(0)
 					messagebox.showinfo("New cards", "A "+what_played+" was played. \nYou swapped "
-								"cards with player "+str(msg['from']))
+								"cards with "+self.peeps[msg['from']])
 					hand['padding'] = 'a'*(685-len(str(hand)))
 					m = dumps(hand)
 					if not 'end' in msg:
@@ -705,7 +708,7 @@ class Game(Frame):
 		pl = 0
 		for x in others:
 			if pl != self.identity:
-				left_cards_text += "\n Player "+str(pl) + ": " + str(x) + " cards"
+				left_cards_text += "\n "+self.peeps[pl] + ": " + str(x) + " cards"
 			pl += 1
 		return left_cards_text
 
@@ -740,7 +743,8 @@ class Game(Frame):
 		root = Tk()
 		root.configure(bg='white')
 		root.geometry("700x553+250+120")
-		root.title("UNO - player "+ str(message['whoami']))
+		root.title("UNO - player "+ str(message['whoami'])+" - "+message['peeps'][message[
+			'whoami']])
 		root.protocol("WM_DELETE_WINDOW", self.close_window)
 		new = Game(root, self.q, message, self.sock, self.all_points)
 		new.config_start_btns()

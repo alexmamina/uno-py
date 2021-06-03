@@ -44,6 +44,7 @@ pile = [c.name for c in d]
 resulting_points = 0
 first_card = pile.pop(7*num_players)
 previous_message = {}
+peeps = []
 all_played = []
 all_players_points = [0]*num_players
 total_games_played = 0
@@ -70,6 +71,8 @@ list_of_players = []
 # Wait for clients to connect, save them
 while player_counter < num_players:
 	player, addr = sock.accept()
+	name, a = player.recvfrom(200)
+	peeps.append(name.decode('utf-8'))
 	socks.append(player)
 	addresses.append(addr)
 	list_of_players.append(player_counter)
@@ -78,6 +81,8 @@ while player_counter < num_players:
 	print("Waiting for "+str(n)+" more players")
 	player_counter += 1
 curr_list_index = 0
+print(peeps)
+data_to_send['peeps'] = peeps
 if 'reverse' in first_card:
 	list_of_players.reverse()
 # Send the data: pile is first 7 + rest of pile common for all.
@@ -194,7 +199,7 @@ while True:
 			next = (i + 1) % num_players
 			swap = {'stage': ZERO,
 					'hand': hand,
-					'from': i}
+					'from': list_of_players[i]}
 			swap['padding'] = 'a'*(685-len(str(swap)))
 			j = dumps(swap)
 			left_cards[next] = len(hand)
@@ -210,7 +215,7 @@ while True:
 			while not (i == list_of_players.index(current_player)):
 				swap = {'stage': ZERO,
 						'hand': hand,
-						'from': i}
+						'from': list_of_players[i]}
 				swap['padding'] = 'a'*(685-len(str(swap)))
 				print("{} goes to player {}".format(hand, list_of_players[next]))
 
@@ -406,6 +411,7 @@ while True:
 						"color": first_card[0:3],
 						"player": 0}
 		previous_message = data_to_send
+		data_to_send['peeps'] = peeps
 
 		if 'reverse' in first_card:
 			list_of_players.reverse()

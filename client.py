@@ -10,6 +10,7 @@ from tkinter.simpledialog import *
 #host = argv[1]
 small_window = Tk()
 small_window.withdraw()
+name = askstring("Name", "What's your name?")
 address = askstring("Address", "Paste the \"CONNECT TO\" information you see on the "
 												   "server:")
 small_window.destroy()
@@ -23,6 +24,7 @@ root.geometry("700x553+250+120")
 sock = socket(AF_INET, SOCK_STREAM)
 try:
 	sock.connect((host, int(port)))
+	sock.send(name.encode('utf-8'))
 	print("Connected to server. Waiting for other players to connect before we can show you "
 		  "your cards!")
 except error as e:
@@ -32,7 +34,8 @@ init, addr = sock.recvfrom(1000)
 try:
 	data = init.decode('utf-8')
 	message = loads(data)
-	root.title("UNO - player "+ str(message['whoami']))
+	root.title("UNO - player "+ str(message['whoami'])+" - "+message['peeps'][message[
+	'whoami']])
 	q = queue.Queue()
 	all_points = [0]*len(message['other_left'])
 	window = Game(root, q, message, sock, all_points)
