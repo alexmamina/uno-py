@@ -117,12 +117,12 @@ class Game(Frame):
 			mode.add_command(label="Regular enabled")
 		else:
 			if self.modes[1]:
-				mode.add_command(label="Stack enabled")
-			if self.modes[2]:
-				mode.add_command(label="7-0 enabled")
+				mode.add_command(label="Stack enabled", command=lambda i=2: show_mode(i))
 			if self.modes[0]:
-				mode.add_command(label="Take many cards enabled")
-		menubar.add_cascade(label="Game mode", menu=mode)
+				mode.add_command(label="7-0 enabled", command=lambda i=1: show_mode(i))
+			if self.modes[2]:
+				mode.add_command(label="Take many cards enabled", command=lambda i=3: show_mode(i))
+		menubar.add_cascade(label="Game mode rules", menu=mode)
 
 		self.parent.configure(menu=menubar)
 
@@ -804,3 +804,21 @@ def show_rules():
 										  "visit Wiki for official rules?")
 	if answer:
 		webbrowser.open("https://www.ultraboardgames.com/uno/game-rules.php")
+
+
+def show_mode(m):
+	if m == 1:
+		messagebox.showinfo("7/0", "When a player puts a 7, they have to choose someone (not "
+								   "themselves) to swap their cards with forever (or until "
+								   "another 7/0 is played).\nWhen a player puts a 0, all cards are"
+								   " moved to the next player in the direction of the game (that "
+								   "is, in not-reversed mode 0's cards go to 1, 1 to 2, 2 to 0)")
+	elif m == 2:
+		messagebox.showinfo("Stack +2", "If you're given a plus card and you have another, you can "
+										"stack yours on top of the given card, increasing the "
+										"number of cards needed to be taken for the next player")
+
+	else:
+		messagebox.showinfo("Take many cards", "If you don't have a playable card, you have to "
+											   "take cards from the pile until a suitable one "
+											   "appears, rather than just take one and skip turn")
