@@ -18,6 +18,9 @@ if address is not None and len(address) > 0:
 	host, port = address.split()
 else:
 	host, port = 'localhost', 44444
+
+if name is None or len(name) == 0:
+	name = 'default'+str(randint(0,1000))
 root = Tk()
 root.configure(bg='white')
 root.geometry("700x553+250+120")

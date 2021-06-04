@@ -25,9 +25,10 @@ num_players = int(argv[3])
 socks = []
 addresses = []
 current_player = 0
+is_reversed = False
 sock.listen(128)
 player_counter = 0
-
+stack_counter = 0
 # Reshuffle pile and all_played if few cards left, else just return original pile
 def fit_pile_to_size(pile, all_played):
 	if len(pile) < 20:
@@ -85,6 +86,8 @@ print(peeps)
 data_to_send['peeps'] = peeps
 if 'reverse' in first_card:
 	list_of_players.reverse()
+	is_reversed = not is_reversed
+data_to_send['dir'] = is_reversed
 # Send the data: pile is first 7 + rest of pile common for all.
 # Player 3 is current if reverse True
 # Player 2 is current if stop True
@@ -158,6 +161,7 @@ while True:
 				for i in range(num_taken):
 					pile.pop(0)
 		else:
+			stack_counter = 0
 			data['taken'] = message['taken']
 			num_taken = message['num_left'] - left_cards[current_player]
 			#print("Taken ", str(num_taken))
@@ -230,9 +234,16 @@ while True:
 				next = (i + 1) % num_players
 		data['other_left'] = left_cards
 
+		if modes[1] and 'counter' in message:
+			data['counter'] = message['counter']
+			stack_counter = message['counter']
+
 		if "reverse" in card and 'taken' not in message:
 			list_of_players.reverse()
+			is_reversed = not is_reversed
 			curr_list_index = num_players - 1 - curr_list_index
+		data['dir'] = is_reversed
+
 		if message['num_left'] == 1 and 'said_uno' not in message.keys():
 			data['said_uno'] = False
 		elif 'said_uno' in message.keys() and message['said_uno']:
@@ -326,7 +337,8 @@ while True:
 
 		if 'why' in message and message['why'] == 4:
 			data['taken'] = True
-
+		data['dir'] = is_reversed
+		data['counter'] = stack_counter
 		data['padding'] = 'a'*(685-len(str(data)))
 
 		for i in range(num_players):
@@ -353,15 +365,22 @@ while True:
 				"color": message['color'],
 				"to_take" : taking_cards
 				}
+		if 'counter' in message and modes[1]:
+			data['counter'] = message['counter']
+			stack_counter = message['counter']
 		# Either: next takes cards, then all send. Or: all send
 		data['padding'] = 'a'*(685-len(str(data)))
 
 		for i in range(num_players):
 			if i != current_player:
 				if not ((i == list_of_players[(curr_list_index+1) % num_players]) and taking_cards):
+					data.pop('padding')
 					data["to_take"] = False
+					data['padding'] = 'a'*(685-len(str(data)))
 				else:
+					data.pop('padding')
 					data['to_take'] = True
+					data['padding'] = 'a'*(685-len(str(data)))
 				#print(685-len(str(data)))
 				socks[i].sendto(dumps(data).encode('utf-8'), addresses[i])
 				pts, a = socks[i].recvfrom(8000)
@@ -401,6 +420,7 @@ while True:
 			shuffle(pile)
 			first_card = pile.pop(7*num_players)
 		list_of_players.sort()
+		is_reversed = False
 		left_cards = [7]*num_players
 		# Skeleton of json to be sent
 		data_to_send = {"stage": INIT,
@@ -416,6 +436,8 @@ while True:
 
 		if 'reverse' in first_card:
 			list_of_players.reverse()
+			is_reversed = not is_reversed
+		data_to_send['dir'] = is_reversed
 
 		data_to_send['padding'] = ''
 		#data_to_send['padding'] = 'a'*(685-len(str(data_to_send)))

@@ -32,8 +32,6 @@ class Game(Frame):
 	message = {}
 
 
-#todo stack
-#todo show direction (who goes next)
 	# Initialise a frame. Setup the pile, hand, last played card and all gui
 	def __init__(self, master, queue, msg, sock, all_points):
 		global message
@@ -55,6 +53,7 @@ class Game(Frame):
 		self.last = None
 		self.challenge = None
 		self.valid_wild = None
+		self.stack_counter = 0
 		if msg['player'] == 1:
 			self.turn = Label(text="Your turn",
 						  fg='white', bg='green', width=30, height=1)
@@ -62,6 +61,15 @@ class Game(Frame):
 			self.turn = Label(text="Your turn" if msg['player'] == 1 else "Wait for other players!",
 							  fg='white', bg='red', width=30, height=1)
 		self.turn.place(x=300,y=0)
+		self.stack_label = Label(text="Cards to take:\n"+str(self.stack_counter),fg='black',
+								 bg='PeachPuff', width=10,height=3)
+		self.direction_l = Label(text="Direction:\n"+("Forwards" if not message['dir'] else
+		"Backwards"), fg='black', bg='Lavender', width=10, height=3)
+		if self.modes[1]:
+			self.stack_label.place(x=600,y=0)
+			self.direction_l.place(x=600,y=80)
+		else:
+			self.direction_l.place(x=600,y=0)
 		self.hand_cards = {}
 		self.pile = msg['pile']
 		self.all_nums_of_cards = msg['other_left']
@@ -214,11 +222,16 @@ class Game(Frame):
 			dy = dest_y - orig_y
 			#self.move_id = self.move(orig_x, orig_y,dx, dy, 0, binst, self.last.image)
 			binst.destroy()
+			if 'reverse' in card:
+				if 'Forwards' in self.direction_l['text']:
+					self.direction_l.config(text="Direction:\nBackwards")
+				else:
+					self.direction_l.config(text="Direction:\nForwards")
 
 			if 'plusfour' in card:
 				is_valid_plus = self.can_put_plusfour()
 
-		# Changes the black card to black with a color to show which one to play next
+			# Changes the black card to black with a color to show which one to play next
 			if "bla" in card[0:3]:
 				picker = Picker(self, "New color", "Which one?", ['Red','Green','Blue',
 																	 'Yellow'])
@@ -263,6 +276,10 @@ class Game(Frame):
 			}
 			if 'plusfour' in card:
 				data_to_send['wild'] = is_valid_plus
+			# If placed plustwo in the mode, send the counter
+			elif 'two' in card and self.modes[1]:
+				data_to_send['counter'] = self.stack_counter + 2
+				self.stack_counter = 0
 			if str(7) in card and self.modes[0] and len(self.hand_cards) > 0:
 				players = [x for x in self.peeps if not self.peeps.index(x) == self.identity]
 				swap = Picker(self,"Swap", "Who would you like to swap your cards with?",
@@ -294,6 +311,11 @@ class Game(Frame):
 			self.valid_wild.place_forget()
 		# Decrease number of cards that need to be taken
 		self.card_counter -= 1
+		if self.stack_counter > 0 and self.modes[1] and 'two' in self.last['text']:
+			self.stack_counter -= 1
+			self.stack_label.config(text='(Stack)\n cards left:\n'+str(self.stack_counter))
+			print("Stack: ", self.stack_counter)
+
 		# Since hand is a dict, the keys aren't in order.
 		# Get the largest and add 1 for the next
 		ind = max(list(self.hand_cards.keys())) + 1
@@ -312,7 +334,8 @@ class Game(Frame):
 		# Is it possible to place a card right now?
 		possible_move = self.possible_move()
 
-		if possible_move and (self.card_counter == 0 or (self.modes[2] and self.card_counter > 6)):
+		if possible_move and (self.card_counter == 0 or (self.modes[2] and self.card_counter > 6))\
+														and self.stack_counter == 0:
 			self.new_card.config(state='disabled')
 			b.config(state='normal')
 		for i in self.hand_btns.keys():
@@ -321,21 +344,18 @@ class Game(Frame):
 			coords = self.get_card_placement(len(self.hand_btns),ctr)
 			b.place(x=coords[1], y=coords[2])
 			ctr += 1
-		# Make UNO button appear as uno is possible
-		#if len(self.hand_cards) == 2 and possible_move\
-		#		and message['stage'] != CHALLENGE:
-			#self.uno_but.place(x=50,y=150)
-
 
 		# Send the points from the cards if you had to take them at the end (last played was +,
 			# but game is over)
-		if self.card_counter <= 0 and 'stage' in message.keys() and message['stage'] == ZEROCARDS:
+		if self.card_counter <= 0\
+				and self.stack_counter == 0 and 'stage' in message.keys() and message['stage'] == \
+				ZEROCARDS:
 			data_to_send = {"stage": CALC, "points": self.calculate_points()}
 			self.sendInfo(data_to_send)
 
 		# Send information about taken cards if can't go or had to take +2/4 due to challenge or
 		# card
-		if self.card_counter <= 0 and (possible_move == False or
+		if self.card_counter <= 0  and self.stack_counter == 0 and (possible_move == False or
 									   ('taken' not in message and "plus" in self.last['text']) or
 										message['stage']==CHALLENGE):
 			data_to_send = {
@@ -402,9 +422,19 @@ class Game(Frame):
 					# Set the last played card and configure the pile + card counter
 					self.set_played_img(msg)
 					newC = msg['played']
-					#todo change this for stack
+					self.direction_l.config(text='Direction:\n'+'Backwards' if msg['dir'] else
+						'Direction:\n'+'Forwards')
 					if "plustwo" in newC and 'taken' not in msg:
 						self.card_counter = 2
+						if self.modes[1]:
+							self.stack_counter = msg['counter']
+							self.stack_label.config(text='(Stack)\n cards left:\n'+str(
+								self.stack_counter))
+							print("CTR: ",self.stack_counter)
+					elif 'taken' in msg:
+						self.stack_counter = 0
+						self.stack_label.config(text='(Stack)\n cards left:\n'+str(0))
+
 					# Check if other player said UNO; place the challenge button if not said
 					# Update label to show that
 					if 'said_uno' in msg.keys() and not msg['said_uno']:
@@ -416,6 +446,7 @@ class Game(Frame):
 					elif 'said_uno' in msg.keys() and msg['said_uno'] and 1 in msg['other_left']:
 						uno_said = "\nUNO said!"
 						p = msg['from']
+						#todo this says wrong player if uno afterb 7/0
 						if p != self.identity:
 							messagebox.showinfo("UNO", self.peeps[p]+" has only 1 card left!")
 					else:
@@ -441,12 +472,15 @@ class Game(Frame):
 						# Say your turn if either mode is normal, or take forever and not plus
 						if (self.card_counter < 2 and not self.modes[2]) or\
 							(self.modes[2] and not self.card_counter == 4 and not
-							self.card_counter == 2):
+							self.card_counter == 2) or (self.modes[1] and self.can_stack() and
+								'two' in newC):
 							self.turn.config(text="Your turn", bg='green')
-							#if self.possible_move() and len(self.hand_cards) == 2:
-							#	self.uno_but.place(x=50,y=150)
 							for i in self.hand_btns:
 									self.hand_btns[i].config(state='normal')
+							if self.modes[1] and self.can_stack() and 'two' in newC:
+								for i in self.hand_btns:
+									if 'two' not in self.hand_btns[i]['text']:
+										self.hand_btns[i].config(state='disabled')
 						else:
 							self.turn.config(text="Your turn, take cards!", bg='green')
 				# Forgot to say UNO - enable taking new cards only
@@ -473,6 +507,11 @@ class Game(Frame):
 						self.turn.config(text='Your turn, take cards!', bg='green')
 						self.new_card.config(state='normal')
 						self.card_counter = 2 if "two" in msg['played'] else 4
+						if self.modes[1] and 'counter' in msg:
+							self.stack_counter = msg['counter']
+							self.stack_label.config(text='(Stack)\n cards left:\n'+str(
+								self.stack_counter))
+
 					else:
 						# No cards need to be taken, send current points
 						points = {"stage" : CALC, "points" : self.calculate_points()}
@@ -492,8 +531,9 @@ class Game(Frame):
 						ans = messagebox.askyesno("New", "Would you like to continue with a new "
 														 "game?")
 						if ans == 1:
-							modes = simpledialog.askstring("Modes", "Input the modes that you'd "
-									"like to use this game (or press enter for a normal game):\n"
+							modes = simpledialog.askstring("Modes", "Input the modes (without "
+									"spaces) that you'd like to use this game"
+									" (or press enter for a normal game):\n"
 									"1. 7/0\n"
 									"2. Stack +2\n"
 									"3. Take many cards at once")
@@ -630,6 +670,8 @@ class Game(Frame):
 	# Notify opponent that they forgot to say UNO; when clicking button
 	def challengeUno(self):
 		data = {"stage": CHALLENGE, 'why': 1}
+		if self.modes[1] and self.stack_counter > 0:
+			data['counter'] = self.stack_counter
 		self.sendInfo(data)
 		self.challenge.place_forget()
 
@@ -696,6 +738,12 @@ class Game(Frame):
 
 		return result
 
+	def can_stack(self):
+		result = False
+		for i in self.hand_cards:
+			if 'two' in self.hand_cards[i].name:
+				result = True
+		return result
 	# From a list of numbers of cards left from other players return the text to show
 	# in the label
 	def label_for_cards_left(self, others):
@@ -754,12 +802,18 @@ class Game(Frame):
 			#self.uno_but.config(fg="red", bg="white", state='disabled')
 			for i in self.hand_btns:
 				self.hand_btns[i].config(state='disabled')
-		elif "plus" in message['played']:
+		elif "plus" in message['played'] and not self.modes[1]:
 			self.card_counter = 2
 			self.uno = False
 			#self.uno_but.config(fg="red", bg="white", state='disabled')
 			for i in self.hand_btns:
 				self.hand_btns[i].config(state='disabled')
+		elif "plus" in message['played'] and self.modes[1]:
+			self.stack_counter = 2
+			self.card_counter = 2
+			for i in self.hand_btns:
+				if 'two' in self.hand_btns[i]['text']:
+					self.hand_btns[i].config(state='normal')
 		elif self.possible_move():
 			self.new_card.config(state="disabled")
 
