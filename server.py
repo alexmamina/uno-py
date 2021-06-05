@@ -103,6 +103,10 @@ for i in range(num_players):
 		prev_player = list_of_players[num_players-1]
 	else:
 		data_to_send['player'] = 0
+		if i == list_of_players[0] and 'stop' in first_card:
+			data_to_send['curr'] = current_player + 1
+		else:
+			data_to_send['curr'] = current_player
 	data_to_send['padding'] = 'a'*(685-len(str(data_to_send)))
 	socks[i].sendto(dumps(data_to_send).encode('utf-8'), addresses[i])
 	print("Sent init to player ", i)
@@ -118,7 +122,7 @@ for i in range(num_players):
 #todo uno not said if stopped played sent to curr player on 2 (can't be fixed now)
 while True:
 	print("Waiting for player ", current_player)
-	json, addr = socks[current_player].recvfrom(1000)
+	json, addr = socks[current_player].recvfrom(700)
 	try:
 		dec_json = json.decode('utf-8')
 		message = loads(dec_json)
@@ -258,6 +262,7 @@ while True:
 					data['player'] = 1
 				else:
 					data['player'] = 0
+					data['curr'] = list_of_players[((curr_list_index+2) % num_players)]
 				data['num_left'] = previous_message['num_left']
 				if 'padding' in data:
 					data.pop('padding')
@@ -271,9 +276,6 @@ while True:
 
 		# Not stop, so just relay info
 		else:
-			if 'padding' in data:
-				data.pop('padding')
-			data['padding'] = 'a'*(685-len(str(data)))
 
 			for i in range(num_players):
 				if i != current_player:
@@ -281,11 +283,14 @@ while True:
 						data['player'] = 1
 					else:
 						data['player'] = 0
+						data['curr'] = list_of_players[((curr_list_index+1) % num_players)]
+					if 'padding' in data:
+						data.pop('padding')
+					data['padding'] = 'a'*(685-len(str(data)))
 					socks[i].sendto(dumps(data).encode('utf-8'), addresses[i])
 					print("Sent to player ", i)
 				else:
-					#todo fix update sent straight after hand msg, so that extra data in buffer
-					# client - seems ok with very strict buffer size - OK
+
 					left = {'stage': NUMUPDATE, 'other_left': left_cards}
 					left['padding'] = 'a'*(685-len(str(left)))
 					socks[i].sendto(dumps(left).encode('utf-8'), addresses[i])
@@ -348,6 +353,9 @@ while True:
 					data['player'] = 1
 				else:
 					data['player'] = 0
+					data['curr'] = current_player
+				data.pop('padding')
+				data['padding'] = 'a'*(685-len(str(data)))
 				socks[i].sendto(dumps(data).encode('utf-8'), addresses[i])
 				#print("Sent to player ", i)
 
@@ -383,7 +391,7 @@ while True:
 					data['padding'] = 'a'*(685-len(str(data)))
 				#print(685-len(str(data)))
 				socks[i].sendto(dumps(data).encode('utf-8'), addresses[i])
-				pts, a = socks[i].recvfrom(8000)
+				pts, a = socks[i].recvfrom(1000)
 				resulting_points += loads(pts.decode('utf-8'))['points']
 				#print(resulting_points)
 
@@ -454,6 +462,7 @@ while True:
 				prev_player = list_of_players[num_players-1]
 			else:
 				data_to_send['player'] = 0
+				data_to_send['curr'] = current_player
 			data_to_send['padding'] = 'a'*(685-len(str(data_to_send)))
 			socks[i].sendto(dumps(data_to_send).encode('utf-8'), addresses[i])
 			#print("Sent init to player ", i)

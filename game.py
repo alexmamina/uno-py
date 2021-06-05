@@ -61,15 +61,16 @@ class Game(Frame):
 			self.turn = Label(text="Your turn" if msg['player'] == 1 else "Wait for other players!",
 							  fg='white', bg='red', width=30, height=1)
 		self.turn.place(x=300,y=0)
-		self.stack_label = Label(text="Cards to take:\n"+str(self.stack_counter),fg='black',
+		self.stack_label = Label(text="Stack\n cards to take:\n"+str(self.stack_counter),fg='black',
 								 bg='PeachPuff', width=10,height=3)
-		self.direction_l = Label(text="Direction:\n"+("Forwards" if not message['dir'] else
-		"Backwards"), fg='black', bg='Lavender', width=10, height=3)
+		self.is_reversed = message['dir']
+		self.direction_l = Label(text=self.set_label_next(message),
+								 fg='black', bg='Lavender', width=10, height=7)
 		if self.modes[1]:
 			self.stack_label.place(x=600,y=0)
 			self.direction_l.place(x=600,y=80)
 		else:
-			self.direction_l.place(x=600,y=0)
+			self.direction_l.place(x=600,y=5)
 		self.hand_cards = {}
 		self.pile = msg['pile']
 		self.all_nums_of_cards = msg['other_left']
@@ -196,10 +197,6 @@ class Game(Frame):
 		return result
 
 
-#todo look at different buffers and see which doesn't throw extra data/decode errors
-# strict 700 looks fine for now - OK
-
-
 	##################################### EVENTS ##################################
 	def place_card(self,ind, binst):
 		if self.challenge:
@@ -223,10 +220,7 @@ class Game(Frame):
 			#self.move_id = self.move(orig_x, orig_y,dx, dy, 0, binst, self.last.image)
 			binst.destroy()
 			if 'reverse' in card:
-				if 'Forwards' in self.direction_l['text']:
-					self.direction_l.config(text="Direction:\nBackwards")
-				else:
-					self.direction_l.config(text="Direction:\nForwards")
+				self.is_reversed = not self.is_reversed
 
 			if 'plusfour' in card:
 				is_valid_plus = self.can_put_plusfour()
@@ -313,7 +307,7 @@ class Game(Frame):
 		self.card_counter -= 1
 		if self.stack_counter > 0 and self.modes[1] and 'two' in self.last['text']:
 			self.stack_counter -= 1
-			self.stack_label.config(text='(Stack)\n cards left:\n'+str(self.stack_counter))
+			self.stack_label.config(text='Stack\n cards to take:\n'+str(self.stack_counter))
 			print("Stack: ", self.stack_counter)
 
 		# Since hand is a dict, the keys aren't in order.
@@ -422,18 +416,19 @@ class Game(Frame):
 					# Set the last played card and configure the pile + card counter
 					self.set_played_img(msg)
 					newC = msg['played']
-					self.direction_l.config(text='Direction:\n'+'Backwards' if msg['dir'] else
-						'Direction:\n'+'Forwards')
+					self.is_reversed = msg['dir']
+					self.direction_l.config(text=self.set_label_next(msg))
+
 					if "plustwo" in newC and 'taken' not in msg:
 						self.card_counter = 2
 						if self.modes[1]:
 							self.stack_counter = msg['counter']
-							self.stack_label.config(text='(Stack)\n cards left:\n'+str(
+							self.stack_label.config(text='Stack\n cards to take:\n'+str(
 								self.stack_counter))
 							print("CTR: ",self.stack_counter)
 					elif 'taken' in msg:
 						self.stack_counter = 0
-						self.stack_label.config(text='(Stack)\n cards left:\n'+str(0))
+						self.stack_label.config(text='Stack\n cards to take:\n'+str(0))
 
 					# Check if other player said UNO; place the challenge button if not said
 					# Update label to show that
@@ -509,7 +504,7 @@ class Game(Frame):
 						self.card_counter = 2 if "two" in msg['played'] else 4
 						if self.modes[1] and 'counter' in msg:
 							self.stack_counter = msg['counter']
-							self.stack_label.config(text='(Stack)\n cards left:\n'+str(
+							self.stack_label.config(text='Stack\n cards to take:\n'+str(
 								self.stack_counter))
 
 					else:
@@ -610,8 +605,7 @@ class Game(Frame):
 		self.last.config(image=img, text=newC)
 		self.last.image = img
 		self.pile = msg['pile']
-#todo fix disabled buttons from texts on +2 and windows - OK
-#todo windows no new game says waiting forever - OK
+
 
 	# Put received message in queue for async processing
 	def receive(self):
@@ -661,7 +655,12 @@ class Game(Frame):
 		self.uno = False
 		self.card_counter = 1 if not self.modes[2] else 500
 		self.uno_but.config(bg="deep sky blue")
-		#self.uno_but.place_forget()
+		if data_to_send['stage'] == GO and 'stop' in data_to_send['played'] \
+			and 'taken' not in data_to_send:
+			self.update_next_lbl(2)
+		elif data_to_send['stage'] == GO:
+			self.update_next_lbl(1)
+
 		for i in self.hand_btns:
 			self.hand_btns[i].config(state='disabled')
 		self.turn.config(text="Wait for other players!", bg='red')
@@ -772,6 +771,50 @@ class Game(Frame):
 		self.all_nums_of_cards[self.identity] = new
 		self.all_nums_of_cards[player] = old
 		self.cards_left.config(text=self.label_for_cards_left(self.all_nums_of_cards))
+
+	def set_label_next(self, msg):
+		if msg['player'] == 1:
+			a = self.identity
+			curr = "Current:\nYou\n\n"
+		else:
+			a = msg['curr']
+			curr = "Current:\n"+self.peeps[a]+"\n\n"
+		next = "Next:\n"
+		if not self.is_reversed:
+			for i in range(a+1, a+len(self.peeps)+1):
+				if not (i % len(self.peeps)) == self.identity:
+					next += self.peeps[(i % len(self.peeps))]+"\n"
+				else:
+					next += "You\n"
+		else:
+			for i in range(a-1, a-1-len(self.peeps), -1):
+				if not (i % len(self.peeps)) == self.identity:
+					next += self.peeps[(i % len(self.peeps))]+"\n"
+				else:
+					next += "You\n"
+		return curr + next
+
+	def update_next_lbl(self, ind):
+
+		# Take all players and move them up by 1/2 when turn finished
+		next = "Next:\n"
+		if not self.is_reversed:
+			a = (self.identity + ind) % len(self.peeps)
+			curr = "Current:\n"+self.peeps[a]+"\n\n"
+			for i in range(a+1, a+len(self.peeps)+1):
+				if not (i % len(self.peeps)) == self.identity:
+					next += self.peeps[(i % len(self.peeps))]+"\n"
+				else:
+					next += "You\n"
+		else:
+			a = (self.identity - ind) % len(self.peeps)
+			curr = "Current:\n"+self.peeps[a]+"\n\n"
+			for i in range(a-1, a-1-len(self.peeps), -1):
+				if not (i % len(self.peeps)) == self.identity:
+					next += self.peeps[(i % len(self.peeps))]+"\n"
+				else:
+					next += "You\n"
+		self.direction_l.config(text=curr+next)
 
 
 	def checkPeriodically(self):
