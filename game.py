@@ -54,13 +54,7 @@ class Game(Frame):
 		self.challenge = None
 		self.valid_wild = None
 		self.stack_counter = 0
-		if msg['player'] == 1:
-			self.turn = Label(text="Your turn",
-						  fg='white', bg='green', width=30, height=1)
-		else:
-			self.turn = Label(text="Your turn" if msg['player'] == 1 else "Wait for other players!",
-							  fg='white', bg='red', width=30, height=1)
-		self.turn.place(x=300,y=0)
+
 		self.stack_label = Label(text="Stack\n cards to take:\n"+str(self.stack_counter),fg='black',
 								 bg='PeachPuff', width=10,height=3)
 		self.is_reversed = message['dir']
@@ -99,6 +93,17 @@ class Game(Frame):
 		self.debug.place(x=600,y=498)
 		self.hand_btns = {}
 		self.setup_hand(self.cards)
+		if msg['player'] == 1:
+			if 'two' in msg['played'] and (not self.can_stack() or not self.modes[1]):
+				self.turn = Label(text="Your turn, take cards",
+								  fg='white', bg='green', width=30, height=1)
+			else:
+				self.turn = Label(text="Your turn",
+								  fg='white', bg='green', width=30, height=1)
+		else:
+			self.turn = Label(text= "Wait for other players!",
+							  fg='white', bg='red', width=30, height=1)
+		self.turn.place(x=300,y=0)
 
 	# Create a hand of 7 cards from pile from message
 	def deal_cards(self, message):
@@ -325,6 +330,8 @@ class Game(Frame):
 		text = self.label_for_cards_left(self.all_nums_of_cards)
 		self.cards_left.config(text=text)
 		ctr = 0
+		print("Card counter: ", self.card_counter)
+		print("Stack counter: ", self.stack_counter)
 		# Is it possible to place a card right now?
 		possible_move = self.possible_move()
 
@@ -416,6 +423,7 @@ class Game(Frame):
 					# Set the last played card and configure the pile + card counter
 					self.set_played_img(msg)
 					newC = msg['played']
+					print("Played: ", newC)
 					self.is_reversed = msg['dir']
 					self.direction_l.config(text=self.set_label_next(msg))
 
@@ -472,7 +480,8 @@ class Game(Frame):
 							self.turn.config(text="Your turn", bg='green')
 							for i in self.hand_btns:
 									self.hand_btns[i].config(state='normal')
-							if self.modes[1] and self.can_stack() and 'two' in newC:
+							if self.modes[1] and self.can_stack() and 'two' in newC \
+									and 'taken' not in msg and self.stack_counter > 0:
 								for i in self.hand_btns:
 									if 'two' not in self.hand_btns[i]['text']:
 										self.hand_btns[i].config(state='disabled')
@@ -614,10 +623,11 @@ class Game(Frame):
 				print("Waiting")
 				try:
 					json, addr = self.sock.recvfrom(700)
-					print("LENGTH: ", len(json))
+					#print("LENGTH: ", len(json))
 					data = json.decode('utf-8')
 					message = loads(data)
 					if len(data) < 700:
+						print("[BUG] This message is short, find out why!")
 						print(message)
 						print("PADDING: ", len(message['padding']))
 					self.q.put(message)
@@ -626,13 +636,13 @@ class Game(Frame):
 						print("Another player's socket has been closed")
 					elif "Unterminated string" in str(er):
 						print(data)
-						print("TELL ME TO INCREASE BUFFER SIZE")
+						print("[BUG] TELL ME TO INCREASE BUFFER SIZE")
 					elif "Extra data" in str(er):
 						print(data)
-						print("TELL ME TO LOOK AT MESSAGE SIZE")
+						print("[BUG] TELL ME TO LOOK AT MESSAGE SIZE")
 					else:
 						print(er)
-						print("Different decoding error line 491")
+						print("[BUG] Different decoding error line 491")
 						print(data)
 					break
 				except OSError as o:
@@ -768,6 +778,8 @@ class Game(Frame):
 			c = new_hand[i]
 			self.hand_cards[i] = new_deck.get_card(c)
 		self.setup_hand(self.hand_cards)
+		for j in self.hand_btns:
+			self.hand_btns[j].config(state='disabled')
 		self.all_nums_of_cards[self.identity] = new
 		self.all_nums_of_cards[player] = old
 		self.cards_left.config(text=self.label_for_cards_left(self.all_nums_of_cards))
@@ -845,18 +857,18 @@ class Game(Frame):
 			#self.uno_but.config(fg="red", bg="white", state='disabled')
 			for i in self.hand_btns:
 				self.hand_btns[i].config(state='disabled')
-		elif "plus" in message['played'] and not self.modes[1]:
+		elif "plus" in message['played'] and (not self.can_stack() or not self.modes[1]):
 			self.card_counter = 2
 			self.uno = False
 			#self.uno_but.config(fg="red", bg="white", state='disabled')
 			for i in self.hand_btns:
 				self.hand_btns[i].config(state='disabled')
-		elif "plus" in message['played'] and self.modes[1]:
+		elif "plus" in message['played'] and self.modes[1] and self.can_stack():
 			self.stack_counter = 2
 			self.card_counter = 2
 			for i in self.hand_btns:
-				if 'two' in self.hand_btns[i]['text']:
-					self.hand_btns[i].config(state='normal')
+				if not 'two' in self.hand_btns[i]['text']:
+					self.hand_btns[i].config(state='disabled')
 		elif self.possible_move():
 			self.new_card.config(state="disabled")
 

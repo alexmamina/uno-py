@@ -3,11 +3,14 @@ from socket import *
 from json import *
 from sys import *
 import queue
+from player import *
 from game import *
 from tkinter.simpledialog import *
+import argparse
+parser = argparse.ArgumentParser()
+parser.add_argument("--sentient", action="store_true")
+conditions = parser.parse_args()
 
-#port = argv[2]
-#host = argv[1]
 small_window = Tk()
 small_window.withdraw()
 name = askstring("Name", "What's your name?")
@@ -41,9 +44,11 @@ try:
 	'whoami']])
 	q = queue.Queue()
 	all_points = [0]*len(message['other_left'])
-	window = Game(root, q, message, sock, all_points)
+	if conditions.sentient:
+		window = Player(root, q, message, sock, all_points)
+	else:
+		window = Game(root, q, message, sock, all_points)
 	window.config_start_btns()
-
 	thread = Thread(target=window.receive)
 	thread.start()
 	window.checkPeriodically()
