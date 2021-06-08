@@ -1,5 +1,5 @@
 from game import *
-
+from time import *
 class Player(Game):
 
 	global new_deck
@@ -204,6 +204,7 @@ class Player(Game):
 					print("Received a BYE message, closing (another player decided to stop)")
 					self.quit = True
 					break
+				sleep(0.5)
 				self.make_move(msg)
 
 			except queue.Empty:
@@ -222,6 +223,7 @@ class Player(Game):
 			elif 'plus' in msg['played'] and 'taken' not in msg:
 				ctr = 2 if 'two' in msg['played'] else 4
 				for i in range(ctr):
+					sleep(0.5)
 					self.take_card()
 			else:
 				print("move here")
@@ -234,10 +236,12 @@ class Player(Game):
 			if c[0:3] in lst[0:3] or c[3:] in lst[3:] or (col in c and 'bla' in lst) or 'bla' in c:
 				print("LAST ", lst)
 				print("PLACED ", self.hand_cards[i].name)
+				sleep(0.5)
 				self.place_card(i, self.hand_btns[i])
 				found = True
 				break
 		if not found:
+			sleep(0.5)
 			self.take_card()
 			print("TAKEN")
 			ind = max(list(self.hand_cards.keys()))
@@ -245,6 +249,7 @@ class Player(Game):
 			if c[0:3] in lst[0:3] or c[3:] in lst[3:] or (col in c and 'bla' in lst) or 'bla' in c:
 				print("LAST ", lst)
 				print("PLACED ", self.hand_cards[ind].name)
+				sleep(0.5)
 				self.place_card(ind, self.hand_btns[ind])
 
 

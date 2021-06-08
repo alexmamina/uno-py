@@ -203,6 +203,7 @@ while True:
 
 		if str(0) in card and modes[0] and 'taken' not in message:
 			hand = message['hand']
+			# Get the indices of current and next players
 			i = list_of_players.index(current_player)
 			next = (i + 1) % num_players
 			swap = {'stage': ZERO,
@@ -210,8 +211,8 @@ while True:
 					'from': list_of_players[i]}
 			swap['padding'] = 'a'*(685-len(str(swap)))
 			j = dumps(swap)
-			left_cards[next] = len(hand)
-			print("{} goes to player {}".format(hand, list_of_players[next]))
+			left_cards[list_of_players[next]] = len(hand)
+			print("{}, len {}, goes to player {}".format(hand,len(hand), list_of_players[next]))
 
 			socks[list_of_players[next]].sendto(j.encode('utf-8'), addresses[list_of_players[next]])
 			other, ad = socks[list_of_players[next]].recvfrom(2000)

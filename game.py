@@ -59,7 +59,7 @@ class Game(Frame):
 								 bg='PeachPuff', width=10,height=3)
 		self.is_reversed = message['dir']
 		self.direction_l = Label(text=self.set_label_next(message),
-								 fg='black', bg='Lavender', width=10, height=7)
+								 fg='black', bg='Lavender', width=10, height=9)
 		if self.modes[1]:
 			self.stack_label.place(x=600,y=0)
 			self.direction_l.place(x=600,y=80)
@@ -567,9 +567,13 @@ class Game(Frame):
 							'from': self.identity}
 
 					self.update_btns(msg['hand'], msg['from'])
-					what_played = str(7) if msg['stage'] == SEVEN else str(0)
-					messagebox.showinfo("New cards", "A "+what_played+" was played. \nYou swapped "
-								"cards with "+self.peeps[msg['from']])
+					if msg['stage'] == SEVEN:
+						messagebox.showinfo("New cards", "A 7 was played. \nYou swapped "
+												"cards with "+self.peeps[msg['from']])
+					else:
+						messagebox.showinfo("New cards", "A 0 was played. You get cards from \n"
+									+self.peeps[msg['from']])
+
 					hand['padding'] = 'a'*(685-len(str(hand)))
 					m = dumps(hand)
 					if not 'end' in msg:
