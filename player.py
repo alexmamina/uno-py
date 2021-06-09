@@ -17,8 +17,6 @@ class Player(Game):
 				msg = self.q.get(0)
 				self.am_challenging = False
 				# Played, pile, num_left, color, player, saiduno, taken
-				#print("LOOKING AT MESSAGE")
-				#show(msg)
 				# Normal play stage
 				if msg['stage'] == GO:
 					# Set the last played card and configure the pile + card counter
@@ -49,11 +47,7 @@ class Player(Game):
 							if self.challenge:
 								self.challengeUno()
 								self.am_challenging = True
-					#elif 'said_uno' in msg.keys() and msg['said_uno'] and 1 in msg['other_left']:
-					#	uno_said = "\nUNO said!"
-					#	p = msg['from']
-						#if p != self.identity:
-						#	messagebox.showinfo("UNO", self.peeps[p]+" has only 1 card left!")
+
 					else:
 						uno_said = ""
 					self.all_nums_of_cards = msg['other_left']
@@ -100,14 +94,10 @@ class Player(Game):
 					self.new_card.config(state='normal')
 					if msg['why'] == 1:
 						self.card_counter = 2
-						#messagebox.showinfo("UNO not said!", "You forgot to click UNO, "
-						#									 "so take 2 cards!")
 						self.turn.config(text="Your turn, take 2 cards!", bg='orange')
 
 					else:
 						self.card_counter = 4
-						#messagebox.showinfo("Illegal +4!", "You can't put +4 when you have other "
-						#								   "cards, so take 4!")
 						self.turn.config(text="Your turn, take 4 cards!", bg='orange')
 					for i in range(self.card_counter):
 						self.take_card()
@@ -147,38 +137,6 @@ class Player(Game):
 						init = {'stage': INIT, "modes": m}
 						init['padding'] = 'a'*(685-len(str(init)))
 						self.sock.send(dumps(init).encode('utf-8'))
-					#	messagebox.showinfo("Win", "You won "+str(msg['points'])+" points!\n\n"
-					#															 " Total this
-					#	#															 session:
-						#	\n"+table_of_points)
-					#	ans = messagebox.askyesno("New", "Would you like to continue with a new "
-					#									 "game?")
-					#	if ans == 1:
-					#		modes = simpledialog.askstring("Modes", "Input the modes (without "
-					#												"spaces) that you'd like to
-						#												use this game"
-					#												" (or press enter for a
-						#												normal game):\n"
-					#												"1. 7/0\n"
-					#												"2. Stack +2\n"
-					#												"3. Take many cards at once")
-					#		init = {'stage': INIT, "modes": modes}
-					#		init['padding'] = 'a'*(685-len(str(init)))
-					#		self.sock.send(dumps(init).encode('utf-8'))
-					#	else:
-							# Don't want the new game
-
-					#		bye = {"stage": BYE}
-					#		bye['padding'] = 'a'*(685-len(str(bye)))
-					#		self.sock.send(dumps(bye).encode('utf-8'))
-					#		print("No new game, sending a BYE message")
-					#		self.quit = True
-					#		break
-
-					#else:
-					#	messagebox.showinfo("Win", self.peeps[msg['winner']]
-					#						+" won "+str(msg['points'])+" points!\n"+
-					#						" Total this session: \n"+table_of_points)
 
 
 				elif msg['stage'] == SEVEN or msg['stage'] == ZERO:
@@ -188,10 +146,7 @@ class Player(Game):
 							'from': self.identity}
 
 					self.update_btns(msg['hand'], msg['from'])
-					what_played = str(7) if msg['stage'] == SEVEN else str(0)
-					#messagebox.showinfo("New cards", "A "+what_played+" was played. \nYou swapped "
-					#												  "cards with "+self.peeps[
-					#												  msg['from']])
+
 					hand['padding'] = 'a'*(685-len(str(hand)))
 					m = dumps(hand)
 					if not 'end' in msg:
@@ -263,7 +218,6 @@ class Player(Game):
 				found = True
 				break
 		if not found:
-			#sleep(0.5)
 			self.take_card()
 			print("TAKEN")
 			ind = max(list(self.hand_cards.keys()))
@@ -274,7 +228,6 @@ class Player(Game):
 					print("LAST ", lst)
 					print("PLACED ", self.hand_cards[ind].name)
 					self.say_uno(self.hand_cards, ind)
-					#sleep(0.5)
 					self.place_card(ind, self.hand_btns[ind])
 			else:
 				while not (c[0:3] in lst[0:3] or c[3:] in lst[3:]
@@ -415,4 +368,3 @@ class Player(Game):
 			self.card_counter = 6
 			for i in range(self.card_counter):
 				self.take_card()
-			#messagebox.showinfo("Legal move", "The player was honest, so take 6 cards!")
