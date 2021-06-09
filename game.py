@@ -54,7 +54,7 @@ class Game(Frame):
 		self.challenge = None
 		self.valid_wild = None
 		self.stack_counter = 0
-
+		self.animated = False
 		self.stack_label = Label(text="Stack\n cards to take:\n"+str(self.stack_counter),fg='black',
 								 bg='PeachPuff', width=10,height=3)
 		self.is_reversed = message['dir']
@@ -124,9 +124,9 @@ class Game(Frame):
 		menu = Menu(menubar)
 		menu.add_command(label="Rules", command=show_rules)
 		menu.add_command(label="Points", command=self.show_points)
+		menu.add_command(label="Toggle animation", command=self.set_anim)
 		menubar.add_cascade(label="Menu", menu=menu)
 		mode = Menu(menubar)
-		# This is not working yet, so not added to the menu
 		if not any(self.modes):
 			mode.add_command(label="Regular enabled")
 		else:
@@ -170,21 +170,23 @@ class Game(Frame):
 			coords = self.get_card_placement(n,i)
 			b.place(x=coords[1], y=coords[2])
 
-
-	def move(self, origx, origy,dx, dy, i,binst, img):
-
-		if not i == 20:
-			x = origx+(dx/20)*i
-			y = origy+(dy/20)*i
+	# Move card to the pile in an animation
+	def move(self, origx, origy,dx, dy, i,binst, img, ind):
+		card = self.hand_cards[ind].name
+		ratio = 20 if abs(dx) < 250 else 40
+		time = 5 if abs(dx) < 250 else 2
+		print(ratio)
+		if not i == ratio:
+			x = origx+(dx/ratio)*i
+			y = origy+(dy/ratio)*i
 			binst.place(x=x, y=y)
-			#todo make so that elf.last only updates image at the end, not start -ANIM
 			i += 1
-			self.move_id = self.after(5,self.move, origx, origy, dx, dy, i,binst, img)
+			self.move_id = self.after(5,self.move, origx, origy, dx, dy, i,binst, img, ind)
 		else:
 			self.after_cancel(self.move_id)
 			binst.destroy()
 			self.move_id = 'ended'
-
+			self.complete_placement(card, ind)
 
 	def get_card_placement(self,num_cards, i):
 		# Returns coordinates of a button  given specific parameters
@@ -210,93 +212,96 @@ class Game(Frame):
 			self.valid_wild.place_forget()
 		card = self.hand_cards[ind].name
 		old_card = self.last['text']
-
-
 		# Same color (0:3), same symbol (3:), black
-		if (card[0:3] == old_card[0:3] or card[3:] == old_card[3:] or "bla" in card[0:3]):
-
-			#todo fix this animation, not used right now - ANIM
+		if card[0:3] == old_card[0:3] or card[3:] == old_card[3:] or "bla" in card[0:3]:
 			dest_x = self.last.winfo_x()
 			dest_y = self.last.winfo_y()
 			orig_x = binst.winfo_x()
 			orig_y = binst.winfo_y()
 			dx = dest_x - orig_x
 			dy = dest_y - orig_y
-			#self.move_id = self.move(orig_x, orig_y,dx, dy, 0, binst, self.last.image)
-			binst.destroy()
-			if 'reverse' in card:
-				self.is_reversed = not self.is_reversed
-
-			if 'plusfour' in card:
-				is_valid_plus = self.can_put_plusfour()
-
-			# Changes the black card to black with a color to show which one to play next
-			if "bla" in card[0:3]:
-				picker = Picker(self, "New color", "Which one?", ['Red','Green','Blue',
-																	 'Yellow'])
-				new_color = picker.result
-				new_color = new_color.lower()[0:3]
-				# Get the colored black cards from the deck for ease of transfer
-				if "plus" in card:
-					new_color += "plus"
-					card_col = new_color+"four.png"
-					photocard = new_deck.get_special(new_color)
-				else:
-					new_color += "black"
-					card_col = new_color+"black.png"
-					photocard = new_deck.get_special(new_color)
-			else: # Not a black card
-				photocard = self.hand_cards[ind].card_pic
-				card_col = card
-			img = ImageTk.PhotoImage(photocard)
-			self.last.config(image=img, text=card_col)
-			self.last.image = img
-			self.last.text = card_col
-			# Remove card from 'hand', update label with number
-			self.hand_cards.pop(ind)
-			self.hand_btns.pop(ind)
-			self.all_nums_of_cards[self.identity] -= 1
-			text = self.label_for_cards_left(self.all_nums_of_cards)
-			self.cards_left.config(text=text)
-			ctr = 0
-			for i in self.hand_btns.keys():
-				# Move all buttons
-				b = self.hand_btns[i]
-				coords = self.get_card_placement(len(self.hand_btns),ctr)
-				b.place(x=coords[1], y=coords[2])
-				ctr += 1
-
-			data_to_send = {
-				"played" : card,
-				"pile" : self.pile,
-				"stage" : GO,
-				"color" : card_col,
-				"num_left" : len(self.hand_cards)
-			}
-			if 'plusfour' in card:
-				data_to_send['wild'] = is_valid_plus
-			# If placed plustwo in the mode, send the counter
-			elif 'two' in card and self.modes[1]:
-				data_to_send['counter'] = self.stack_counter + 2
-				self.stack_counter = 0
-			if str(7) in card and self.modes[0] and len(self.hand_cards) > 0:
-				players = [x for x in self.peeps if not self.peeps.index(x) == self.identity]
-				swap = Picker(self,"Swap", "Who would you like to swap your cards with?",
-					  players)
-				data_to_send['swapwith'] = self.peeps.index(swap.result)
-				#data_to_send['stage'] = SEVEN
-				data_to_send['hand'] = [self.hand_cards[c].name for c in self.hand_cards]
-			if str(0) in card and self.modes[0] and len(self.hand_cards) > 0:
-				print("Zero")
-				data_to_send['hand'] = [self.hand_cards[c].name for c in self.hand_cards]
-
-			if self.uno:
-				data_to_send['said_uno'] = True
-			# Send all the information either in progress of the game, or to end it
-			if len(self.hand_cards) > 0:
-				self.sendInfo(data_to_send)
+			# If animation is turned on, move, else place on pile straight away
+			if self.animated:
+				self.move_id = self.move(orig_x, orig_y,dx, dy, 0, binst, self.last.image, ind)
 			else:
-				self.sendFinal(data_to_send)
+				binst.destroy()
+				self.complete_placement(card, ind)
+
+	# Set new card on pile, send information, update hand - after animation or straight away
+	def complete_placement(self, card, ind):
+		if 'reverse' in card:
+			self.is_reversed = not self.is_reversed
+
+		if 'plusfour' in card:
+			is_valid_plus = self.can_put_plusfour()
+
+		# Changes the black card to black with a color to show which one to play next
+		if "bla" in card[0:3]:
+			picker = Picker(self, "New color", "Which one?", ['Red','Green','Blue',
+															  'Yellow'])
+			new_color = picker.result
+			new_color = new_color.lower()[0:3]
+			# Get the colored black cards from the deck for ease of transfer
+			if "plus" in card:
+				new_color += "plus"
+				card_col = new_color+"four.png"
+				photocard = new_deck.get_special(new_color)
+			else:
+				new_color += "black"
+				card_col = new_color+"black.png"
+				photocard = new_deck.get_special(new_color)
+		else: # Not a black card
+			photocard = self.hand_cards[ind].card_pic
+			card_col = card
+		img = ImageTk.PhotoImage(photocard)
+		self.last.config(image=img, text=card_col)
+		self.last.image = img
+		self.last.text = card_col
+		# Remove card from 'hand', update label with number
+		self.hand_cards.pop(ind)
+		self.hand_btns.pop(ind)
+		self.all_nums_of_cards[self.identity] -= 1
+		text = self.label_for_cards_left(self.all_nums_of_cards)
+		self.cards_left.config(text=text)
+		ctr = 0
+		for i in self.hand_btns.keys():
+			# Move all buttons
+			b = self.hand_btns[i]
+			coords = self.get_card_placement(len(self.hand_btns),ctr)
+			b.place(x=coords[1], y=coords[2])
+			ctr += 1
+
+		data_to_send = {
+			"played" : card,
+			"pile" : self.pile,
+			"stage" : GO,
+			"color" : card_col,
+			"num_left" : len(self.hand_cards)
+		}
+		if 'plusfour' in card:
+			data_to_send['wild'] = is_valid_plus
+		# If placed plustwo in the mode, send the counter
+		elif 'two' in card and self.modes[1]:
+			data_to_send['counter'] = self.stack_counter + 2
+			self.stack_counter = 0
+		if str(7) in card and self.modes[0] and len(self.hand_cards) > 0:
+			players = [x for x in self.peeps if not self.peeps.index(x) == self.identity]
+			swap = Picker(self,"Swap", "Who would you like to swap your cards with?",
+						  players)
+			data_to_send['swapwith'] = self.peeps.index(swap.result)
+			#data_to_send['stage'] = SEVEN
+			data_to_send['hand'] = [self.hand_cards[c].name for c in self.hand_cards]
+		if str(0) in card and self.modes[0] and len(self.hand_cards) > 0:
+			print("Zero")
+			data_to_send['hand'] = [self.hand_cards[c].name for c in self.hand_cards]
+
+		if self.uno:
+			data_to_send['said_uno'] = True
+		# Send all the information either in progress of the game, or to end it
+		if len(self.hand_cards) > 0:
+			self.sendInfo(data_to_send)
+		else:
+			self.sendFinal(data_to_send)
 
 	def take_card(self):
 		global new_deck, message
@@ -876,7 +881,8 @@ class Game(Frame):
 		elif self.possible_move():
 			self.new_card.config(state="disabled")
 
-
+	def set_anim(self):
+		self.animated = not self.animated
 
 	def close_window(self):
 		try:

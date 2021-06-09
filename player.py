@@ -250,6 +250,7 @@ class Player(Game):
 		found = False
 		#todo maximise points when looking for card
 		#todo what if player starts
+		#todo doesn't react to taking +4 when given green +4
 		for i in n:
 			c = self.hand_cards[i].name
 			if c[0:3] in lst[0:3] or c[3:] in lst[3:] or (col[0:3] in c and 'bla' in lst) or 'bla' \

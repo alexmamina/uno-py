@@ -43,6 +43,6 @@ class Picker(Toplevel):
 		self.result = optionSelected
 		self.destroy()
 	def cancel(self):
-		self.result = 'red'
+		self.result = self.options[0]
 		self.destroy()
 
