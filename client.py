@@ -10,20 +10,23 @@ import argparse
 parser = argparse.ArgumentParser()
 parser.add_argument("--sentient", action="store_true")
 conditions = parser.parse_args()
+if not conditions.sentient:
+	small_window = Tk()
+	small_window.withdraw()
+	name = askstring("Name", "What's your name?")
+	address = askstring("Address", "Paste the \"CONNECT TO\" information you see on the "
+													   "server:")
+	small_window.destroy()
+	if address is not None and len(address) > 0:
+		host, port = address.split()
+	else:
+		host, port = 'localhost', 44444
 
-small_window = Tk()
-small_window.withdraw()
-name = askstring("Name", "What's your name?")
-address = askstring("Address", "Paste the \"CONNECT TO\" information you see on the "
-												   "server:")
-small_window.destroy()
-if address is not None and len(address) > 0:
-	host, port = address.split()
+	if name is None or len(name) == 0:
+		name = 'default'+str(randint(0,1000))
 else:
 	host, port = 'localhost', 44444
-
-if name is None or len(name) == 0:
-	name = 'default'+str(randint(0,1000))
+	name = "Pudding"
 root = Tk()
 root.configure(bg='white')
 root.geometry("700x553+250+120")
@@ -46,6 +49,7 @@ try:
 	all_points = [0]*len(message['other_left'])
 	if conditions.sentient:
 		window = Player(root, q, message, sock, all_points)
+		#root.withdraw()
 	else:
 		window = Game(root, q, message, sock, all_points)
 	window.config_start_btns()

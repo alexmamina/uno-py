@@ -8,12 +8,14 @@ class Player(Game):
 	def __init__(self,master, q, message, sock, all_points):
 		super().__init__(master,q,message, sock, all_points)
 		self.aware = True
+		self.am_challenging = False
 		print(self.aware)
 
 	def incoming(self):
 		while self.q.qsize():
 			try:
 				msg = self.q.get(0)
+				self.am_challenging = False
 				# Played, pile, num_left, color, player, saiduno, taken
 				#print("LOOKING AT MESSAGE")
 				#show(msg)
@@ -46,6 +48,7 @@ class Player(Game):
 							self.challenge.place(x=30, y=120)
 							if self.challenge:
 								self.challengeUno()
+								self.am_challenging = True
 					#elif 'said_uno' in msg.keys() and msg['said_uno'] and 1 in msg['other_left']:
 					#	uno_said = "\nUNO said!"
 					#	p = msg['from']
@@ -73,7 +76,7 @@ class Player(Game):
 							prob_of_illegal = randint(0,100)
 							if self.valid_wild and prob_of_illegal > 90:
 								self.challenge_plus(msg['wild'])
-								#todo challenge probably needs to wait after to get the new msg
+								self.am_challenging = True
 						# No moves possible, or move possible but need to take cards
 						if not self.possible_move() or (self.card_counter == 2
 														or self.card_counter == 4):
@@ -140,7 +143,8 @@ class Player(Game):
 						table_of_points += "\n"+self.peeps[i]+": "+str(msg['total'][i])+" points\n"
 					if msg['winner'] == self.identity:
 						print("New game")
-						init = {'stage': INIT, "modes": [False, False, False]}
+						m = [str(i+1) for i in range(3) if self.modes[i]]
+						init = {'stage': INIT, "modes": m}
 						init['padding'] = 'a'*(685-len(str(init)))
 						self.sock.send(dumps(init).encode('utf-8'))
 					#	messagebox.showinfo("Win", "You won "+str(msg['points'])+" points!\n\n"
@@ -214,44 +218,82 @@ class Player(Game):
 			self.close_window()
 
 	def make_move(self, msg):
-		#print(msg.keys())
-		if msg['stage'] == GO:
-			print(msg['played'])
+		if msg['stage'] == GO and not self.am_challenging:
+			print("Played: ", msg['played'])
 			if ('taken' in msg or 'plus' not in msg['played']) \
 					and msg['player'] == 1:
 				self.find_suitable_card(msg['played'], msg['color'])
 			elif 'plus' in msg['played'] and 'taken' not in msg:
-				ctr = 2 if 'two' in msg['played'] else 4
-				for i in range(ctr):
-					sleep(0.5)
-					self.take_card()
+				if self.stack_counter == 0:
+					ctr = 2 if 'two' in msg['played'] else 4
+				else:
+					ctr = self.stack_counter
+				sleep(0.5)
+				if not self.can_stack():
+					for i in range(ctr):
+						self.take_card()
+				else:
+					self.stack_plus_two()
 			else:
 				print("move here")
+
+	def stack_plus_two(self):
+		n = list(self.hand_btns.keys())
+		for i in n:
+			if 'two' in self.hand_cards[i].name:
+				self.say_uno(n, i)
+				self.place_card(i, self.hand_btns[i])
+				break
 
 	def find_suitable_card(self, lst, col):
 		n = list(self.hand_btns.keys())
 		found = False
+		#todo maximise points when looking for card
+		#todo what if player starts
 		for i in n:
 			c = self.hand_cards[i].name
-			if c[0:3] in lst[0:3] or c[3:] in lst[3:] or (col in c and 'bla' in lst) or 'bla' in c:
+			if c[0:3] in lst[0:3] or c[3:] in lst[3:] or (col[0:3] in c and 'bla' in lst) or 'bla' \
+					in c:
 				print("LAST ", lst)
 				print("PLACED ", self.hand_cards[i].name)
-				sleep(0.5)
+				#sleep(0.5)
+				self.say_uno(n, i)
 				self.place_card(i, self.hand_btns[i])
 				found = True
 				break
 		if not found:
-			sleep(0.5)
+			#sleep(0.5)
 			self.take_card()
 			print("TAKEN")
 			ind = max(list(self.hand_cards.keys()))
 			c = self.hand_cards[ind].name
-			if c[0:3] in lst[0:3] or c[3:] in lst[3:] or (col in c and 'bla' in lst) or 'bla' in c:
-				print("LAST ", lst)
-				print("PLACED ", self.hand_cards[ind].name)
-				sleep(0.5)
+			if not self.modes[2]:
+				if c[0:3] in lst[0:3] or c[3:] in lst[3:] or (col[0:3] in c and 'bla' in lst) \
+						or 'bla' in c:
+					print("LAST ", lst)
+					print("PLACED ", self.hand_cards[ind].name)
+					self.say_uno(self.hand_cards, ind)
+					#sleep(0.5)
+					self.place_card(ind, self.hand_btns[ind])
+			else:
+				while not (c[0:3] in lst[0:3] or c[3:] in lst[3:]
+						   or (col[0:3] in c and 'bla' in lst) or 'bla' in c):
+					self.take_card()
+					print("TAKEN")
+					ind = max(list(self.hand_cards.keys()))
+					c = self.hand_cards[ind].name
+				self.say_uno(self.hand_cards, ind)
 				self.place_card(ind, self.hand_btns[ind])
 
+
+	def say_uno(self, n, i):
+		if len(n) == 2 and 'stop' in self.hand_cards[i].name:
+			sleep(0.3)
+			self.one_card()
+		elif len(n) == 2:
+			r = randint(0,100)
+			if r <= 95:
+				self.one_card()
 
 	def start_new(self, message):
 
@@ -279,18 +321,9 @@ class Player(Game):
 		card = self.hand_cards[ind].name
 		old_card = self.last['text']
 
-
 		# Same color (0:3), same symbol (3:), black
 		if (card[0:3] == old_card[0:3] or card[3:] == old_card[3:] or "bla" in card[0:3]):
 
-			#todo fix this animation, not used right now - ANIM
-			dest_x = self.last.winfo_x()
-			dest_y = self.last.winfo_y()
-			orig_x = binst.winfo_x()
-			orig_y = binst.winfo_y()
-			dx = dest_x - orig_x
-			dy = dest_y - orig_y
-			#self.move_id = self.move(orig_x, orig_y,dx, dy, 0, binst, self.last.image)
 			binst.destroy()
 			if 'reverse' in card:
 				self.is_reversed = not self.is_reversed
@@ -306,7 +339,6 @@ class Player(Game):
 					if 'bla' not in temp_name:
 						colors[temp_name[0:3]] += 1
 				new_color = max(colors, key=lambda key: colors[key])
-				print(new_color)
 				new_color = new_color.lower()[0:3]
 				# Get the colored black cards from the deck for ease of transfer
 				if "plus" in card:
@@ -353,9 +385,9 @@ class Player(Game):
 				self.stack_counter = 0
 			if str(7) in card and self.modes[0] and len(self.hand_cards) > 0:
 				players = [x for x in self.peeps if not self.peeps.index(x) == self.identity]
-				swap = Picker(self,"Swap", "Who would you like to swap your cards with?",
-							  players)
-				data_to_send['swapwith'] = self.peeps.index(swap.result)
+				#swap = Picker(self,"Swap", "Who would you like to swap your cards with?",
+				#			  players)
+				data_to_send['swapwith'] = self.peeps.index(players[0])
 				#data_to_send['stage'] = SEVEN
 				data_to_send['hand'] = [self.hand_cards[c].name for c in self.hand_cards]
 			if str(0) in card and self.modes[0] and len(self.hand_cards) > 0:
