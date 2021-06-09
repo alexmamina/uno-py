@@ -138,7 +138,6 @@ class Player(Game):
 						init['padding'] = 'a'*(685-len(str(init)))
 						self.sock.send(dumps(init).encode('utf-8'))
 
-
 				elif msg['stage'] == SEVEN or msg['stage'] == ZERO:
 					# Show hand, say who from, send back own hand
 					hand = {'stage': msg['stage'],
@@ -204,6 +203,7 @@ class Player(Game):
 		n = list(self.hand_btns.keys())
 		found = False
 		#todo maximise points when looking for card
+			# for all: get points associated; pick all possible cards; out of those max points
 		#todo what if player starts
 		#todo doesn't react to taking +4 when given green +4
 		for i in n:
@@ -239,7 +239,6 @@ class Player(Game):
 				self.say_uno(self.hand_cards, ind)
 				self.place_card(ind, self.hand_btns[ind])
 
-
 	def say_uno(self, n, i):
 		if len(n) == 2 and 'stop' in self.hand_cards[i].name:
 			sleep(0.3)
@@ -264,8 +263,6 @@ class Player(Game):
 		new.config_start_btns()
 		new.checkPeriodically()
 		new.mainloop()
-
-
 
 	def place_card(self,ind, binst):
 		if self.challenge:
@@ -355,8 +352,6 @@ class Player(Game):
 				self.sendInfo(data_to_send)
 			else:
 				self.sendFinal(data_to_send)
-
-
 
 	def challenge_plus(self, is_valid):
 		data = {'stage': CHALLENGE, 'why': 4}
