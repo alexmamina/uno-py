@@ -9,7 +9,9 @@ class Player(Game):
 		super().__init__(master,q,message, sock, all_points)
 		self.aware = True
 		self.am_challenging = False
-		print(self.aware)
+		if message['player'] == 1:
+			print("First move")
+			self.after(2000,self.make_move(message))
 
 	def incoming(self):
 		while self.q.qsize():
@@ -162,8 +164,9 @@ class Player(Game):
 					print("Received a BYE message, closing (another player decided to stop)")
 					self.quit = True
 					break
-				sleep(0.5)
-				self.make_move(msg)
+				if not self.quit:
+					sleep(0.5)
+					self.make_move(msg)
 
 			except queue.Empty:
 				pass
@@ -172,8 +175,11 @@ class Player(Game):
 			self.close_window()
 
 	def make_move(self, msg):
-		if msg['stage'] == GO and not self.am_challenging:
-			print("Played: ", msg['played'])
+		if (msg['stage'] == GO or msg['stage'] == INIT) and not self.am_challenging \
+				and not self.quit:
+			#print("Played: ", msg['played'])
+			if msg['stage'] == INIT:
+				sleep(1)
 			if ('taken' in msg or 'plus' not in msg['played']) \
 					and msg['player'] == 1:
 				self.find_suitable_card(msg['played'], msg['color'])
@@ -183,13 +189,13 @@ class Player(Game):
 				else:
 					ctr = self.stack_counter
 				sleep(0.5)
-				if not self.can_stack():
+				if not self.can_stack() or 'four' in msg['played']:
 					for i in range(ctr):
 						self.take_card()
 				else:
 					self.stack_plus_two()
-			else:
-				print("move here")
+			#else:
+				#print("move here")
 
 	def stack_plus_two(self):
 		n = list(self.hand_btns.keys())
@@ -204,8 +210,6 @@ class Player(Game):
 		found = False
 		#todo maximise points when looking for card
 			# for all: get points associated; pick all possible cards; out of those max points
-		#todo what if player starts
-		#todo doesn't react to taking +4 when given green +4
 		for i in n:
 			c = self.hand_cards[i].name
 			if c[0:3] in lst[0:3] or c[3:] in lst[3:] or (col[0:3] in c and 'bla' in lst) or 'bla' \
@@ -254,13 +258,14 @@ class Player(Game):
 		self.master.destroy()
 
 		root = Tk()
+		root.withdraw()
 		root.configure(bg='white')
 		root.geometry("700x553+250+120")
 		root.title("UNO - player "+ str(message['whoami'])+" - "+message['peeps'][message[
 			'whoami']])
 		root.protocol("WM_DELETE_WINDOW", self.close_window)
 		new = Player(root, self.q, message, self.sock, self.all_points)
-		new.config_start_btns()
+		new.config_start_btns(message)
 		new.checkPeriodically()
 		new.mainloop()
 

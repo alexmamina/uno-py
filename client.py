@@ -49,10 +49,10 @@ try:
 	all_points = [0]*len(message['other_left'])
 	if conditions.sentient:
 		window = Player(root, q, message, sock, all_points)
-		#root.withdraw()
+		root.withdraw()
 	else:
 		window = Game(root, q, message, sock, all_points)
-	window.config_start_btns()
+	window.config_start_btns(message)
 	thread = Thread(target=window.receive)
 	thread.start()
 	window.checkPeriodically()

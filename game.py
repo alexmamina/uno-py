@@ -855,11 +855,11 @@ class Game(Frame):
 			'whoami']])
 		root.protocol("WM_DELETE_WINDOW", self.close_window)
 		new = Game(root, self.q, message, self.sock, self.all_points)
-		new.config_start_btns()
+		new.config_start_btns(message)
 		new.checkPeriodically()
 		new.mainloop()
 
-	def config_start_btns(self):
+	def config_start_btns(self, message):
 		if message['player'] == 0:
 			self.new_card.config(state="disabled")
 			self.uno = False
@@ -898,7 +898,7 @@ class Game(Frame):
 		self.master.destroy()
 		print("Bye")
 
-
+######################################### SHOW FUNCTIONS #######################################
 def show(m):
 	if m['stage'] == GO:
 		print("PLAYED: ", m['played'])
