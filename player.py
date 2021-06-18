@@ -9,6 +9,7 @@ class Player(Game):
 		super().__init__(master,q,message, sock, all_points)
 		self.aware = True
 		self.am_challenging = False
+		self.optimal = randint(0,100)
 		if message['player'] == 1:
 			print("First move")
 			self.after(2000,self.make_move(message))
@@ -182,7 +183,7 @@ class Player(Game):
 				sleep(1)
 			if ('taken' in msg or 'plus' not in msg['played']) \
 					and msg['player'] == 1:
-				self.find_suitable_card(msg['played'], msg['color'])
+				self.take_or_place_card(msg['played'], msg['color'])
 			elif 'plus' in msg['played'] and 'taken' not in msg:
 				if self.stack_counter == 0:
 					ctr = 2 if 'two' in msg['played'] else 4
@@ -205,22 +206,37 @@ class Player(Game):
 				self.place_card(i, self.hand_btns[i])
 				break
 
-	def find_suitable_card(self, lst, col):
-		n = list(self.hand_btns.keys())
+	def take_or_place_card(self, lst, col):
 		found = False
-		#todo maximise points when looking for card
-			# for all: get points associated; pick all possible cards; out of those max points
-		for i in n:
-			c = self.hand_cards[i].name
-			if c[0:3] in lst[0:3] or c[3:] in lst[3:] or (col[0:3] in c and 'bla' in lst) or 'bla' \
-					in c:
-				print("LAST ", lst)
-				print("PLACED ", self.hand_cards[i].name)
-				#sleep(0.5)
-				self.say_uno(n, i)
-				self.place_card(i, self.hand_btns[i])
-				found = True
-				break
+		n = list(self.hand_btns.keys())
+		if self.optimal > 66:
+			if 'stop' in lst:
+				for i in n:
+					if 'stop' in self.hand_cards[i].name:
+						self.say_uno(n, i)
+						self.place_card(i, self.hand_btns[i])
+						found = True
+						break
+			if not found:
+				i = self.find_suitable_card(lst, col)
+				if not i is None:
+					print("LAST ", lst)
+					print("PLACED ", self.hand_cards[i].name)
+					self.say_uno(n, i)
+					self.place_card(i, self.hand_btns[i])
+					found = True
+		else:
+			for i in n:
+				c = self.hand_cards[i].name
+				if c[0:3] in lst[0:3] or c[3:] in lst[3:] or (col[0:3] in c and 'bla' in lst) or 'bla' \
+						in c:
+					print("LAST ", lst)
+					print("PLACED ", self.hand_cards[i].name)
+					#sleep(0.5)
+					self.say_uno(n, i)
+					self.place_card(i, self.hand_btns[i])
+					found = True
+					break
 		if not found:
 			self.take_card()
 			print("TAKEN")
@@ -242,6 +258,37 @@ class Player(Game):
 					c = self.hand_cards[ind].name
 				self.say_uno(self.hand_cards, ind)
 				self.place_card(ind, self.hand_btns[ind])
+
+	def find_suitable_card(self, lst, col):
+		general_index = None
+		n = list(self.hand_btns.keys())
+		valid_cards = {}
+		for i in n:
+			c = self.hand_cards[i].name
+			if c[0:3] in lst[0:3] or c[3:] in lst[3:] or (col[0:3] in c and 'bla' in lst) or 'bla' \
+					in c:
+				if re.search(r'\d+', c) is not None:
+					valid_cards[c] = int(re.search(r'\d+', c).group())
+				else:
+					valid_cards[c] = 50 if 'bla' in c else 20
+		remove_plus_four_probability = randint(0, 100)
+		print(valid_cards)
+		if remove_plus_four_probability > 40 and len(valid_cards) > 1:
+			for i in list(valid_cards.keys()):
+				if 'bla' in i:
+					valid_cards.pop(i)
+		print(valid_cards)
+		if len(valid_cards) > 0:
+			index = list(valid_cards.values()).index(max(valid_cards.values()))
+			#print(max(valid_cards.values()))
+			#print(index)
+			new_card = list(valid_cards.keys())[index]
+			#print(new_card)
+			cards = [x.name for x in self.hand_cards.values()]
+			ind = cards.index(new_card)
+			general_index = list(self.hand_cards.keys())[ind]
+			#print(general_index)
+		return general_index
 
 	def say_uno(self, n, i):
 		if len(n) == 2 and 'stop' in self.hand_cards[i].name:

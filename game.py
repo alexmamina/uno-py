@@ -21,8 +21,6 @@ from tkinter.simpledialog import *
 import copy
 from tkmacosx import Button as but
 
-#port = argv[1]
-
 
 class Game(Frame):
 	global new_deck
@@ -104,6 +102,11 @@ class Game(Frame):
 			self.turn = Label(text= "Wait for other players!",
 							  fg='white', bg='red', width=30, height=1)
 		self.turn.place(x=300,y=0)
+		self.taken_label = Label(text= "",
+								 fg='blue', bg='white', width=30, height=1)
+		self.taken_label.place(x=300,y=20)
+
+
 
 	# Create a hand of 7 cards from pile from message
 	def deal_cards(self, message):
@@ -175,7 +178,6 @@ class Game(Frame):
 		card = self.hand_cards[ind].name
 		ratio = 20 if abs(dx) < 250 else 40
 		time = 5 if abs(dx) < 250 else 2
-		print(ratio)
 		if not i == ratio:
 			x = origx+(dx/ratio)*i
 			y = origy+(dy/ratio)*i
@@ -439,10 +441,13 @@ class Game(Frame):
 							self.stack_label.config(text='Stack\n cards to take:\n'+str(
 								self.stack_counter))
 							print("CTR: ",self.stack_counter)
+						self.taken_label.config(text='')
 					elif 'taken' in msg:
 						self.stack_counter = 0
 						self.stack_label.config(text='Stack\n cards to take:\n'+str(0))
-
+						self.taken_label.config(text='Other player took cards!')
+					else:
+						self.taken_label.config(text='')
 					# Check if other player said UNO; place the challenge button if not said
 					# Update label to show that
 					if 'said_uno' in msg.keys() and not msg['said_uno']:
@@ -683,6 +688,7 @@ class Game(Frame):
 		for i in self.hand_btns:
 			self.hand_btns[i].config(state='disabled')
 		self.turn.config(text="Wait for other players!", bg='red')
+		self.taken_label.config(text='')
 		print("Not your turn anymore")
 
 	# Notify opponent that they forgot to say UNO; when clicking button
@@ -725,6 +731,7 @@ class Game(Frame):
 		self.new_card.config(state="disabled")
 		self.uno = False
 		self.card_counter = 1 if not self.modes[2] else 500
+		self.taken_label.config(text='')
 		#self.uno_but.config(fg="red", bg="white", state='disabled')
 		#self.uno_but.place_forget()
 		self.turn.config(text="Waiting for the results!",bg='white',fg='blue')

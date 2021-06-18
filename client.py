@@ -13,9 +13,9 @@ conditions = parser.parse_args()
 if not conditions.sentient:
 	small_window = Tk()
 	small_window.withdraw()
-	name = askstring("Name", "What's your name?")
 	address = askstring("Address", "Paste the \"CONNECT TO\" information you see on the "
 													   "server:")
+	name = askstring("Name", "What's your name?")
 	small_window.destroy()
 	if address is not None and len(address) > 0:
 		host, port = address.split()
@@ -23,7 +23,7 @@ if not conditions.sentient:
 		host, port = 'localhost', 44444
 
 	if name is None or len(name) == 0:
-		name = 'default'+str(randint(0,1000))
+		name = 'default'+str(randint(0, 1000))
 else:
 	host, port = 'localhost', 44444
 	name = "Pudding"
