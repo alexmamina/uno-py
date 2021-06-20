@@ -9,6 +9,7 @@ class Player(Game):
 		super().__init__(master,q,message, sock, all_points)
 		self.aware = True
 		self.am_challenging = False
+		self.stack_counter = 0
 		self.optimal = randint(0,100)
 		if message['player'] == 1:
 			print("First move")
@@ -183,18 +184,23 @@ class Player(Game):
 				sleep(1)
 			if ('taken' in msg or 'plus' not in msg['played']) \
 					and msg['player'] == 1:
-				self.take_or_place_card(msg['played'], msg['color'])
+				if not self.quit:
+					self.take_or_place_card(msg['played'], msg['color'])
 			elif 'plus' in msg['played'] and 'taken' not in msg:
 				if self.stack_counter == 0:
 					ctr = 2 if 'two' in msg['played'] else 4
 				else:
 					ctr = self.stack_counter
+				print("To take: ", ctr)
 				sleep(0.5)
-				if not self.can_stack() or 'four' in msg['played']:
-					for i in range(ctr):
-						self.take_card()
-				else:
-					self.stack_plus_two()
+				if not self.quit:
+					if (not self.can_stack() and self.modes[1])\
+							or not self.modes[1] \
+							or 'four' in msg['played']:
+						for i in range(ctr):
+							self.take_card()
+					else:
+						self.stack_plus_two()
 			#else:
 				#print("move here")
 
@@ -209,55 +215,56 @@ class Player(Game):
 	def take_or_place_card(self, lst, col):
 		found = False
 		n = list(self.hand_btns.keys())
-		if self.optimal > 66:
-			if 'stop' in lst:
+		if not self.quit:
+			if self.optimal > 66:
+				if 'stop' in lst:
+					for i in n:
+						if 'stop' in self.hand_cards[i].name:
+							self.say_uno(n, i)
+							self.place_card(i, self.hand_btns[i])
+							found = True
+							break
+				if not found:
+					i = self.find_suitable_card(lst, col)
+					if not i is None:
+						print("LAST ", lst)
+						print("PLACED ", self.hand_cards[i].name)
+						self.say_uno(n, i)
+						self.place_card(i, self.hand_btns[i])
+						found = True
+			else:
 				for i in n:
-					if 'stop' in self.hand_cards[i].name:
+					c = self.hand_cards[i].name
+					if c[0:3] in lst[0:3] or c[3:] in lst[3:] or (col[0:3] in c and 'bla' in lst) or 'bla' \
+							in c:
+						print("LAST ", lst)
+						print("PLACED ", self.hand_cards[i].name)
+						#sleep(0.5)
 						self.say_uno(n, i)
 						self.place_card(i, self.hand_btns[i])
 						found = True
 						break
 			if not found:
-				i = self.find_suitable_card(lst, col)
-				if not i is None:
-					print("LAST ", lst)
-					print("PLACED ", self.hand_cards[i].name)
-					self.say_uno(n, i)
-					self.place_card(i, self.hand_btns[i])
-					found = True
-		else:
-			for i in n:
-				c = self.hand_cards[i].name
-				if c[0:3] in lst[0:3] or c[3:] in lst[3:] or (col[0:3] in c and 'bla' in lst) or 'bla' \
-						in c:
-					print("LAST ", lst)
-					print("PLACED ", self.hand_cards[i].name)
-					#sleep(0.5)
-					self.say_uno(n, i)
-					self.place_card(i, self.hand_btns[i])
-					found = True
-					break
-		if not found:
-			self.take_card()
-			print("TAKEN")
-			ind = max(list(self.hand_cards.keys()))
-			c = self.hand_cards[ind].name
-			if not self.modes[2]:
-				if c[0:3] in lst[0:3] or c[3:] in lst[3:] or (col[0:3] in c and 'bla' in lst) \
-						or 'bla' in c:
-					print("LAST ", lst)
-					print("PLACED ", self.hand_cards[ind].name)
+				self.take_card()
+				print("TAKEN")
+				ind = max(list(self.hand_cards.keys()))
+				c = self.hand_cards[ind].name
+				if not self.modes[2]:
+					if c[0:3] in lst[0:3] or c[3:] in lst[3:] or (col[0:3] in c and 'bla' in lst) \
+							or 'bla' in c:
+						print("LAST ", lst)
+						print("PLACED ", self.hand_cards[ind].name)
+						self.say_uno(self.hand_cards, ind)
+						self.place_card(ind, self.hand_btns[ind])
+				else:
+					while not (c[0:3] in lst[0:3] or c[3:] in lst[3:]
+							   or (col[0:3] in c and 'bla' in lst) or 'bla' in c):
+						self.take_card()
+						print("TAKEN")
+						ind = max(list(self.hand_cards.keys()))
+						c = self.hand_cards[ind].name
 					self.say_uno(self.hand_cards, ind)
 					self.place_card(ind, self.hand_btns[ind])
-			else:
-				while not (c[0:3] in lst[0:3] or c[3:] in lst[3:]
-						   or (col[0:3] in c and 'bla' in lst) or 'bla' in c):
-					self.take_card()
-					print("TAKEN")
-					ind = max(list(self.hand_cards.keys()))
-					c = self.hand_cards[ind].name
-				self.say_uno(self.hand_cards, ind)
-				self.place_card(ind, self.hand_btns[ind])
 
 	def find_suitable_card(self, lst, col):
 		general_index = None
@@ -273,7 +280,7 @@ class Player(Game):
 					valid_cards[c] = 50 if 'bla' in c else 20
 		remove_plus_four_probability = randint(0, 100)
 		print(valid_cards)
-		if remove_plus_four_probability > 40 and len(valid_cards) > 1:
+		if remove_plus_four_probability > 20 and len(valid_cards) > 1:
 			for i in list(valid_cards.keys()):
 				if 'bla' in i:
 					valid_cards.pop(i)
@@ -323,87 +330,87 @@ class Player(Game):
 			self.valid_wild.place_forget()
 		card = self.hand_cards[ind].name
 		old_card = self.last['text']
+		if not self.quit:
+			# Same color (0:3), same symbol (3:), black
+			if (card[0:3] == old_card[0:3] or card[3:] == old_card[3:] or "bla" in card[0:3]):
 
-		# Same color (0:3), same symbol (3:), black
-		if (card[0:3] == old_card[0:3] or card[3:] == old_card[3:] or "bla" in card[0:3]):
+				binst.destroy()
+				if 'reverse' in card:
+					self.is_reversed = not self.is_reversed
 
-			binst.destroy()
-			if 'reverse' in card:
-				self.is_reversed = not self.is_reversed
+				if 'plusfour' in card:
+					is_valid_plus = self.can_put_plusfour()
 
-			if 'plusfour' in card:
-				is_valid_plus = self.can_put_plusfour()
+				# Changes the black card to black with a color to show which one to play next
+				if "bla" in card[0:3]:
+					colors = {'red':0, 'blu':0, 'gre':0, 'yel':0}
+					for i in self.hand_cards:
+						temp_name = self.hand_cards[i].name
+						if 'bla' not in temp_name:
+							colors[temp_name[0:3]] += 1
+					new_color = max(colors, key=lambda key: colors[key])
+					new_color = new_color.lower()[0:3]
+					# Get the colored black cards from the deck for ease of transfer
+					if "plus" in card:
+						new_color += "plus"
+						card_col = new_color+"four.png"
+						photocard = new_deck.get_special(new_color)
+					else:
+						new_color += "black"
+						card_col = new_color+"black.png"
+						photocard = new_deck.get_special(new_color)
+				else: # Not a black card
+					photocard = self.hand_cards[ind].card_pic
+					card_col = card
+				img = ImageTk.PhotoImage(photocard)
+				self.last.config(image=img, text=card_col)
+				self.last.image = img
+				self.last.text = card_col
+				# Remove card from 'hand', update label with number
+				self.hand_cards.pop(ind)
+				self.hand_btns.pop(ind)
+				self.all_nums_of_cards[self.identity] -= 1
+				text = self.label_for_cards_left(self.all_nums_of_cards)
+				self.cards_left.config(text=text)
+				ctr = 0
+				for i in self.hand_btns.keys():
+					# Move all buttons
+					b = self.hand_btns[i]
+					coords = self.get_card_placement(len(self.hand_btns),ctr)
+					b.place(x=coords[1], y=coords[2])
+					ctr += 1
 
-			# Changes the black card to black with a color to show which one to play next
-			if "bla" in card[0:3]:
-				colors = {'red':0, 'blu':0, 'gre':0, 'yel':0}
-				for i in self.hand_cards:
-					temp_name = self.hand_cards[i].name
-					if 'bla' not in temp_name:
-						colors[temp_name[0:3]] += 1
-				new_color = max(colors, key=lambda key: colors[key])
-				new_color = new_color.lower()[0:3]
-				# Get the colored black cards from the deck for ease of transfer
-				if "plus" in card:
-					new_color += "plus"
-					card_col = new_color+"four.png"
-					photocard = new_deck.get_special(new_color)
+				data_to_send = {
+					"played" : card,
+					"pile" : self.pile,
+					"stage" : GO,
+					"color" : card_col,
+					"num_left" : len(self.hand_cards)
+				}
+				if 'plusfour' in card:
+					data_to_send['wild'] = is_valid_plus
+				# If placed plustwo in the mode, send the counter
+				elif 'two' in card and self.modes[1]:
+					data_to_send['counter'] = self.stack_counter + 2
+					self.stack_counter = 0
+				if str(7) in card and self.modes[0] and len(self.hand_cards) > 0:
+					players = [x for x in self.peeps if not self.peeps.index(x) == self.identity]
+					#swap = Picker(self,"Swap", "Who would you like to swap your cards with?",
+					#			  players)
+					data_to_send['swapwith'] = self.peeps.index(players[0])
+					#data_to_send['stage'] = SEVEN
+					data_to_send['hand'] = [self.hand_cards[c].name for c in self.hand_cards]
+				if str(0) in card and self.modes[0] and len(self.hand_cards) > 0:
+					print("Zero")
+					data_to_send['hand'] = [self.hand_cards[c].name for c in self.hand_cards]
+
+				if self.uno:
+					data_to_send['said_uno'] = True
+				# Send all the information either in progress of the game, or to end it
+				if len(self.hand_cards) > 0:
+					self.sendInfo(data_to_send)
 				else:
-					new_color += "black"
-					card_col = new_color+"black.png"
-					photocard = new_deck.get_special(new_color)
-			else: # Not a black card
-				photocard = self.hand_cards[ind].card_pic
-				card_col = card
-			img = ImageTk.PhotoImage(photocard)
-			self.last.config(image=img, text=card_col)
-			self.last.image = img
-			self.last.text = card_col
-			# Remove card from 'hand', update label with number
-			self.hand_cards.pop(ind)
-			self.hand_btns.pop(ind)
-			self.all_nums_of_cards[self.identity] -= 1
-			text = self.label_for_cards_left(self.all_nums_of_cards)
-			self.cards_left.config(text=text)
-			ctr = 0
-			for i in self.hand_btns.keys():
-				# Move all buttons
-				b = self.hand_btns[i]
-				coords = self.get_card_placement(len(self.hand_btns),ctr)
-				b.place(x=coords[1], y=coords[2])
-				ctr += 1
-
-			data_to_send = {
-				"played" : card,
-				"pile" : self.pile,
-				"stage" : GO,
-				"color" : card_col,
-				"num_left" : len(self.hand_cards)
-			}
-			if 'plusfour' in card:
-				data_to_send['wild'] = is_valid_plus
-			# If placed plustwo in the mode, send the counter
-			elif 'two' in card and self.modes[1]:
-				data_to_send['counter'] = self.stack_counter + 2
-				self.stack_counter = 0
-			if str(7) in card and self.modes[0] and len(self.hand_cards) > 0:
-				players = [x for x in self.peeps if not self.peeps.index(x) == self.identity]
-				#swap = Picker(self,"Swap", "Who would you like to swap your cards with?",
-				#			  players)
-				data_to_send['swapwith'] = self.peeps.index(players[0])
-				#data_to_send['stage'] = SEVEN
-				data_to_send['hand'] = [self.hand_cards[c].name for c in self.hand_cards]
-			if str(0) in card and self.modes[0] and len(self.hand_cards) > 0:
-				print("Zero")
-				data_to_send['hand'] = [self.hand_cards[c].name for c in self.hand_cards]
-
-			if self.uno:
-				data_to_send['said_uno'] = True
-			# Send all the information either in progress of the game, or to end it
-			if len(self.hand_cards) > 0:
-				self.sendInfo(data_to_send)
-			else:
-				self.sendFinal(data_to_send)
+					self.sendFinal(data_to_send)
 
 	def challenge_plus(self, is_valid):
 		data = {'stage': CHALLENGE, 'why': 4}

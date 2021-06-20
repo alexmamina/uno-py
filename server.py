@@ -5,7 +5,7 @@ import game
 from deck import *
 from stages import *
 sock = socket(AF_INET, SOCK_STREAM)
-#[0] = 7/0, [1] = stack, [2] = take forever
+# [0] = 7/0, [1] = stack, [2] = take forever
 modes = [False]*3
 if str(0) not in argv[4]:
 	modes[0] = str(1) in argv[4]
@@ -20,7 +20,6 @@ if str(0) not in argv[4]:
 ip = argv[1]
 port = int(argv[2])
 sock.bind((ip, port))
-#print("CONNECT TO: \n", ip, " ", port)
 num_players = int(argv[3])
 socks = []
 addresses = []
@@ -29,6 +28,8 @@ is_reversed = False
 sock.listen(128)
 player_counter = 0
 stack_counter = 0
+
+
 # Reshuffle pile and all_played if few cards left, else just return original pile
 def fit_pile_to_size(pile, all_played):
 	if len(pile) < 20:
@@ -41,7 +42,6 @@ def fit_pile_to_size(pile, all_played):
 # Deck initialisation
 d = Deck().deck
 pile = [c.name for c in d]
-#print(pile)
 resulting_points = 0
 first_card = pile.pop(7*num_players)
 previous_message = {}
@@ -54,6 +54,16 @@ while "bla" in first_card:
 	pile.append(first_card)
 	shuffle(pile)
 	first_card = pile.pop(7*num_players)
+'''
+first_card = 'red5.png'
+pile[0] = 'red1.png'
+pile[1] = 'red7.png'
+pile[2] = 'blu1.png'
+pile[4] = 'blu0.png'
+pile[3] = 'gre1.png'
+pile[5] = 'gre0.png'
+pile[6] = 'yel1.png'
+'''
 
 left_cards = [7]*num_players
 # Skeleton of json to be sent

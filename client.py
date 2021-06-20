@@ -9,11 +9,14 @@ from tkinter.simpledialog import *
 import argparse
 parser = argparse.ArgumentParser()
 parser.add_argument("--sentient", action="store_true")
+parser.add_argument("--human", action="store_true")
 conditions = parser.parse_args()
 if not conditions.sentient:
 	small_window = Tk()
 	small_window.withdraw()
-	address = askstring("Address", "Paste the \"CONNECT TO\" information you see on the "
+	address = None
+	if not conditions.human:
+		address = askstring("Address", "Paste the \"CONNECT TO\" information you see on the "
 													   "server:")
 	name = askstring("Name", "What's your name?")
 	small_window.destroy()

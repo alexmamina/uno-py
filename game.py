@@ -459,7 +459,13 @@ class Game(Frame):
 					elif 'said_uno' in msg.keys() and msg['said_uno'] and 1 in msg['other_left']:
 						uno_said = "\nUNO said!"
 						p = msg['from']
+						print("From: ", p)
 						#todo this says wrong player if uno afterb 7/0
+						if '0' in newC and 'taken' not in msg and self.modes[0]:
+							if self.is_reversed:
+								p = (p - 1) % len(self.peeps)
+							else:
+								p = (p + 1) % len(self.peeps)
 						if p != self.identity:
 							messagebox.showinfo("UNO", self.peeps[p]+" has only 1 card left!")
 					else:
