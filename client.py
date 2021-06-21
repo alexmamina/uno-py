@@ -10,6 +10,7 @@ import argparse
 parser = argparse.ArgumentParser()
 parser.add_argument("--sentient", action="store_true")
 parser.add_argument("--human", action="store_true")
+parser.add_argument("-name", type=str)
 conditions = parser.parse_args()
 if not conditions.sentient:
 	small_window = Tk()
@@ -18,7 +19,9 @@ if not conditions.sentient:
 	if not conditions.human:
 		address = askstring("Address", "Paste the \"CONNECT TO\" information you see on the "
 													   "server:")
-	name = askstring("Name", "What's your name?")
+		name = askstring("Name", "What's your name?")
+	else:
+		name = conditions.name
 	small_window.destroy()
 	if address is not None and len(address) > 0:
 		host, port = address.split()
