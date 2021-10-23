@@ -5,6 +5,7 @@ from sys import *
 import queue
 from player import *
 from game import *
+import gameanim
 from tkinter.simpledialog import *
 import argparse
 parser = argparse.ArgumentParser()
@@ -36,6 +37,12 @@ else:
 root = Tk()
 root.configure(bg='white')
 root.geometry("700x553+250+120")
+
+screen_width = root.winfo_screenwidth()
+screen_height = root.winfo_screenheight()
+root.geometry("{}x{}".format(screen_width, screen_height))
+print(screen_width, screen_height)
+
 sock = socket(AF_INET, SOCK_STREAM)
 try:
 	sock.connect((host, int(port)))
@@ -57,7 +64,8 @@ try:
 		window = Player(root, q, message, sock, all_points)
 		root.withdraw()
 	else:
-		window = Game(root, q, message, sock, all_points)
+		window = gameanim.Game(root, q, message, sock, all_points)
+		#window = Game(root, q, message, sock, all_points)
 	window.config_start_btns(message)
 	thread = Thread(target=window.receive)
 	thread.start()
