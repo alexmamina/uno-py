@@ -8,9 +8,11 @@ import copy
 from os import listdir
 
 class Deck:
-	global backofcard, special_blacks
+	global backofcard, special_blacks, smallback
 	backofcard = Image.open("Cards/backofcard.jpg")
 	backofcard = backofcard.resize((117, 183), Image.ANTIALIAS)
+
+	smallback = backofcard.resize((80, 125), Image.ANTIALIAS)
 
 	redplus = Image.open("Cards/redplusfour.jpeg")
 	redplus = redplus.resize((117, 183), Image.ANTIALIAS)

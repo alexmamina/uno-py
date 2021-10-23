@@ -72,7 +72,7 @@ class Game(Frame):
 								 bg='PeachPuff', width=10,height=3)
 		self.is_reversed = message['dir']
 		self.direction_l = Label(text=self.set_label_next(message),
-								 fg='black', bg='Lavender', width=10, height=9)
+								 fg='black', bg='Lavender', width=10, height=9,border=0)
 		if self.modes[1]:
 			self.stack_label.place(x=0.68*self.screen_width, y=0.3*self.screen_height+2)
 			#self.direction_l.place(x=0.68*self.screen_width, y=0.3*self.screen_height+82)
@@ -81,17 +81,21 @@ class Game(Frame):
 		self.hand_cards = {}
 		self.pile = msg['pile']
 		self.all_nums_of_cards = msg['other_left']
-		text_cards_left = "Your cards: " + str(7)
-		pl = 0
-		for x in msg['other_left']:
-			if pl != self.identity:
-				text_cards_left += "\n "+self.peeps[pl] + ": " + str(x) + " cards"
-			pl += 1
-		self.cards_left = Label(text=text_cards_left, fg="blue", bg="pale green", width=20,
-								height=5)
-		#self.cards_left.place(x=10, y=30)
+		text_cards_left = str(7)
+		#pl = 0
+		#for x in msg['other_left']:
+		#	if pl != self.identity:
+		#		text_cards_left += "\n "+self.peeps[pl] + ": " + str(x) + " cards"
+		#	pl += 1
+		self.name_lbl = Label(text='You', fg="blue", bg="pale green", width=20,
+							  height=1)
+		self.name_lbl.place(x=0, y=0.6*self.screen_height)
+
+		self.cards_left = Label(text=text_cards_left, fg="blue", bg="pale green", width=2,
+								height=1)
+		self.cards_left.place(x=0.15*self.screen_width, y=0.6*self.screen_height)
 		self.uno_but = but(text="UNO", fg="black", bg="deep sky blue", width=100, height=80,
-						   borderless=1,
+						   borderless=1,border=0,
 						   command=self.one_card)
 		self.uno_but.place(x=0.26*self.screen_width, y=0.35*self.screen_height)
 		self.uno = False
@@ -101,7 +105,7 @@ class Game(Frame):
 		self.cards = self.deal_cards(msg)
 		# Button for debugging
 		self.debug = but(text="Not my turn", fg='red', bg='white', borderless=1, width=100,
-						 height=30,
+						 height=30,border=0,
 						 command=self.send_debug)
 		self.debug.place(x=self.screen_width-110,y=self.screen_height-45)
 		self.hand_btns = {}
@@ -109,16 +113,16 @@ class Game(Frame):
 		if msg['player'] == 1:
 			if 'two' in msg['played'] and (not self.can_stack() or not self.modes[1]):
 				self.turn = Label(text="Your turn, take cards",
-								  fg='white', bg='green', width=30, height=1)
+								  fg='white', bg='green', width=30, height=1,border=0)
 			else:
 				self.turn = Label(text="Your turn",
-								  fg='white', bg='green', width=30, height=1)
+								  fg='white', bg='green', width=30, height=1,border=0)
 		else:
 			self.turn = Label(text= "Wait for other players!",
-							  fg='white', bg='red', width=30, height=1)
+							  fg='white', bg='red', width=30, height=1,border=0)
 		#self.turn.place(x=300,y=0)
 		self.taken_label = Label(text= "",
-								 fg='blue', bg='white', width=30, height=1)
+								 fg='blue', bg='white', width=30, height=1,border=0)
 		#self.taken_label.place(x=300,y=20)
 		'''
 		for i in range(master.winfo_screenwidth()):
@@ -127,10 +131,19 @@ class Game(Frame):
 					Label(text=str(i)+','+str(j)).place(x=i, y=j)
 		'''
 		self.challenge = but(text="UNO not said!", bg='red', fg='white',
-							 width=150, height=30,command=self.challengeUno)
+							 width=150, height=30,command=self.challengeUno,border=0)
 		if msg['player'] == 1:
 			self.challenge.place(x=0.24*self.screen_width,
-								 y=0.5*self.screen_height)
+								 y=0.49*self.screen_height)
+		self.valid_wild = but(text='Illegal +4?', bg='HotPink',fg='black',
+							  width=150, height=30, borderless=1,border=0
+							  )
+		self.valid_wild.place(x=0.24*self.screen_width,
+							  y=0.55*self.screen_height)
+
+		other_players = copy.deepcopy(self.peeps)
+		other_players.pop(self.identity)
+		self.setup_other_players(other_players)
 
 
 
@@ -184,6 +197,8 @@ class Game(Frame):
 						   state="disabled")
 		self.last.image = photo2
 		self.last.place(x=0.56*self.screen_width, y=0.32*self.screen_height)
+#todo coords relative to frames not general coords maybe?
+
 
 	def setup_hand(self, dealt_cards):
 		n = len(dealt_cards)
@@ -198,6 +213,41 @@ class Game(Frame):
 			self.hand_cards[i] = dealt_cards[i]
 			coords = self.get_card_placement(n,i)
 			b.place(x=coords[1], y=coords[2])
+
+#todo proper separators/colors for player areas
+	def setup_other_players(self, peeps):
+		photo = ImageTk.PhotoImage(deck.smallback)
+
+		if len(peeps) > 2:
+			x_coords = [0.2,0,0.8]
+		else:
+			x_coords = [0.2]
+		self.other_cards_lbls = []
+		self.other_cards_imgs = []
+		for i in range(len(peeps)):
+			name_lbl = Label(text=peeps[i], fg="blue", bg="pale green", width=20,
+						 height=1)
+			name_lbl.place(x=x_coords[i]*self.screen_width,y=0)
+			other_card_lbl = Label(text=str(7)+" cards", fg="blue", bg="pale green", width=8,
+								   height=1)
+			self.other_cards_lbls.append(other_card_lbl)
+			other_card_lbl.place(x=(0.01+x_coords[i])*self.screen_width, y=40)
+			self.other_cards_imgs.append([])
+			for c in range(self.all_nums_of_cards[i]):
+			#for c in range(15):
+				#todo finish others cards
+				#todo how to remove them - take self.othercardsimgs[lastplayed].pop().destroy()
+				cardback = Label(text='lbl',image = photo, width=80, height=125, border=0)
+				cardback['image'] = photo
+				cardback.image = photo
+				self.other_cards_imgs[i].append(cardback)
+				#this in total is 500, so do card placement with it as max
+				if i == 0:
+					cardback.place(x=0.3*self.screen_width+c*30, y=40)
+				elif i == 1:
+					cardback.place(x=0.1*self.screen_width, y=40+20*c)
+				else:
+					cardback.place(x=0.9*self.screen_width, y=40+20*c)
 
 	# Move card to the pile in an animation
 	def move(self, origx, origy,dx, dy, i,binst, img, ind):
@@ -479,10 +529,10 @@ class Game(Frame):
 					if 'said_uno' in msg.keys() and not msg['said_uno']:
 						uno_said = "\nUNO not said!"
 						self.challenge = but(text="UNO not said!", bg='red', fg='white',
-											 width=150, height=30,command=self.challengeUno)
+											 width=150, height=30,command=self.challengeUno,border=0)
 						if msg['player'] == 1:
 							self.challenge.place(x=0.24*self.screen_width,
-												 y=0.5*self.screen_height)
+												 y=0.49*self.screen_height)
 					elif 'said_uno' in msg.keys() and msg['said_uno'] and 1 in msg['other_left']:
 						uno_said = "\nUNO said!"
 						p = msg['from']
@@ -508,9 +558,10 @@ class Game(Frame):
 						if 'plusfour' in newC and 'taken' not in msg and 'wild' in msg:
 							# Show 'challenge +4' button
 							self.valid_wild = but(text='Illegal +4?', bg='HotPink',fg='black',
-												  width=150, height=30, borderless=1,
+												  width=150, height=30, borderless=1,border=0,
 												  command=lambda valid=msg['wild']: self.challenge_plus(valid))
-							self.valid_wild.place(x=30, y=230)
+							self.valid_wild.place(x=0.24*self.screen_width,
+												  y=0.55*self.screen_height)
 						# No moves possible, or move possible but need to take cards
 						if not self.possible_move() or (self.card_counter == 2
 														or self.card_counter == 4):
