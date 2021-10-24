@@ -124,12 +124,7 @@ class Game(Frame):
 		self.taken_label = Label(text= "",
 								 fg='blue', bg='white', width=30, height=1,border=0)
 		#self.taken_label.place(x=300,y=20)
-		'''
-		for i in range(master.winfo_screenwidth()):
-			for j in range(master.winfo_screenheight()):
-				if i % 100 == 0 and j % 100 == 0:
-					Label(text=str(i)+','+str(j)).place(x=i, y=j)
-		'''
+
 		self.challenge = but(text="UNO not said!", bg='red', fg='white',
 							 width=150, height=30,command=self.challengeUno,border=0)
 		if msg['player'] == 1:
@@ -144,8 +139,6 @@ class Game(Frame):
 		other_players = copy.deepcopy(self.peeps)
 		other_players.pop(self.identity)
 		self.setup_other_players(other_players)
-
-
 
 	# Create a hand of 7 cards from pile from message
 	def deal_cards(self, message):
@@ -215,6 +208,9 @@ class Game(Frame):
 			b.place(x=coords[1], y=coords[2])
 
 #todo proper separators/colors for player areas
+#todo whose turn
+#todo reverse show direction
+
 	def setup_other_players(self, peeps):
 		photo = ImageTk.PhotoImage(deck.smallback)
 
@@ -272,13 +268,13 @@ class Game(Frame):
 		result = []
 		if num_cards == 1:
 			num_cards = 2
-		if num_cards <= 15:
+		if num_cards <= 20:
 			overlap = floor((117-((117*num_cards)-0.95*self.screen_width)/(num_cards-1)))
 		else:
-			overlap = floor((117-((117*15)-0.95*self.screen_width)/(15-1)))
+			overlap = floor((117-((117*20)-0.95*self.screen_width)/(20-1)))
 		result.append(overlap)
-		result.append(25+overlap*(i%15)+15*(floor(i/15)))
-		result.append(0.65*self.screen_height+40*(floor(i/15)))
+		result.append(25+overlap*(i%20)+15*(floor(i/20)))
+		result.append(0.65*self.screen_height+40*(floor(i/20)))
 		return result
 
 

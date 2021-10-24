@@ -479,6 +479,9 @@ while True:
 			#print("Sent init to player ", i)
 			pile = pile[7:]
 
+	elif message['stage'] == DESIGNUPD:
+		print('design update')
+
 	else:
 		for i in range(num_players):
 			if i != current_player:

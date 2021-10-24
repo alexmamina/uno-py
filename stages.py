@@ -11,6 +11,7 @@
 # Seven - the 7 part of 7/0
 # Zero - the 0 part of 7/0
 # Numupdate - the finale of 7/0 to update all cards left
+# Designupd - relay to all just to see cards move on screen
 INIT = -1
 GO = 0
 CHALLENGE = 1
@@ -23,3 +24,4 @@ SEVEN = 7
 ZERO = 70
 NUMUPDATE = 705
 BYE = 10
+DESIGNUPD = 123
