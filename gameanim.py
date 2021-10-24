@@ -3,6 +3,7 @@ from tkinter import *
 from tkinter import simpledialog
 from math import *
 from PIL import ImageTk, Image
+import PIL.Image
 import card
 import deck
 import webbrowser
@@ -76,13 +77,21 @@ class Game(Frame):
 		self.stack_label = Label(text="Stack\n cards to take:\n"+str(self.stack_counter),fg='black',
 								 bg='PeachPuff', width=10,height=3)
 		self.is_reversed = message['dir']
-		self.direction_l = Label(text=self.set_label_next(message),
-								 fg='black', bg='Lavender', width=10, height=9,border=0)
+		self.revdir = ImageTk.PhotoImage(PIL.Image.open("directionrev.jpg").resize((95,95),
+																				PIL.Image.ANTIALIAS))
+		self.fordir = ImageTk.PhotoImage(PIL.Image.open("directionfor.jpg").resize((95,95),
+																				PIL.Image.ANTIALIAS))
+
+
+		self.direction_l = Label(image = self.revdir if self.is_reversed else self.fordir,
+								width=95, height=95,border=0)
+		self.direction_l.image = self.revdir if self.is_reversed else self.fordir
+		self.direction_l['image'] = self.revdir if self.is_reversed else self.fordir
 		if self.modes[1]:
 			self.stack_label.place(x=0.68*self.screen_width, y=0.3*self.screen_height+2)
-			#self.direction_l.place(x=0.68*self.screen_width, y=0.3*self.screen_height+82)
-		#else:
-		#	self.direction_l.place(x=0.68*self.screen_width, y=0.3*self.screen_height+2)
+			self.direction_l.place(x=0.68*self.screen_width, y=0.3*self.screen_height+82)
+		else:
+			self.direction_l.place(x=0.68*self.screen_width, y=0.3*self.screen_height+2)
 		self.hand_cards = {}
 		self.pile = msg['pile']
 		self.all_nums_of_cards = msg['other_left']
@@ -173,7 +182,6 @@ class Game(Frame):
 						   state="disabled")
 		self.last.image = photo2
 		self.last.place(x=0.56*self.screen_width, y=0.32*self.screen_height)
-#todo coords relative to frames not general coords maybe?
 
 
 	def setup_hand(self, dealt_cards):
@@ -191,7 +199,6 @@ class Game(Frame):
 			b.place(x=coords[1], y=coords[2])
 
 #todo whose turn
-#todo reverse show direction
 	#todo remove self.turn and number left and other irrelevant labels
 
 	def setup_other_players(self, peeps):
@@ -295,6 +302,9 @@ class Game(Frame):
 	def complete_placement(self, card, ind):
 		if 'reverse' in card:
 			self.is_reversed = not self.is_reversed
+			self.direction_l.image = self.revdir if self.is_reversed else self.fordir
+			self.direction_l['image'] = self.revdir if self.is_reversed else self.fordir
+			print('reversed')
 
 		if 'plusfour' in card:
 			is_valid_plus = self.can_put_plusfour()
@@ -494,8 +504,9 @@ class Game(Frame):
 					newC = msg['played']
 					print("Played: ", newC)
 					self.is_reversed = msg['dir']
-					self.direction_l.config(text=self.set_label_next(msg))
-
+					self.direction_l.config(image = self.revdir if self.is_reversed else self.fordir)
+					self.direction_l.image = self.revdir if self.is_reversed else self.fordir
+					self.direction_l['image'] = self.revdir if self.is_reversed else self.fordir
 					if "plustwo" in newC and 'taken' not in msg:
 						self.card_counter = 2
 						if self.modes[1]:
@@ -950,7 +961,7 @@ class Game(Frame):
 					next += self.peeps[(i % len(self.peeps))]+"\n"
 				else:
 					next += "You\n"
-		self.direction_l.config(text=curr+next)
+		#self.direction_l.config(text=curr+next)
 
 
 	def checkPeriodically(self):
