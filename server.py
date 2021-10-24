@@ -481,6 +481,10 @@ while True:
 
 	elif message['stage'] == DESIGNUPD:
 		print('design update')
+		for i in range(num_players):
+			if i != current_player:
+				data = message
+				socks[i].sendto(dumps(data).encode('utf-8'), addresses[i])
 
 	else:
 		for i in range(num_players):
