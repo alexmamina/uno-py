@@ -91,7 +91,7 @@ class Game(Frame):
 			self.stack_label.place(x=0.68*self.screen_width, y=0.3*self.screen_height+2)
 			self.direction_l.place(x=0.68*self.screen_width, y=0.3*self.screen_height+82)
 		else:
-			self.direction_l.place(x=0.68*self.screen_width, y=0.3*self.screen_height+2)
+			self.direction_l.place(x=0.68*self.screen_width, y=0.3*self.screen_height+42)
 		self.hand_cards = {}
 		self.pile = msg['pile']
 		self.all_nums_of_cards = msg['other_left']
@@ -321,7 +321,7 @@ class Game(Frame):
 
 		if 'plusfour' in card:
 			is_valid_plus = self.can_put_plusfour()
-
+#todo show player if illegal 4 was checked by someone??
 		# Changes the black card to black with a color to show which one to play next
 		if "bla" in card[0:3]:
 			picker = Picker(self, "New color", "Which one?", ['Red','Green','Blue',
@@ -969,7 +969,9 @@ class Game(Frame):
 
 		root = Tk()
 		root.configure(bg='white')
-		root.geometry("700x553+250+120")
+		screen_width = root.winfo_screenwidth()
+		screen_height = root.winfo_screenheight()
+		root.geometry("{}x{}".format(screen_width, screen_height))
 		root.title("UNO - player "+ str(message['whoami'])+" - "+message['peeps'][message[
 			'whoami']])
 		root.protocol("WM_DELETE_WINDOW", self.close_window)
