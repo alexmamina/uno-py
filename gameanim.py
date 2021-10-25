@@ -95,19 +95,28 @@ class Game(Frame):
 		self.hand_cards = {}
 		self.pile = msg['pile']
 		self.all_nums_of_cards = msg['other_left']
-		text_cards_left = str(7)
-		#pl = 0
-		#for x in msg['other_left']:
-		#	if pl != self.identity:
-		#		text_cards_left += "\n "+self.peeps[pl] + ": " + str(x) + " cards"
-		#	pl += 1
-		self.taken_label = Label()
-		self.turn = Label()
-		self.name_lbl = Label(text='You', fg="blue", bg="pale green", width=20,
+
+		self.taken_label = Label(text= "",
+								 fg='blue', bg='Ivory', width=28, height=1)
+		self.taken_label.place(x=0.2*self.screen_width+1, y=0.3*self.screen_height+1)
+		if msg['player'] == 1:
+			if 'two' in msg['played'] and (not self.can_stack() or not self.modes[1]):
+				self.turn_need_taking = Label(text="Take cards",
+								  fg='black', bg='orange', width=12, height=1)
+			else:
+				self.turn_need_taking = Label(text="",
+								  fg='Black', bg='Ivory', width=12, height=1)
+		else:
+			self.turn_need_taking = Label(text= "",
+							  fg='black', bg='Ivory', width=12, height=1)
+		self.turn_need_taking.place(x=0.18*self.screen_width,y=0.6*self.screen_height+1)
+
+
+		self.name_lbl = Label(text='You', fg="black", bg="pale green", width=20,
 							  height=1)
 		self.name_lbl.place(x=1, y=0.6*self.screen_height+1)
 
-		self.cards_left = Label(text=text_cards_left, fg="blue", bg="pale green", width=2,
+		self.cards_left = Label(text=str(7), fg="black", bg="pale green", width=2,
 								height=1)
 		self.cards_left.place(x=0.15*self.screen_width+1, y=0.6*self.screen_height+1)
 		self.uno_but = but(text="UNO", fg="black", bg="deep sky blue", width=100, height=80,
@@ -127,12 +136,17 @@ class Game(Frame):
 		self.hand_btns = {}
 		self.setup_hand(self.cards)
 
-
 		other_players = copy.deepcopy(self.peeps)
 		other_players.pop(self.identity)
 		self.setup_other_players(other_players)
+		if msg['player'] == 1:
+			self.name_lbl.config(bg='green')
+		else:
+			self.name_lbl.config(bg='red')
+		self.set_label_next(msg)
 
-	# Create a hand of 7 cards from pile from message
+
+# Create a hand of 7 cards from pile from message
 	def deal_cards(self, message):
 		global new_deck
 		hand = []
@@ -198,8 +212,7 @@ class Game(Frame):
 			coords = self.get_card_placement(n,i)
 			b.place(x=coords[1], y=coords[2])
 
-#todo whose turn
-	#todo remove self.turn and number left and other irrelevant labels
+	#todo design update when placing
 
 	def setup_other_players(self, peeps):
 
@@ -208,19 +221,21 @@ class Game(Frame):
 		else:
 			x_coords = [0.2]
 		self.other_cards_lbls = {}
+		self.other_names_lbls = {}
 		self.other_cards_imgs = {}
 		ctr = 0
 		for j in range(self.identity+1, self.identity+len(self.peeps)):
 			#id is 3 range is [4,5,6,7] or [0,1,2,3]
 			#id 2 range [3,4,5,6] [3,0,1,2]
 			i = j % len(self.peeps)
-			name_lbl = Label(text=self.peeps[i], fg="blue", bg="pale green", width=20,
+			name_lbl = Label(text=self.peeps[i], fg="black", bg="pale green", width=20,
 						 height=1)
 			name_lbl.place(x=x_coords[ctr]*self.screen_width+1,y=1)
-			other_card_lbl = Label(text=str(7)+" cards", fg="blue", bg="pale green", width=8,
+			self.other_names_lbls[i] = name_lbl
+			other_card_lbl = Label(text=str(7)+" cards", fg="black", bg="pale green", width=8,
 								   height=1)
 			self.other_cards_lbls[i] = other_card_lbl
-			other_card_lbl.place(x=(0.01+x_coords[ctr])*self.screen_width, y=41)
+			other_card_lbl.place(x=(0.01+x_coords[ctr])*self.screen_width, y=31)
 			self.other_cards_imgs[i] = []
 			self.put_other_cards(i, self.all_nums_of_cards[i])
 			ctr += 1
@@ -234,7 +249,7 @@ class Game(Frame):
 			cardback.image = photo
 			self.other_cards_imgs[who].append(cardback)
 
-			if who == (self.identity+2) % len(self.peeps):
+			if (who == (self.identity+2) % len(self.peeps)) or (len(self.peeps) == 2):
 				cardback.place(x=0.3*self.screen_width+c*30, y=40)
 			elif who == (self.identity+1) % len(self.peeps):
 				cardback.place(x=0.1*self.screen_width, y=40+20*c)
@@ -335,8 +350,8 @@ class Game(Frame):
 		self.hand_cards.pop(ind)
 		self.hand_btns.pop(ind)
 		self.all_nums_of_cards[self.identity] -= 1
-		text = self.label_for_cards_left(self.all_nums_of_cards)
-		self.cards_left.config(text=text)
+		#text = self.label_for_cards_left(self.all_nums_of_cards)
+		self.cards_left.config(text=self.all_nums_of_cards[self.identity])
 		ctr = 0
 		for i in self.hand_btns.keys():
 			# Move all buttons
@@ -406,8 +421,8 @@ class Game(Frame):
 		b.image = photo
 		self.hand_btns[ind] = b
 		self.all_nums_of_cards[self.identity] += 1
-		text = self.label_for_cards_left(self.all_nums_of_cards)
-		self.cards_left.config(text=text)
+		#text = self.label_for_cards_left(self.all_nums_of_cards)
+		self.cards_left.config(text=self.all_nums_of_cards[self.identity])
 		ctr = 0
 		print("Card counter: ", self.card_counter)
 		print("Stack counter: ", self.stack_counter)
@@ -503,6 +518,7 @@ class Game(Frame):
 					self.set_played_img(msg)
 					newC = msg['played']
 					print("Played: ", newC)
+					self.set_label_next(msg)
 					self.is_reversed = msg['dir']
 					self.direction_l.config(image = self.revdir if self.is_reversed else self.fordir)
 					self.direction_l.image = self.revdir if self.is_reversed else self.fordir
@@ -572,7 +588,7 @@ class Game(Frame):
 								(self.modes[2] and not self.card_counter == 4 and not
 								self.card_counter == 2) or (self.modes[1] and self.can_stack() and
 															'two' in newC):
-							self.turn.config(text="Your turn", bg='green')
+							self.turn_need_taking.config(text="",bg='Ivory')
 							for i in self.hand_btns:
 								self.hand_btns[i].config(state='normal')
 							if self.modes[1] and self.can_stack() and 'two' in newC \
@@ -581,7 +597,7 @@ class Game(Frame):
 									if 'two' not in self.hand_btns[i]['text']:
 										self.hand_btns[i].config(state='disabled')
 						else:
-							self.turn.config(text="Your turn, take cards!", bg='green')
+							self.turn_need_taking.config(text="Take cards!",bg='orange')
 				# Forgot to say UNO - enable taking new cards only
 				elif msg['stage'] == CHALLENGE:
 					self.new_card.config(state='normal')
@@ -589,12 +605,12 @@ class Game(Frame):
 						self.card_counter = 2
 						messagebox.showinfo("UNO not said!", "You forgot to click UNO, "
 															 "so take 2 cards!")
-						self.turn.config(text="Your turn, take 2 cards!", bg='orange')
+						self.turn_need_taking.config(text="Take 2 cards!", bg='orange')
 					else:
 						self.card_counter = 4
 						messagebox.showinfo("Illegal +4!", "You can't put +4 when you have other "
 														   "cards, so take 4!")
-						self.turn.config(text="Your turn, take 4 cards!", bg='orange')
+						self.turn_need_taking.config(text="Take 4 cards!", bg='orange')
 					self.name_lbl.config(bg='orange')
 
 				# Another player has finished the game; you either take cards if last is a plus,
@@ -603,7 +619,7 @@ class Game(Frame):
 					self.set_played_img(msg)
 					if msg['to_take']:
 						# Enable taking cards
-						#self.turn.config(text='Your turn, take cards!', bg='green')
+						self.turn.config(text='Take cards!', bg='orange')
 						self.name_lbl.config(bg='green')
 						self.new_card.config(state='normal')
 						self.card_counter = 2 if "two" in msg['played'] else 4
@@ -618,7 +634,7 @@ class Game(Frame):
 						points['padding'] = 'a'*(685-len(str(points)))
 						self.sock.send(dumps(points).encode('utf-8'))
 
-					self.cards_left.config(text='Game over!')
+					#self.cards_left.config(text='Game over!')
 				# Get points from the opponent and show them
 				elif msg['stage'] == CALC:
 					table_of_points = ""
@@ -799,13 +815,12 @@ class Game(Frame):
 		if data_to_send['stage'] == GO and 'stop' in data_to_send['played'] \
 				and 'taken' not in data_to_send:
 			self.update_next_lbl(2)
-			#todo green next player
 		elif data_to_send['stage'] == GO:
 			self.update_next_lbl(1)
 
 		for i in self.hand_btns:
 			self.hand_btns[i].config(state='disabled')
-		#self.turn.config(text="Wait for other players!", bg='red')
+		self.turn_need_taking.config(text="", bg='Ivory')
 		self.name_lbl.config(bg='red')
 		self.taken_label.config(text='')
 		print("Not your turn anymore")
@@ -853,7 +868,7 @@ class Game(Frame):
 		self.taken_label.config(text='')
 		#self.uno_but.config(fg="red", bg="white", state='disabled')
 		#self.uno_but.place_forget()
-		self.turn.config(text="Waiting for the results!",bg='white',fg='blue')
+		self.turn_need_taking.config(text="Waiting for the results!", bg='Ivory', fg='blue')
 		data_to_send['padding'] = 'a'*(685-len(str(data_to_send)))
 		self.sock.send(dumps(data_to_send).encode('utf-8'))
 		print("Not your turn anymore")
@@ -917,29 +932,18 @@ class Game(Frame):
 			self.hand_btns[j].config(state='disabled')
 		self.all_nums_of_cards[self.identity] = new
 		self.all_nums_of_cards[player] = old
-		self.cards_left.config(text=self.label_for_cards_left(self.all_nums_of_cards))
+		self.other_cards_lbls[player].config(text = str(old) + " cards")
+		self.cards_left.config(text = str(new))
+		#self.cards_left.config(text=self.label_for_cards_left(self.all_nums_of_cards))
 
 	def set_label_next(self, msg):
 		if msg['player'] == 1:
 			a = self.identity
-			curr = "Current:\nYou\n\n"
 		else:
 			a = msg['curr']
-			curr = "Current:\n"+self.peeps[a]+"\n\n"
-		next = "Next:\n"
-		if not self.is_reversed:
-			for i in range(a+1, a+len(self.peeps)+1):
-				if not (i % len(self.peeps)) == self.identity:
-					next += self.peeps[(i % len(self.peeps))]+"\n"
-				else:
-					next += "You\n"
-		else:
-			for i in range(a-1, a-1-len(self.peeps), -1):
-				if not (i % len(self.peeps)) == self.identity:
-					next += self.peeps[(i % len(self.peeps))]+"\n"
-				else:
-					next += "You\n"
-		return curr + next
+
+		for l in self.other_names_lbls.keys():
+			self.other_names_lbls[l].config(bg='green' if l == a else 'red')
 
 	def update_next_lbl(self, ind):
 
@@ -947,20 +951,9 @@ class Game(Frame):
 		next = "Next:\n"
 		if not self.is_reversed:
 			a = (self.identity + ind) % len(self.peeps)
-			curr = "Current:\n"+self.peeps[a]+"\n\n"
-			for i in range(a+1, a+len(self.peeps)+1):
-				if not (i % len(self.peeps)) == self.identity:
-					next += self.peeps[(i % len(self.peeps))]+"\n"
-				else:
-					next += "You\n"
 		else:
 			a = (self.identity - ind) % len(self.peeps)
-			curr = "Current:\n"+self.peeps[a]+"\n\n"
-			for i in range(a-1, a-1-len(self.peeps), -1):
-				if not (i % len(self.peeps)) == self.identity:
-					next += self.peeps[(i % len(self.peeps))]+"\n"
-				else:
-					next += "You\n"
+		self.other_names_lbls[a].config(bg='green')
 		#self.direction_l.config(text=curr+next)
 
 
