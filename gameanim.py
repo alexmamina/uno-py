@@ -242,7 +242,7 @@ class Game(Frame):
 
 	def put_other_cards(self,who, num):
 		photo = ImageTk.PhotoImage(deck.smallback)
-		size = num if num <= 15 else 15
+		size = num if num <= 18 else 18
 		for c in range(size):
 			cardback = Label(text='lbl',image = photo, width=80, height=125, border=0)
 			cardback['image'] = photo
@@ -252,11 +252,10 @@ class Game(Frame):
 			if (who == (self.identity+2) % len(self.peeps)) or (len(self.peeps) == 2):
 				cardback.place(x=0.3*self.screen_width+c*30, y=40)
 			elif who == (self.identity+1) % len(self.peeps):
-				cardback.place(x=0.1*self.screen_width, y=40+20*c)
+				cardback.place(x=0.1*self.screen_width, y=35+15*c)
 			else:
-				cardback.place(x=0.9*self.screen_width, y=40+20*c)
+				cardback.place(x=0.9*self.screen_width, y=35+15*c)
 
-#todo 'take cards' text add
 	# Move card to the pile in an animation
 	def move(self, origx, origy,dx, dy, i,binst, img, ind):
 		card = self.hand_cards[ind].name
@@ -288,7 +287,6 @@ class Game(Frame):
 		result.append(25+overlap*(i%20)+15*(floor(i/20)))
 		result.append(0.65*self.screen_height+40*(floor(i/20)))
 		return result
-
 
 	##################################### EVENTS ##################################
 	def place_card(self,ind, binst):
@@ -372,6 +370,8 @@ class Game(Frame):
 		# If placed plustwo in the mode, send the counter
 		elif 'two' in card and self.modes[1]:
 			data_to_send['counter'] = self.stack_counter + 2
+			self.stack_label.config(text='Stack\n cards to take:\n'+str(
+				self.stack_counter + 2))
 			self.stack_counter = 0
 		if str(7) in card and self.modes[0] and len(self.hand_cards) > 0:
 			players = [x for x in self.peeps if not self.peeps.index(x) == self.identity]
@@ -619,7 +619,7 @@ class Game(Frame):
 					self.set_played_img(msg)
 					if msg['to_take']:
 						# Enable taking cards
-						self.turn.config(text='Take cards!', bg='orange')
+						self.turn_need_taking.config(text='Take cards!', bg='orange')
 						self.name_lbl.config(bg='green')
 						self.new_card.config(state='normal')
 						self.card_counter = 2 if "two" in msg['played'] else 4
@@ -868,7 +868,7 @@ class Game(Frame):
 		self.taken_label.config(text='')
 		#self.uno_but.config(fg="red", bg="white", state='disabled')
 		#self.uno_but.place_forget()
-		self.turn_need_taking.config(text="Waiting for the results!", bg='Ivory', fg='blue')
+		self.turn_need_taking.config(text="Getting results!", bg='Ivory', fg='blue')
 		data_to_send['padding'] = 'a'*(685-len(str(data_to_send)))
 		self.sock.send(dumps(data_to_send).encode('utf-8'))
 		print("Not your turn anymore")

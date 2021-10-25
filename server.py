@@ -55,14 +55,14 @@ while "bla" in first_card:
 	shuffle(pile)
 	first_card = pile.pop(7*num_players)
 '''
-first_card = 'red5.png'
-pile[0] = 'red1.png'
-pile[1] = 'red7.png'
-pile[2] = 'blu1.png'
-pile[4] = 'blu0.png'
-pile[3] = 'gre1.png'
-pile[5] = 'gre0.png'
-pile[6] = 'yel1.png'
+first_card = 'bluplustwo.png'
+pile[0] = 'bluplustwo.png'
+pile[1] = 'bluplustwo.png'
+pile[2] = 'bluplustwo.png'
+pile[9] = 'bluplustwo.png'
+pile[10] = 'greplustwo.png'
+pile[11] = 'greplustwo.png'
+pile[7] = 'yelplustwo.png'
 '''
 
 left_cards = [7]*num_players
