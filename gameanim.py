@@ -52,7 +52,7 @@ class Game(Frame):
 		self.last = None
 		self.challenge = None
 		self.valid_wild = None
-		self.stack_counter = 0
+		self.stack_counter = 0 if 'two' not in msg['played'] else 2
 		self.screen_width = master.winfo_screenwidth()
 		self.screen_height = master.winfo_screenheight()-100
 		self.animated = False
@@ -99,17 +99,6 @@ class Game(Frame):
 		self.taken_label = Label(text= "",
 								 fg='blue', bg='Ivory', width=28, height=1)
 		self.taken_label.place(x=0.2*self.screen_width+1, y=0.3*self.screen_height+1)
-		if msg['player'] == 1:
-			if 'two' in msg['played'] and (not self.can_stack() or not self.modes[1]):
-				self.turn_need_taking = Label(text="Take cards",
-								  fg='black', bg='orange', width=12, height=1)
-			else:
-				self.turn_need_taking = Label(text="",
-								  fg='Black', bg='Ivory', width=12, height=1)
-		else:
-			self.turn_need_taking = Label(text= "",
-							  fg='black', bg='Ivory', width=12, height=1)
-		self.turn_need_taking.place(x=0.18*self.screen_width,y=0.6*self.screen_height+1)
 
 
 		self.name_lbl = Label(text='You', fg="black", bg="pale green", width=20,
@@ -135,6 +124,18 @@ class Game(Frame):
 		self.debug.place(x=self.screen_width-110,y=self.screen_height-45)
 		self.hand_btns = {}
 		self.setup_hand(self.cards)
+		if msg['player'] == 1:
+			if 'two' in msg['played'] and (not self.can_stack() or not self.modes[1]):
+				self.turn_need_taking = Label(text="Take cards",
+											  fg='black', bg='orange', width=12, height=1)
+			else:
+				self.turn_need_taking = Label(text="",
+											  fg='Black', bg='Ivory', width=12, height=1)
+		else:
+			self.turn_need_taking = Label(text= "",
+										  fg='black', bg='Ivory', width=12, height=1)
+		self.turn_need_taking.place(x=0.18*self.screen_width,y=0.6*self.screen_height+1)
+
 
 		other_players = copy.deepcopy(self.peeps)
 		other_players.pop(self.identity)
@@ -564,6 +565,9 @@ class Game(Frame):
 					for lbl in self.other_cards_lbls.keys():
 						self.other_cards_lbls[lbl].config(text = \
 														  str(msg['other_left'][lbl]) + " cards")
+						for c in self.other_cards_imgs[lbl]:
+							c.destroy()
+						self.put_other_cards(lbl, msg['other_left'][lbl])
 					#left_cards_text = self.label_for_cards_left(msg['other_left'])
 					#left_cards_text += uno_said
 					# Set up label with number of remaining cards
