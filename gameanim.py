@@ -213,7 +213,7 @@ class Game(Frame):
 			coords = self.get_card_placement(n,i)
 			b.place(x=coords[1], y=coords[2])
 
-	#todo design update when placing
+	#todo design update when placing - animation
 
 	def setup_other_players(self, peeps):
 
@@ -409,7 +409,9 @@ class Game(Frame):
 			self.stack_counter -= 1
 			self.stack_label.config(text='Stack\n cards to take:\n'+str(self.stack_counter))
 			print("Stack: ", self.stack_counter)
-		self.send_design_update(1, len(self.hand_cards)+1)
+
+		if not ('stage' in message.keys() and message['stage'] == ZEROCARDS):
+			self.send_design_update(1, len(self.hand_cards)+1)
 		# Since hand is a dict, the keys aren't in order.
 		# Get the largest and add 1 for the next
 		ind = max(list(self.hand_cards.keys())) + 1
@@ -538,6 +540,14 @@ class Game(Frame):
 						self.taken_label.config(text='Other player took cards!')
 					else:
 						self.taken_label.config(text='')
+
+
+					for lbl in self.other_cards_lbls.keys():
+						self.other_cards_lbls[lbl].config(text = \
+															  str(msg['other_left'][lbl]) + " cards")
+						for c in self.other_cards_imgs[lbl]:
+							c.destroy()
+						self.put_other_cards(lbl, msg['other_left'][lbl])
 					# Check if other player said UNO; place the challenge button if not said
 					# Update label to show that
 					if 'said_uno' in msg.keys() and not msg['said_uno']:
@@ -562,12 +572,7 @@ class Game(Frame):
 					else:
 						uno_said = ""
 					self.all_nums_of_cards = msg['other_left']
-					for lbl in self.other_cards_lbls.keys():
-						self.other_cards_lbls[lbl].config(text = \
-														  str(msg['other_left'][lbl]) + " cards")
-						for c in self.other_cards_imgs[lbl]:
-							c.destroy()
-						self.put_other_cards(lbl, msg['other_left'][lbl])
+
 					#left_cards_text = self.label_for_cards_left(msg['other_left'])
 					#left_cards_text += uno_said
 					# Set up label with number of remaining cards
@@ -752,7 +757,6 @@ class Game(Frame):
 		if self.quit:
 			print("Loop ended")
 			self.close_window()
-# todo save crashed game maybe
 
 
 	def set_played_img(self, msg):
