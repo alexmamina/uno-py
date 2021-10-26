@@ -55,7 +55,8 @@ while "bla" in first_card:
 	shuffle(pile)
 	first_card = pile.pop(7*num_players)
 '''
-first_card = 'bluplustwo.png'
+first_card = 'blustop.png'
+
 pile[0] = 'bluplustwo.png'
 pile[1] = 'bluplustwo.png'
 pile[2] = 'bluplustwo.png'
@@ -102,7 +103,7 @@ data_to_send['dir'] = is_reversed
 # Player 3 is current if reverse True
 # Player 2 is current if stop True
 # Else player 1 is current
-for i in range(num_players):
+for i in list_of_players:
 	data_to_send['pile'] = pile[0:7] + pile[7*(num_players-i):7*(num_players-i)+20]
 	data_to_send['whoami'] = i
 	if (i == list_of_players[0] and "stop" not in first_card) or \
@@ -114,7 +115,7 @@ for i in range(num_players):
 	else:
 		data_to_send['player'] = 0
 		if i == list_of_players[0] and 'stop' in first_card:
-			data_to_send['curr'] = current_player + 1
+			data_to_send['curr'] = (current_player + 1) % num_players
 		else:
 			data_to_send['curr'] = current_player
 	data_to_send['padding'] = 'a'*(685-len(str(data_to_send)))
@@ -461,7 +462,7 @@ while True:
 		data_to_send['padding'] = ''
 		#data_to_send['padding'] = 'a'*(685-len(str(data_to_send)))
 
-		for i in range(num_players):
+		for i in list_of_players:
 			data_to_send.pop('padding')
 			data_to_send['pile'] = pile[0:7] + pile[7*(num_players-i):7*(num_players-i)+20]
 			data_to_send['whoami'] = i

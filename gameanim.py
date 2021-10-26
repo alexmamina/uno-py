@@ -375,6 +375,7 @@ class Game(Frame):
 				self.stack_counter + 2))
 			self.stack_counter = 0
 		if str(7) in card and self.modes[0] and len(self.hand_cards) > 0:
+			self.send_design_update(0, len(self.hand_cards), card)
 			players = [x for x in self.peeps if not self.peeps.index(x) == self.identity]
 			swap = Picker(self,"Swap", "Who would you like to swap your cards with?",
 						  players)
@@ -678,18 +679,18 @@ class Game(Frame):
 
 				elif msg['stage'] == SEVEN or msg['stage'] == ZERO:
 					# Show hand, say who from, send back own hand
-					#todo 70
+					#todo 70 say from who cards
 					hand = {'stage': msg['stage'],
 							'hand': [self.hand_cards[c].name for c in self.hand_cards],
 							'from': self.identity}
 
 					self.update_btns(msg['hand'], msg['from'])
-					if msg['stage'] == SEVEN:
-						messagebox.showinfo("New cards", "A 7 was played. \nYou swapped "
-														 "cards with "+self.peeps[msg['from']])
-					else:
-						messagebox.showinfo("New cards", "A 0 was played. You get cards from \n"
-											+self.peeps[msg['from']])
+					# if msg['stage'] == SEVEN:
+					# 	messagebox.showinfo("New cards", "A 7 was played. \nYou swapped "
+					# 									 "cards with "+self.peeps[msg['from']])
+					# else:
+					# 	messagebox.showinfo("New cards", "A 0 was played. You get cards from \n"
+					# 						+self.peeps[msg['from']])
 
 					hand['padding'] = 'a'*(685-len(str(hand)))
 					m = dumps(hand)
@@ -700,25 +701,31 @@ class Game(Frame):
 				elif msg['stage'] == NUMUPDATE:
 					print()
 					#self.cards_left.config(text=self.label_for_cards_left(msg['other_left']))
-				elif msg['stage'] == DESIGNUPD:
-					print('design update')
-					who_updated = msg['from']
-					# if taken:
-					if msg['type'] == 1:
-						#string.split() splits on space, [0] is bc it's 'N cards'
-						#other_players = copy.deepcopy(self.peeps)
-						#other_players.pop(self.identity)
-						#ind = other_players.index(self.peeps[who_updated])
-						self.other_cards_lbls[who_updated].config(text=str(msg['num_cards']) \
-																	 + " cards")
-						o_cards = self.other_cards_imgs[who_updated]
+					for l in self.other_cards_lbls.keys():
+						self.other_cards_lbls[l].config(text=str(msg['other_left'][l])+" cards")
+						o_cards = self.other_cards_imgs[l]
 						for car in o_cards:
 							car.destroy()
 
-						self.put_other_cards(who_updated, msg['num_cards'])
-					elif msg['type'] == 0:
-						print('card placed design update')
+						self.put_other_cards(l, msg['other_left'][l])
 
+
+				elif msg['stage'] == DESIGNUPD:
+					print('design update')
+					who_updated = msg['from']
+
+					self.other_cards_lbls[who_updated].config(text=str(msg['num_cards']) \
+																 + " cards")
+					o_cards = self.other_cards_imgs[who_updated]
+					for car in o_cards:
+						car.destroy()
+
+					self.put_other_cards(who_updated, msg['num_cards'])
+					if msg['type'] == 0:
+						print('card placed design update')
+						img = ImageTk.PhotoImage(new_deck.get_card(msg['played']).card_pic)
+						self.last.config(image = img)
+						self.last.image = img
 
 				elif msg['stage'] == INIT:
 					print("New game!")
@@ -733,7 +740,7 @@ class Game(Frame):
 		if self.quit:
 			print("Loop ended")
 			self.close_window()
-
+# todo save crashed game maybe
 
 
 	def set_played_img(self, msg):
@@ -797,13 +804,15 @@ class Game(Frame):
 				raise
 		print("No more receiving messages")
 
-	def send_design_update(self,type, num):
+	def send_design_update(self,type, num, *args):
 		# 1 = taken, 0 = placed
 		data = {'stage': DESIGNUPD,
 				'type': type,
 				'num_cards': num,
 				'from': self.identity
 		}
+		if type == 0:
+			data['played'] = args[0]
 		data['padding'] = 'a'*(685-len(str(data)))
 		self.sock.send(dumps(data).encode('utf-8'))
 		print('Design update sent')
@@ -957,8 +966,8 @@ class Game(Frame):
 			a = (self.identity + ind) % len(self.peeps)
 		else:
 			a = (self.identity - ind) % len(self.peeps)
+		#if a in self.other_names_lbls.keys():
 		self.other_names_lbls[a].config(bg='green')
-		#self.direction_l.config(text=curr+next)
 
 
 	def checkPeriodically(self):
