@@ -55,7 +55,7 @@ while "bla" in first_card:
 	shuffle(pile)
 	first_card = pile.pop(7*num_players)
 '''
-first_card = 'blustop.png'
+first_card = 'bluplustwo.png'
 
 pile[0] = 'bluplustwo.png'
 pile[1] = 'bluplustwo.png'
@@ -65,7 +65,7 @@ pile[10] = 'greplustwo.png'
 pile[11] = 'greplustwo.png'
 pile[7] = 'yelplustwo.png'
 '''
-pile[2] = 'blackplusfour.jpg'
+#pile[2] = 'blackplusfour.jpg'
 left_cards = [7]*num_players
 # Skeleton of json to be sent
 data_to_send = {"stage": INIT,

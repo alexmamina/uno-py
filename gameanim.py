@@ -687,12 +687,16 @@ class Game(Frame):
 
 				elif msg['stage'] == SEVEN or msg['stage'] == ZERO:
 					# Show hand, say who from, send back own hand
-					#todo 70 say from who cards
 					hand = {'stage': msg['stage'],
 							'hand': [self.hand_cards[c].name for c in self.hand_cards],
 							'from': self.identity}
 
 					self.update_btns(msg['hand'], msg['from'])
+					from_who = Label(text="You got cards from "+self.peeps[msg['from']],
+										  bg='blue',fg='white',width=40,height=1)
+
+					from_who.place(x=0.4*self.screen_width,y=0.6*self.screen_height+1)
+					self.master.after(5000, from_who.destroy)
 					# if msg['stage'] == SEVEN:
 					# 	messagebox.showinfo("New cards", "A 7 was played. \nYou swapped "
 					# 									 "cards with "+self.peeps[msg['from']])
