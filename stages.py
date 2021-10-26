@@ -12,10 +12,12 @@
 # Zero - the 0 part of 7/0
 # Numupdate - the finale of 7/0 to update all cards left
 # Designupd - relay to all just to see cards move on screen
+# Showchallenge - if player was honest, tell them someone else checked their cards
 INIT = -1
 GO = 0
 CHALLENGE = 1
 CHALLENGE_TAKEN = 6
+SHOWCHALLENGE = 810
 ZEROCARDS = 2
 DEBUG = 3
 TAKECARDS = 4

@@ -65,7 +65,7 @@ pile[10] = 'greplustwo.png'
 pile[11] = 'greplustwo.png'
 pile[7] = 'yelplustwo.png'
 '''
-
+pile[2] = 'blackplusfour.jpg'
 left_cards = [7]*num_players
 # Skeleton of json to be sent
 data_to_send = {"stage": INIT,
@@ -328,6 +328,10 @@ while True:
 		#print("Sent to player who forgot to take UNO")
 		prev_player = current_player
 		current_player = rulebreaker
+
+	elif message['stage'] == SHOWCHALLENGE:
+		data = message
+		socks[prev_player].sendto(dumps(data).encode('utf-8'), addresses[prev_player])
 
 	elif message['stage'] == CHALLENGE_TAKEN:
 		old = current_player

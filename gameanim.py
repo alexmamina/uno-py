@@ -322,7 +322,6 @@ class Game(Frame):
 
 		if 'plusfour' in card:
 			is_valid_plus = self.can_put_plusfour()
-#todo show player if illegal 4 was checked by someone??
 		# Changes the black card to black with a color to show which one to play next
 		if "bla" in card[0:3]:
 			picker = Picker(self, "New color", "Which one?", ['Red','Green','Blue',
@@ -618,6 +617,15 @@ class Game(Frame):
 						self.turn_need_taking.config(text="Take 4 cards!", bg='orange')
 					self.name_lbl.config(bg='orange')
 
+
+				elif msg['stage'] == SHOWCHALLENGE:
+					print('other player tried to check you for illegal +4')
+					was_challenge = Label(text="Someone checked if +4 was illegal!",
+										  bg='blue',fg='white',width=40,height=1)
+
+					was_challenge.place(x=0.4*self.screen_width,y=0.6*self.screen_height+1)
+					self.master.after(5000, was_challenge.destroy)
+
 				# Another player has finished the game; you either take cards if last is a plus,
 				# or automatically send the remaining points for the other player
 				elif msg['stage'] == ZEROCARDS:
@@ -854,6 +862,9 @@ class Game(Frame):
 			self.valid_wild.place_forget()
 		else:
 			self.card_counter = 6
+			data = {'stage': SHOWCHALLENGE, 'from': self.identity}
+			data['padding'] = 'a'*(685-len(str(data)))
+			self.sock.send(dumps(data).encode('utf-8'))
 			messagebox.showinfo("Legal move", "The player was honest, so take 6 cards!")
 
 
