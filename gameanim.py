@@ -30,6 +30,15 @@ class Game(Frame):
 	global message
 	message = {}
 
+#todo show modes on start
+#todo arrows for 7/0 (fix 7/0 to maybe not be as fast??)
+#perhaps uno button has a white border that can't be removed- try style?
+#todo change red/green bg or fg
+#todo make it more obvious if same card played twice in a row
+#perhaps root update when removing illegal +4 ??
+#todo save/ load game
+#perhaps unterminated string server when taking 4 ??
+
 
 	# Initialise a frame. Setup the pile, hand, last played card and all gui
 	def __init__(self, master, queue, msg, sock, all_points):
@@ -57,19 +66,19 @@ class Game(Frame):
 		self.screen_height = master.winfo_screenheight()-100
 		self.animated = False
 
-		Frame(width=0.2*self.screen_width, height=0.6*self.screen_height, bg='Ivory',
+		Frame(width=0.2*self.screen_width, height=0.6*self.screen_height, bg='#E4FFE1',
 			  highlightthickness=1,highlightbackground='black').place(x=0, y=0)
-		Frame(width=0.6*self.screen_width, height=0.3*self.screen_height, bg='Ivory',
+		Frame(width=0.6*self.screen_width, height=0.3*self.screen_height, bg='#E4FFE1',
 			  highlightthickness=1,highlightbackground='black').place(
 			x=0.2*self.screen_width,y=0)
-		Frame(width=0.2*self.screen_width, height=0.6*self.screen_height, bg='Ivory',
+		Frame(width=0.2*self.screen_width, height=0.6*self.screen_height, bg='#E4FFE1',
 			  highlightthickness=1,highlightbackground='black').place(
 			x=0.8*self.screen_width,y=0)
-		Frame(width=0.6*self.screen_width, height=0.3*self.screen_height, bg='Ivory',
+		Frame(width=0.6*self.screen_width, height=0.3*self.screen_height, bg='#E4FFE1',
 			  highlightthickness=1,highlightbackground='black').place(
 			x=0.2*self.screen_width,y=0.3*self.screen_height)
 
-		self.card_frame = Frame(width=self.screen_width, height=0.4*self.screen_height, bg='Ivory',
+		self.card_frame = Frame(width=self.screen_width, height=0.4*self.screen_height, bg='#E4FFE1',
 								highlightthickness=1,highlightbackground='black')
 		self.card_frame.place(
 			x=0,y=0.6*self.screen_height)
@@ -97,7 +106,7 @@ class Game(Frame):
 		self.all_nums_of_cards = msg['other_left']
 
 		self.taken_label = Label(text= "",
-								 fg='blue', bg='Ivory', width=28, height=1)
+								 fg='blue', bg='#E4FFE1', width=28, height=1)
 		self.taken_label.place(x=0.2*self.screen_width+1, y=0.3*self.screen_height+1)
 
 
@@ -109,7 +118,7 @@ class Game(Frame):
 								height=1)
 		self.cards_left.place(x=0.15*self.screen_width+1, y=0.6*self.screen_height+1)
 		self.uno_but = but(text="UNO", fg="black", bg="deep sky blue", width=100, height=80,
-						   borderless=1,border=0,
+						   borderless=1,borderwidth=0,
 						   command=self.one_card)
 		self.uno_but.place(x=0.26*self.screen_width, y=0.35*self.screen_height)
 		self.uno = False
@@ -118,7 +127,7 @@ class Game(Frame):
 		self.setup_pile(msg)
 		self.cards = self.deal_cards(msg)
 		# Button for debugging
-		self.debug = but(text="Not my turn", fg='red', bg='white', borderless=1, width=100,
+		self.debug = but(text="Not my turn", fg='red', bg='#E4FFE1', borderless=1, width=100,
 						 height=30,border=0,
 						 command=self.send_debug)
 		self.debug.place(x=self.screen_width-110,y=self.screen_height-45)
@@ -130,12 +139,12 @@ class Game(Frame):
 											  fg='black', bg='orange', width=12, height=1)
 			else:
 				self.turn_need_taking = Label(text="",
-											  fg='Black', bg='Ivory', width=12, height=1)
+											  fg='Black', bg='#E4FFE1', width=12, height=1)
 		else:
 			self.turn_need_taking = Label(text= "",
-										  fg='black', bg='Ivory', width=12, height=1)
+										  fg='black', bg='#E4FFE1', width=12, height=1)
 		self.turn_need_taking.place(x=0.18*self.screen_width,y=0.6*self.screen_height+1)
-
+#todo if first card +2 on normal play, doesn't switch to other players
 
 		other_players = copy.deepcopy(self.peeps)
 		other_players.pop(self.identity)
@@ -205,7 +214,7 @@ class Game(Frame):
 			# Create a button for each card in dealt cards, add a command
 			photo = ImageTk.PhotoImage(dealt_cards[i].card_pic)
 			b = Button(text=dealt_cards[i].name, image=photo, width=117, height=183, border=0,
-					   bg="white")
+					   bg="#E4FFE1")
 			b['command'] = lambda ind=i, binst=b: self.place_card(ind, binst)
 			b.image = photo
 			self.hand_btns[i] = b
@@ -419,7 +428,7 @@ class Game(Frame):
 		self.hand_cards[ind] = new
 		photo = ImageTk.PhotoImage(new.card_pic)
 		b = Button(text=new.name, image=photo, width=117, height=183, border=0,
-				   bg="white",state='disabled')
+				   bg="#E4FFE1",state='disabled')
 		b['command'] = lambda ind=ind, binst=b: self.place_card(ind, binst)
 		b.image = photo
 		self.hand_btns[ind] = b
@@ -474,7 +483,7 @@ class Game(Frame):
 	def one_card(self):
 		if self.uno:
 			self.uno = False
-			self.uno_but.config(bg="white")
+			self.uno_but.config(bg="#E4FFE1")
 			self.uno_but.config(bg='deep sky blue')
 
 		else:
@@ -543,8 +552,9 @@ class Game(Frame):
 
 
 					for lbl in self.other_cards_lbls.keys():
+						crdtxt = " cards" if not msg['other_left'][lbl] == 1 else " card"
 						self.other_cards_lbls[lbl].config(text = \
-															  str(msg['other_left'][lbl]) + " cards")
+											str(msg['other_left'][lbl]) + crdtxt)
 						for c in self.other_cards_imgs[lbl]:
 							c.destroy()
 						self.put_other_cards(lbl, msg['other_left'][lbl])
@@ -561,7 +571,7 @@ class Game(Frame):
 						uno_said = "\nUNO said!"
 						p = msg['from']
 						print("From: ", p)
-						#todo this says wrong player if uno afterb 7/0
+						#todo this says wrong player if uno after 7/0
 						if '0' in newC and 'taken' not in msg and self.modes[0]:
 							if self.is_reversed:
 								p = (p - 1) % len(self.peeps)
@@ -597,7 +607,7 @@ class Game(Frame):
 								(self.modes[2] and not self.card_counter == 4 and not
 								self.card_counter == 2) or (self.modes[1] and self.can_stack() and
 															'two' in newC):
-							self.turn_need_taking.config(text="",bg='Ivory')
+							self.turn_need_taking.config(text="",bg='#E4FFE1')
 							for i in self.hand_btns:
 								self.hand_btns[i].config(state='normal')
 							if self.modes[1] and self.can_stack() and 'two' in newC \
@@ -701,7 +711,9 @@ class Game(Frame):
 										  bg='blue',fg='white',width=40,height=1)
 
 					from_who.place(x=0.4*self.screen_width,y=0.6*self.screen_height+1)
-					self.master.after(5000, from_who.destroy)
+					#test 'you got cards from' stay for longer
+
+					self.master.after(10000, from_who.destroy)
 					# if msg['stage'] == SEVEN:
 					# 	messagebox.showinfo("New cards", "A 7 was played. \nYou swapped "
 					# 									 "cards with "+self.peeps[msg['from']])
@@ -719,7 +731,8 @@ class Game(Frame):
 					print()
 					#self.cards_left.config(text=self.label_for_cards_left(msg['other_left']))
 					for l in self.other_cards_lbls.keys():
-						self.other_cards_lbls[l].config(text=str(msg['other_left'][l])+" cards")
+						crdtxt = " cards" if not msg['other_left'][l] == 1 else " card"
+						self.other_cards_lbls[l].config(text=str(msg['other_left'][l])+crdtxt)
 						o_cards = self.other_cards_imgs[l]
 						for car in o_cards:
 							car.destroy()
@@ -730,9 +743,9 @@ class Game(Frame):
 				elif msg['stage'] == DESIGNUPD:
 					print('design update')
 					who_updated = msg['from']
-
+					crdtxt = " cards" if not msg['num_cards'] == 1 else " card"
 					self.other_cards_lbls[who_updated].config(text=str(msg['num_cards']) \
-																 + " cards")
+																 + crdtxt)
 					o_cards = self.other_cards_imgs[who_updated]
 					for car in o_cards:
 						car.destroy()
@@ -849,7 +862,7 @@ class Game(Frame):
 
 		for i in self.hand_btns:
 			self.hand_btns[i].config(state='disabled')
-		self.turn_need_taking.config(text="", bg='Ivory')
+		self.turn_need_taking.config(text="", bg='#E4FFE1')
 		self.name_lbl.config(bg='red')
 		self.taken_label.config(text='')
 		print("Not your turn anymore")
@@ -900,7 +913,7 @@ class Game(Frame):
 		self.taken_label.config(text='')
 		#self.uno_but.config(fg="red", bg="white", state='disabled')
 		#self.uno_but.place_forget()
-		self.turn_need_taking.config(text="Getting results!", bg='Ivory', fg='blue')
+		self.turn_need_taking.config(text="Getting results!", bg='#E4FFE1', fg='blue')
 		data_to_send['padding'] = 'a'*(685-len(str(data_to_send)))
 		self.sock.send(dumps(data_to_send).encode('utf-8'))
 		print("Not your turn anymore")
@@ -943,7 +956,8 @@ class Game(Frame):
 		pl = 0
 		for x in others:
 			if pl != self.identity:
-				left_cards_text += "\n "+self.peeps[pl] + ": " + str(x) + " cards"
+				crdtxt = " cards" if not self.peeps[pl] == 1 else " card"
+				left_cards_text += "\n "+self.peeps[pl] + ": " + str(x) + crdtxt
 			pl += 1
 		return left_cards_text
 
@@ -964,7 +978,8 @@ class Game(Frame):
 			self.hand_btns[j].config(state='disabled')
 		self.all_nums_of_cards[self.identity] = new
 		self.all_nums_of_cards[player] = old
-		self.other_cards_lbls[player].config(text = str(old) + " cards")
+		crdtxt = " cards" if not old == 1 else " card"
+		self.other_cards_lbls[player].config(text = str(old) + crdtxt)
 		self.cards_left.config(text = str(new))
 		#self.cards_left.config(text=self.label_for_cards_left(self.all_nums_of_cards))
 

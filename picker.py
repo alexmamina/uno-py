@@ -13,6 +13,7 @@ class Picker(Toplevel):
 		x = parent.winfo_rootx()
 		y = parent.winfo_rooty()
 		self.geometry("+%d+%d" % (x - 150, y + 150))
+		# self.geometry("385x50+%d+%d" % (x - 150, y + 150))
 		self.question = question
 		self.transient(parent)
 		self.protocol("WM_DELETE_WINDOW",self.cancel)
