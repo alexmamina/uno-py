@@ -35,7 +35,6 @@ class Game(Frame):
 #perhaps uno button has a white border that can't be removed- try style?
 #todo change red/green bg or fg
 #perhaps make it more obvious if same card played twice in a row
-#perhaps root update when removing illegal +4 ??
 #todo save/ load game
 #perhaps unterminated string server when taking 4 ??
 
@@ -145,7 +144,6 @@ class Game(Frame):
 			self.turn_need_taking = Label(text= "",
 										  fg='black', bg='#D1FFCC', width=12, height=1)
 		self.turn_need_taking.place(x=0.18*self.screen_width,y=0.6*self.screen_height+1)
-#todo if first card +2 on normal play, doesn't switch to other players
 
 		other_players = copy.deepcopy(self.peeps)
 		other_players.pop(self.identity)
@@ -322,6 +320,7 @@ class Game(Frame):
 			self.challenge.place_forget()
 		if self.valid_wild:
 			self.valid_wild.place_forget()
+		self.update_idletasks()
 		card = self.hand_cards[ind].name
 		old_card = self.last['text']
 		# Same color (0:3), same symbol (3:), black
@@ -430,9 +429,12 @@ class Game(Frame):
 			self.challenge.place_forget()
 		if self.valid_wild:
 			self.valid_wild.place_forget()
+		self.update_idletasks()
 		# Decrease number of cards that need to be taken
 		self.card_counter -= 1
-		if self.stack_counter > 0 and self.modes[1] and 'two' in self.last['text']:
+		# this at the bottom used to have 'and self.modes[1]' which it doesn't bc stack needs
+			# to change always, no matter the mode
+		if self.stack_counter > 0 and 'two' in self.last['text']:
 			self.stack_counter -= 1
 			self.stack_label.config(text='Stack\n cards to take:\n'+str(self.stack_counter))
 			print("Stack: ", self.stack_counter)
@@ -480,7 +482,7 @@ class Game(Frame):
 
 		# Send information about taken cards if can't go or had to take +2/4 due to challenge or
 		# card
-		if self.card_counter <= 0  and self.stack_counter == 0 and (possible_move == False or
+		if self.card_counter <= 0 and self.stack_counter == 0 and (possible_move == False or
 																	('taken' not in message and "plus" in self.last['text']) or
 																	message['stage']==CHALLENGE):
 			data_to_send = {
@@ -900,6 +902,7 @@ class Game(Frame):
 		if not is_valid:
 			self.sendInfo(data)
 			self.valid_wild.place_forget()
+			self.update_idletasks()
 		else:
 			self.card_counter = 6
 			data = {'stage': SHOWCHALLENGE, 'from': self.identity}

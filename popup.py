@@ -13,7 +13,8 @@ class InfoPop(Toplevel):
 		self.title(title)
 		x = parent.winfo_rootx()
 		y = parent.winfo_rooty()
-		self.geometry("200x150+%d+%d" % (x + 500, y + 250))
+		self.config(bg='Ivory')
+		self.geometry("200x150+%d+%d" % (500, 250))
 		# self.geometry("385x50+%d+%d" % (x - 150, y + 150))
 		self.text=text
 		self.transient(parent)
@@ -29,7 +30,7 @@ class InfoPop(Toplevel):
 
 	def create_widgets(self):
 		frmL = Frame(self)
-		Label(self, text=self.text, font=("Arial", 20)).pack(side=TOP)
+		Label(self, text=self.text, font=("Arial", 20),bg='Ivory').pack(side=TOP)
 		frmButton = Frame(self)
 		btn = but(self, text='OK',width=180,height=40,bg='light blue', command=self.cancel,
 				   borderless=1)
