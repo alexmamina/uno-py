@@ -4,6 +4,7 @@ from tkinter import simpledialog
 from math import *
 from PIL import ImageTk, Image
 import PIL.Image
+from popup import *
 import card
 import deck
 import webbrowser
@@ -30,11 +31,10 @@ class Game(Frame):
 	global message
 	message = {}
 
-#todo show modes on start
 #todo arrows for 7/0 (fix 7/0 to maybe not be as fast??)
 #perhaps uno button has a white border that can't be removed- try style?
 #todo change red/green bg or fg
-#todo make it more obvious if same card played twice in a row
+#perhaps make it more obvious if same card played twice in a row
 #perhaps root update when removing illegal +4 ??
 #todo save/ load game
 #perhaps unterminated string server when taking 4 ??
@@ -66,19 +66,19 @@ class Game(Frame):
 		self.screen_height = master.winfo_screenheight()-100
 		self.animated = False
 
-		Frame(width=0.2*self.screen_width, height=0.6*self.screen_height, bg='#E4FFE1',
+		Frame(width=0.2*self.screen_width, height=0.6*self.screen_height, bg='#D1FFCC',
 			  highlightthickness=1,highlightbackground='black').place(x=0, y=0)
-		Frame(width=0.6*self.screen_width, height=0.3*self.screen_height, bg='#E4FFE1',
+		Frame(width=0.6*self.screen_width, height=0.3*self.screen_height, bg='#D1FFCC',
 			  highlightthickness=1,highlightbackground='black').place(
 			x=0.2*self.screen_width,y=0)
-		Frame(width=0.2*self.screen_width, height=0.6*self.screen_height, bg='#E4FFE1',
+		Frame(width=0.2*self.screen_width, height=0.6*self.screen_height, bg='#D1FFCC',
 			  highlightthickness=1,highlightbackground='black').place(
 			x=0.8*self.screen_width,y=0)
-		Frame(width=0.6*self.screen_width, height=0.3*self.screen_height, bg='#E4FFE1',
+		Frame(width=0.6*self.screen_width, height=0.3*self.screen_height, bg='#D1FFCC',
 			  highlightthickness=1,highlightbackground='black').place(
 			x=0.2*self.screen_width,y=0.3*self.screen_height)
 
-		self.card_frame = Frame(width=self.screen_width, height=0.4*self.screen_height, bg='#E4FFE1',
+		self.card_frame = Frame(width=self.screen_width, height=0.4*self.screen_height, bg='#D1FFCC',
 								highlightthickness=1,highlightbackground='black')
 		self.card_frame.place(
 			x=0,y=0.6*self.screen_height)
@@ -106,7 +106,7 @@ class Game(Frame):
 		self.all_nums_of_cards = msg['other_left']
 
 		self.taken_label = Label(text= "",
-								 fg='blue', bg='#E4FFE1', width=28, height=1)
+								 fg='blue', bg='#D1FFCC', width=28, height=1)
 		self.taken_label.place(x=0.2*self.screen_width+1, y=0.3*self.screen_height+1)
 
 
@@ -127,7 +127,8 @@ class Game(Frame):
 		self.setup_pile(msg)
 		self.cards = self.deal_cards(msg)
 		# Button for debugging
-		self.debug = but(text="Not my turn", fg='red', bg='#E4FFE1', borderless=1, width=100,
+		self.debug = but(text="Not my turn", fg='red', bg='white', borderless=1,
+						 borderwidth=0, width=100,
 						 height=30,border=0,
 						 command=self.send_debug)
 		self.debug.place(x=self.screen_width-110,y=self.screen_height-45)
@@ -139,10 +140,10 @@ class Game(Frame):
 											  fg='black', bg='orange', width=12, height=1)
 			else:
 				self.turn_need_taking = Label(text="",
-											  fg='Black', bg='#E4FFE1', width=12, height=1)
+											  fg='Black', bg='#D1FFCC', width=12, height=1)
 		else:
 			self.turn_need_taking = Label(text= "",
-										  fg='black', bg='#E4FFE1', width=12, height=1)
+										  fg='black', bg='#D1FFCC', width=12, height=1)
 		self.turn_need_taking.place(x=0.18*self.screen_width,y=0.6*self.screen_height+1)
 #todo if first card +2 on normal play, doesn't switch to other players
 
@@ -154,6 +155,23 @@ class Game(Frame):
 		else:
 			self.name_lbl.config(bg='red')
 		self.set_label_next(msg)
+
+		txt_modes = ""
+		if self.modes[0]:
+			txt_modes += '7/0\n'
+		else:
+			txt_modes += '\n'
+		if self.modes[1]:
+			txt_modes += 'Stack +2\n'
+		else:
+			txt_modes += '\n'
+		if self.modes[2]:
+			txt_modes += 'Take many cards\n'
+		else:
+			txt_modes += '\n'
+		if not any(self.modes):
+			txt_modes = '\nRegular'
+		InfoPop(self, 'Modes', txt_modes)
 
 
 # Create a hand of 7 cards from pile from message
@@ -214,7 +232,7 @@ class Game(Frame):
 			# Create a button for each card in dealt cards, add a command
 			photo = ImageTk.PhotoImage(dealt_cards[i].card_pic)
 			b = Button(text=dealt_cards[i].name, image=photo, width=117, height=183, border=0,
-					   bg="#E4FFE1")
+					   bg="#D1FFCC")
 			b['command'] = lambda ind=i, binst=b: self.place_card(ind, binst)
 			b.image = photo
 			self.hand_btns[i] = b
@@ -428,7 +446,7 @@ class Game(Frame):
 		self.hand_cards[ind] = new
 		photo = ImageTk.PhotoImage(new.card_pic)
 		b = Button(text=new.name, image=photo, width=117, height=183, border=0,
-				   bg="#E4FFE1",state='disabled')
+				   bg="#D1FFCC",state='disabled')
 		b['command'] = lambda ind=ind, binst=b: self.place_card(ind, binst)
 		b.image = photo
 		self.hand_btns[ind] = b
@@ -483,7 +501,7 @@ class Game(Frame):
 	def one_card(self):
 		if self.uno:
 			self.uno = False
-			self.uno_but.config(bg="#E4FFE1")
+			self.uno_but.config(bg="#D1FFCC")
 			self.uno_but.config(bg='deep sky blue')
 
 		else:
@@ -578,7 +596,8 @@ class Game(Frame):
 							else:
 								p = (p + 1) % len(self.peeps)
 						if p != self.identity:
-							messagebox.showinfo("UNO", self.peeps[p]+" has only 1 card left!")
+							#messagebox.showinfo("UNO", self.peeps[p]+" has only 1 card left!")
+							InfoPop(self, 'UNO', self.peeps[p]+" \nhas only 1 card left!")
 					else:
 						uno_said = ""
 					self.all_nums_of_cards = msg['other_left']
@@ -607,7 +626,7 @@ class Game(Frame):
 								(self.modes[2] and not self.card_counter == 4 and not
 								self.card_counter == 2) or (self.modes[1] and self.can_stack() and
 															'two' in newC):
-							self.turn_need_taking.config(text="",bg='#E4FFE1')
+							self.turn_need_taking.config(text="",bg='#D1FFCC')
 							for i in self.hand_btns:
 								self.hand_btns[i].config(state='normal')
 							if self.modes[1] and self.can_stack() and 'two' in newC \
@@ -862,7 +881,7 @@ class Game(Frame):
 
 		for i in self.hand_btns:
 			self.hand_btns[i].config(state='disabled')
-		self.turn_need_taking.config(text="", bg='#E4FFE1')
+		self.turn_need_taking.config(text="", bg='#D1FFCC')
 		self.name_lbl.config(bg='red')
 		self.taken_label.config(text='')
 		print("Not your turn anymore")
@@ -913,7 +932,7 @@ class Game(Frame):
 		self.taken_label.config(text='')
 		#self.uno_but.config(fg="red", bg="white", state='disabled')
 		#self.uno_but.place_forget()
-		self.turn_need_taking.config(text="Getting results!", bg='#E4FFE1', fg='blue')
+		self.turn_need_taking.config(text="Getting results!", bg='#D1FFCC', fg='blue')
 		data_to_send['padding'] = 'a'*(685-len(str(data_to_send)))
 		self.sock.send(dumps(data_to_send).encode('utf-8'))
 		print("Not your turn anymore")
