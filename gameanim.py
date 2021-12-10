@@ -31,13 +31,12 @@ class Game(Frame):
 	global message
 	message = {}
 
-#todo arrows for 7/0 (fix 7/0 to maybe not be as fast??)
-#perhaps uno button has a white border that can't be removed- try style?
-#todo change red/green bg or fg
-#perhaps make it more obvious if same card played twice in a row
-#todo save/ load game
-#perhaps unterminated string server when taking 4 ??
-
+	# todo arrows for 7/0 (fix 7/0 to maybe not be as fast??)
+	# perhaps uno button has a white border that can't be removed- try style?
+	# todo change red/green bg or fg
+	# perhaps make it more obvious if same card played twice in a row
+	# todo save/ load game
+	# perhaps unterminated string server when taking 4 ??
 
 	# Initialise a frame. Setup the pile, hand, last played card and all gui
 	def __init__(self, master, queue, msg, sock, all_points):
@@ -52,7 +51,7 @@ class Game(Frame):
 		self.all_points = all_points
 		self.parent = master
 		self.master.protocol("WM_DELETE_WINDOW", self.close_window)
-		#Take one card only
+		# Take one card only
 		self.card_counter = 1 if not self.modes[2] else 500
 		self.q = queue
 		self.quit = False
@@ -62,64 +61,64 @@ class Game(Frame):
 		self.valid_wild = None
 		self.stack_counter = 0 if 'two' not in msg['played'] else 2
 		self.screen_width = master.winfo_screenwidth()
-		self.screen_height = master.winfo_screenheight()-100
+		self.screen_height = master.winfo_screenheight() - 100
 		self.animated = False
 
-		Frame(width=0.2*self.screen_width, height=0.6*self.screen_height, bg='#D1FFCC',
-			  highlightthickness=1,highlightbackground='black').place(x=0, y=0)
-		Frame(width=0.6*self.screen_width, height=0.3*self.screen_height, bg='#D1FFCC',
-			  highlightthickness=1,highlightbackground='black').place(
-			x=0.2*self.screen_width,y=0)
-		Frame(width=0.2*self.screen_width, height=0.6*self.screen_height, bg='#D1FFCC',
-			  highlightthickness=1,highlightbackground='black').place(
-			x=0.8*self.screen_width,y=0)
-		Frame(width=0.6*self.screen_width, height=0.3*self.screen_height, bg='#D1FFCC',
-			  highlightthickness=1,highlightbackground='black').place(
-			x=0.2*self.screen_width,y=0.3*self.screen_height)
+		Frame(width=0.2 * self.screen_width, height=0.6 * self.screen_height, bg='#D1FFCC',
+			  highlightthickness=1, highlightbackground='black').place(x=0, y=0)
+		Frame(width=0.6 * self.screen_width, height=0.3 * self.screen_height, bg='#D1FFCC',
+			  highlightthickness=1, highlightbackground='black').place(
+			x=0.2 * self.screen_width, y=0)
+		Frame(width=0.2 * self.screen_width, height=0.6 * self.screen_height, bg='#D1FFCC',
+			  highlightthickness=1, highlightbackground='black').place(
+			x=0.8 * self.screen_width, y=0)
+		Frame(width=0.6 * self.screen_width, height=0.3 * self.screen_height, bg='#D1FFCC',
+			  highlightthickness=1, highlightbackground='black').place(
+			x=0.2 * self.screen_width, y=0.3 * self.screen_height)
 
-		self.card_frame = Frame(width=self.screen_width, height=0.4*self.screen_height, bg='#D1FFCC',
-								highlightthickness=1,highlightbackground='black')
+		self.card_frame = Frame(width=self.screen_width, height=0.4 * self.screen_height,
+								bg='#D1FFCC',
+								highlightthickness=1, highlightbackground='black')
 		self.card_frame.place(
-			x=0,y=0.6*self.screen_height)
+			x=0, y=0.6 * self.screen_height)
 
-		self.stack_label = Label(text="Stack\n cards to take:\n"+str(self.stack_counter),fg='black',
-								 bg='PeachPuff', width=10,height=3)
+		self.stack_label = Label(text="Stack\n cards to take:\n" + str(self.stack_counter),
+								 fg='black',
+								 bg='PeachPuff', width=10, height=3)
 		self.is_reversed = message['dir']
-		self.revdir = ImageTk.PhotoImage(PIL.Image.open("directionrev.jpg.png").resize((150,150),
-																				PIL.Image.ANTIALIAS))
-		self.fordir = ImageTk.PhotoImage(PIL.Image.open("directionfor.jpg.png").resize((150,150),
-																				PIL.Image.ANTIALIAS))
+		self.revdir = ImageTk.PhotoImage(PIL.Image.open("directionrev.jpg.png").resize((150, 150),
+																			PIL.Image.ANTIALIAS))
+		self.fordir = ImageTk.PhotoImage(PIL.Image.open("directionfor.jpg.png").resize((150, 150),
+																			PIL.Image.ANTIALIAS))
 
-
-		self.direction_l = Label(image = self.revdir if self.is_reversed else self.fordir,
-								width=95, height=95,border=0)
+		self.direction_l = Label(image=self.revdir if self.is_reversed else self.fordir,
+								 width=95, height=95, border=0)
 		self.direction_l.image = self.revdir if self.is_reversed else self.fordir
 		self.direction_l['image'] = self.revdir if self.is_reversed else self.fordir
 		if self.modes[1]:
-			self.stack_label.place(x=0.68*self.screen_width, y=0.3*self.screen_height+2)
-			self.direction_l.place(x=0.68*self.screen_width, y=0.3*self.screen_height+82)
+			self.stack_label.place(x=0.68 * self.screen_width, y=0.3 * self.screen_height + 2)
+			self.direction_l.place(x=0.68 * self.screen_width, y=0.3 * self.screen_height + 82)
 		else:
-			self.direction_l.place(x=0.68*self.screen_width, y=0.3*self.screen_height+42)
+			self.direction_l.place(x=0.68 * self.screen_width, y=0.3 * self.screen_height + 42)
 		self.hand_cards = {}
 		self.pile = msg['pile']
 		self.all_nums_of_cards = msg['other_left']
 
-		self.taken_label = Label(text= "",
+		self.taken_label = Label(text="",
 								 fg='blue', bg='#D1FFCC', width=28, height=1)
-		self.taken_label.place(x=0.2*self.screen_width+1, y=0.3*self.screen_height+1)
-
+		self.taken_label.place(x=0.2 * self.screen_width + 1, y=0.3 * self.screen_height + 1)
 
 		self.name_lbl = Label(text='You', fg="black", bg="pale green", width=20,
 							  height=1)
-		self.name_lbl.place(x=1, y=0.6*self.screen_height+1)
+		self.name_lbl.place(x=1, y=0.6 * self.screen_height + 1)
 
 		self.cards_left = Label(text=str(7), fg="black", bg="pale green", width=2,
 								height=1)
-		self.cards_left.place(x=0.15*self.screen_width+1, y=0.6*self.screen_height+1)
+		self.cards_left.place(x=0.15 * self.screen_width + 1, y=0.6 * self.screen_height + 1)
 		self.uno_but = but(text="UNO", fg="black", bg="deep sky blue", width=100, height=80,
-						   borderless=1,borderwidth=0,
+						   borderless=1, borderwidth=0,
 						   command=self.one_card)
-		self.uno_but.place(x=0.26*self.screen_width, y=0.35*self.screen_height)
+		self.uno_but.place(x=0.26 * self.screen_width, y=0.35 * self.screen_height)
 		self.uno = False
 		self.new_card = None
 		self.setup_menu()
@@ -128,9 +127,9 @@ class Game(Frame):
 		# Button for debugging
 		self.debug = but(text="Not my turn", fg='red', bg='white', borderless=1,
 						 borderwidth=0, width=100,
-						 height=30,border=0,
+						 height=30, border=0,
 						 command=self.send_debug)
-		self.debug.place(x=self.screen_width-110,y=self.screen_height-45)
+		self.debug.place(x=self.screen_width - 110, y=self.screen_height - 45)
 		self.hand_btns = {}
 		self.setup_hand(self.cards)
 		if msg['player'] == 1:
@@ -141,9 +140,9 @@ class Game(Frame):
 				self.turn_need_taking = Label(text="",
 											  fg='Black', bg='#D1FFCC', width=12, height=1)
 		else:
-			self.turn_need_taking = Label(text= "",
+			self.turn_need_taking = Label(text="",
 										  fg='black', bg='#D1FFCC', width=12, height=1)
-		self.turn_need_taking.place(x=0.18*self.screen_width,y=0.6*self.screen_height+1)
+		self.turn_need_taking.place(x=0.18 * self.screen_width, y=0.6 * self.screen_height + 1)
 
 		other_players = copy.deepcopy(self.peeps)
 		other_players.pop(self.identity)
@@ -171,17 +170,16 @@ class Game(Frame):
 			txt_modes = '\nRegular'
 		InfoPop(self, 'Modes', txt_modes)
 
-
-# Create a hand of 7 cards from pile from message
+	# Create a hand of 7 cards from pile from message
 	def deal_cards(self, message):
 		global new_deck
 		hand = []
 		self.pile = message['pile']
 		for i in range(7):
 			c = self.pile.pop(0)
-			#Lookup the card name from pile to get card itself
+			# Lookup the card name from pile to get card itself
 			card = new_deck.get_card(c)
-			hand.append(card) #CARDS
+			hand.append(card)  # CARDS
 		return hand
 
 	# Create a menu bar, configure to add to parent (which is the root window)
@@ -213,16 +211,15 @@ class Game(Frame):
 		# Button to take a card (so a pile)
 		self.new_card = Button(image=photo, width=117, height=183, border=0, command=self.take_card)
 		self.new_card.image = photo
-		self.new_card.place(x=0.44*self.screen_width, y=0.32*self.screen_height)
+		self.new_card.place(x=0.44 * self.screen_width, y=0.32 * self.screen_height)
 		# Last played card from the message
-		lastplayed2 = message['played'] # this is a name!!
+		lastplayed2 = message['played']  # this is a name!!
 		photo2 = ImageTk.PhotoImage(new_deck.get_card(lastplayed2).card_pic)
 		# Last is a disabled button with the last played card shown
 		self.last = Button(text=lastplayed2, image=photo2, width=117, height=183, border=0,
 						   state="disabled")
 		self.last.image = photo2
-		self.last.place(x=0.56*self.screen_width, y=0.32*self.screen_height)
-
+		self.last.place(x=0.56 * self.screen_width, y=0.32 * self.screen_height)
 
 	def setup_hand(self, dealt_cards):
 		n = len(dealt_cards)
@@ -235,87 +232,88 @@ class Game(Frame):
 			b.image = photo
 			self.hand_btns[i] = b
 			self.hand_cards[i] = dealt_cards[i]
-			coords = self.get_card_placement(n,i)
+			coords = self.get_card_placement(n, i)
 			b.place(x=coords[1], y=coords[2])
 
-	#todo design update when placing - animation
+	# todo design update when placing - animation
 
 	def setup_other_players(self, peeps):
 
 		if len(peeps) >= 2:
-			x_coords = [0,0.2,0.8]
+			x_coords = [0, 0.2, 0.8]
 		else:
 			x_coords = [0.2]
 		self.other_cards_lbls = {}
 		self.other_names_lbls = {}
 		self.other_cards_imgs = {}
 		ctr = 0
-		for j in range(self.identity+1, self.identity+len(self.peeps)):
-			#id is 3 range is [4,5,6,7] or [0,1,2,3]
-			#id 2 range [3,4,5,6] [3,0,1,2]
+		for j in range(self.identity + 1, self.identity + len(self.peeps)):
+			# id is 3 range is [4,5,6,7] or [0,1,2,3]
+			# id 2 range [3,4,5,6] [3,0,1,2]
 			i = j % len(self.peeps)
 			name_lbl = Label(text=self.peeps[i], fg="black", bg="pale green", width=20,
-						 height=1)
-			name_lbl.place(x=x_coords[ctr]*self.screen_width+1,y=1)
+							 height=1)
+			name_lbl.place(x=x_coords[ctr] * self.screen_width + 1, y=1)
 			self.other_names_lbls[i] = name_lbl
-			other_card_lbl = Label(text=str(7)+" cards", fg="black", bg="pale green", width=8,
+			other_card_lbl = Label(text=str(7) + " cards", fg="black", bg="pale green", width=8,
 								   height=1)
 			self.other_cards_lbls[i] = other_card_lbl
-			other_card_lbl.place(x=(0.01+x_coords[ctr])*self.screen_width, y=31)
+			other_card_lbl.place(x=(0.01 + x_coords[ctr]) * self.screen_width, y=31)
 			self.other_cards_imgs[i] = []
 			self.put_other_cards(i, self.all_nums_of_cards[i])
 			ctr += 1
 
-	def put_other_cards(self,who, num):
+	def put_other_cards(self, who, num):
 		photo = ImageTk.PhotoImage(deck.smallback)
 		size = num if num <= 18 else 18
 		for c in range(size):
-			cardback = Label(text='lbl',image = photo, width=80, height=125, border=0)
+			cardback = Label(text='lbl', image=photo, width=80, height=125, border=0)
 			cardback['image'] = photo
 			cardback.image = photo
 			self.other_cards_imgs[who].append(cardback)
 
-			if (who == (self.identity+2) % len(self.peeps)) or (len(self.peeps) == 2):
-				cardback.place(x=0.3*self.screen_width+c*30, y=40)
-			elif who == (self.identity+1) % len(self.peeps):
-				cardback.place(x=0.1*self.screen_width, y=35+15*c)
+			if (who == (self.identity + 2) % len(self.peeps)) or (len(self.peeps) == 2):
+				cardback.place(x=0.3 * self.screen_width + c * 30, y=40)
+			elif who == (self.identity + 1) % len(self.peeps):
+				cardback.place(x=0.1 * self.screen_width, y=35 + 15 * c)
 			else:
-				cardback.place(x=0.9*self.screen_width, y=35+15*c)
+				cardback.place(x=0.9 * self.screen_width, y=35 + 15 * c)
 
 	# Move card to the pile in an animation
-	def move(self, origx, origy,dx, dy, i,binst, img, ind):
+	def move(self, origx, origy, dx, dy, i, binst, img, ind):
 		card = self.hand_cards[ind].name
 		ratio = 20 if abs(dx) < 250 else 40
 		time = 5 if abs(dx) < 250 else 2
 		if not i == ratio:
-			x = origx+(dx/ratio)*i
-			y = origy+(dy/ratio)*i
+			x = origx + (dx / ratio) * i
+			y = origy + (dy / ratio) * i
 			binst.place(x=x, y=y)
 			i += 1
-			self.move_id = self.after(5,self.move, origx, origy, dx, dy, i,binst, img, ind)
+			self.move_id = self.after(5, self.move, origx, origy, dx, dy, i, binst, img, ind)
 		else:
 			self.after_cancel(self.move_id)
 			binst.destroy()
 			self.move_id = 'ended'
 			self.complete_placement(card, ind)
 
-	def get_card_placement(self,num_cards, i):
+	def get_card_placement(self, num_cards, i):
 		# Returns coordinates of a button  given specific parameters
 		# Like the width and length of cards, as well as how apart they should be
 		result = []
 		if num_cards == 1:
 			num_cards = 2
 		if num_cards <= 20:
-			overlap = floor((117-((117*num_cards)-0.95*self.screen_width)/(num_cards-1)))
+			overlap = floor(
+				(117 - ((117 * num_cards) - 0.95 * self.screen_width) / (num_cards - 1)))
 		else:
-			overlap = floor((117-((117*20)-0.95*self.screen_width)/(20-1)))
+			overlap = floor((117 - ((117 * 20) - 0.95 * self.screen_width) / (20 - 1)))
 		result.append(overlap)
-		result.append(25+overlap*(i%20)+15*(floor(i/20)))
-		result.append(0.65*self.screen_height+40*(floor(i/20)))
+		result.append(25 + overlap * (i % 20) + 15 * (floor(i / 20)))
+		result.append(0.65 * self.screen_height + 40 * (floor(i / 20)))
 		return result
 
 	##################################### EVENTS ##################################
-	def place_card(self,ind, binst):
+	def place_card(self, ind, binst):
 		if self.challenge:
 			self.challenge.place_forget()
 		if self.valid_wild:
@@ -333,7 +331,7 @@ class Game(Frame):
 			dy = dest_y - orig_y
 			# If animation is turned on, move, else place on pile straight away
 			if self.animated:
-				self.move_id = self.move(orig_x, orig_y,dx, dy, 0, binst, self.last.image, ind)
+				self.move_id = self.move(orig_x, orig_y, dx, dy, 0, binst, self.last.image, ind)
 			else:
 				binst.destroy()
 				self.complete_placement(card, ind)
@@ -350,20 +348,20 @@ class Game(Frame):
 			is_valid_plus = self.can_put_plusfour()
 		# Changes the black card to black with a color to show which one to play next
 		if "bla" in card[0:3]:
-			picker = Picker(self, "New color", "Which one?", ['Red','Green','Blue',
+			picker = Picker(self, "New color", "Which one?", ['Red', 'Green', 'Blue',
 															  'Yellow'])
 			new_color = picker.result
 			new_color = new_color.lower()[0:3]
 			# Get the colored black cards from the deck for ease of transfer
 			if "plus" in card:
 				new_color += "plus"
-				card_col = new_color+"four.png"
+				card_col = new_color + "four.png"
 				photocard = new_deck.get_special(new_color)
 			else:
 				new_color += "black"
-				card_col = new_color+"black.png"
+				card_col = new_color + "black.png"
 				photocard = new_deck.get_special(new_color)
-		else: # Not a black card
+		else:  # Not a black card
 			photocard = self.hand_cards[ind].card_pic
 			card_col = card
 		img = ImageTk.PhotoImage(photocard)
@@ -374,38 +372,38 @@ class Game(Frame):
 		self.hand_cards.pop(ind)
 		self.hand_btns.pop(ind)
 		self.all_nums_of_cards[self.identity] -= 1
-		#text = self.label_for_cards_left(self.all_nums_of_cards)
+		# text = self.label_for_cards_left(self.all_nums_of_cards)
 		self.cards_left.config(text=self.all_nums_of_cards[self.identity])
 		ctr = 0
 		for i in self.hand_btns.keys():
 			# Move all buttons
 			b = self.hand_btns[i]
-			coords = self.get_card_placement(len(self.hand_btns),ctr)
+			coords = self.get_card_placement(len(self.hand_btns), ctr)
 			b.place(x=coords[1], y=coords[2])
 			ctr += 1
 
 		data_to_send = {
-			"played" : card,
-			"pile" : self.pile,
-			"stage" : GO,
-			"color" : card_col,
-			"num_left" : len(self.hand_cards)
+			"played": card,
+			"pile": self.pile,
+			"stage": GO,
+			"color": card_col,
+			"num_left": len(self.hand_cards)
 		}
 		if 'plusfour' in card:
 			data_to_send['wild'] = is_valid_plus
 		# If placed plustwo in the mode, send the counter
 		elif 'two' in card and self.modes[1]:
 			data_to_send['counter'] = self.stack_counter + 2
-			self.stack_label.config(text='Stack\n cards to take:\n'+str(
+			self.stack_label.config(text='Stack\n cards to take:\n' + str(
 				self.stack_counter + 2))
 			self.stack_counter = 0
 		if str(7) in card and self.modes[0] and len(self.hand_cards) > 0:
 			self.send_design_update(0, len(self.hand_cards), card)
 			players = [x for x in self.peeps if not self.peeps.index(x) == self.identity]
-			swap = Picker(self,"Swap", "Who would you like to swap your cards with?",
+			swap = Picker(self, "Swap", "Who would you like to swap your cards with?",
 						  players)
 			data_to_send['swapwith'] = self.peeps.index(swap.result)
-			#data_to_send['stage'] = SEVEN
+			# data_to_send['stage'] = SEVEN
 			data_to_send['hand'] = [self.hand_cards[c].name for c in self.hand_cards]
 		if str(0) in card and self.modes[0] and len(self.hand_cards) > 0:
 			print("Zero")
@@ -433,14 +431,14 @@ class Game(Frame):
 		# Decrease number of cards that need to be taken
 		self.card_counter -= 1
 		# this at the bottom used to have 'and self.modes[1]' which it doesn't bc stack needs
-			# to change always, no matter the mode
+		# to change always, no matter the mode
 		if self.stack_counter > 0 and 'two' in self.last['text']:
 			self.stack_counter -= 1
-			self.stack_label.config(text='Stack\n cards to take:\n'+str(self.stack_counter))
+			self.stack_label.config(text='Stack\n cards to take:\n' + str(self.stack_counter))
 			print("Stack: ", self.stack_counter)
 
 		if not ('stage' in message.keys() and message['stage'] == ZEROCARDS):
-			self.send_design_update(1, len(self.hand_cards)+1)
+			self.send_design_update(1, len(self.hand_cards) + 1)
 		# Since hand is a dict, the keys aren't in order.
 		# Get the largest and add 1 for the next
 		ind = max(list(self.hand_cards.keys())) + 1
@@ -448,12 +446,12 @@ class Game(Frame):
 		self.hand_cards[ind] = new
 		photo = ImageTk.PhotoImage(new.card_pic)
 		b = Button(text=new.name, image=photo, width=117, height=183, border=0,
-				   bg="#D1FFCC",state='disabled')
+				   bg="#D1FFCC", state='disabled')
 		b['command'] = lambda ind=ind, binst=b: self.place_card(ind, binst)
 		b.image = photo
 		self.hand_btns[ind] = b
 		self.all_nums_of_cards[self.identity] += 1
-		#text = self.label_for_cards_left(self.all_nums_of_cards)
+		# text = self.label_for_cards_left(self.all_nums_of_cards)
 		self.cards_left.config(text=self.all_nums_of_cards[self.identity])
 		ctr = 0
 		print("Card counter: ", self.card_counter)
@@ -468,7 +466,7 @@ class Game(Frame):
 		for i in self.hand_btns.keys():
 			# Move all buttons
 			b = self.hand_btns[i]
-			coords = self.get_card_placement(len(self.hand_btns),ctr)
+			coords = self.get_card_placement(len(self.hand_btns), ctr)
 			b.place(x=coords[1], y=coords[2])
 			ctr += 1
 
@@ -483,14 +481,16 @@ class Game(Frame):
 		# Send information about taken cards if can't go or had to take +2/4 due to challenge or
 		# card
 		if self.card_counter <= 0 and self.stack_counter == 0 and (possible_move == False or
-																	('taken' not in message and "plus" in self.last['text']) or
-																	message['stage']==CHALLENGE):
+																   (
+																		   'taken' not in message and "plus" in
+																		   self.last['text']) or
+																   message['stage'] == CHALLENGE):
 			data_to_send = {
-				"played" : self.last['text'],
-				"pile" : self.pile,
-				"stage" : GO,
-				"color" : self.last['text'][0:3],
-				"num_left" : len(self.hand_cards)
+				"played": self.last['text'],
+				"pile": self.pile,
+				"stage": GO,
+				"color": self.last['text'][0:3],
+				"num_left": len(self.hand_cards)
 			}
 			if message['stage'] != CHALLENGE:
 				data_to_send['taken'] = True
@@ -509,16 +509,16 @@ class Game(Frame):
 		else:
 			self.uno = True
 			self.uno_but.config(bg="lime green")
-		#self.uno_but.place_forget()
+		# self.uno_but.place_forget()
 		print("UNO")
 
 	# Show the points that you have with your cards right now (option in menu)
 	def show_points(self):
-		text = "Your points this session: "+str(self.all_points[self.identity])+"\n"
+		text = "Your points this session: " + str(self.all_points[self.identity]) + "\n"
 		for i in range(len(self.all_points)):
 			if i == self.identity:
 				text += "(You) "
-			text += "{}: {} points\n".format(self.peeps[i],self.all_points[i])
+			text += "{}: {} points\n".format(self.peeps[i], self.all_points[i])
 		messagebox.showinfo("Points", text)
 
 	# Go through the hand and calculate points; regex is for finding numbers
@@ -530,7 +530,7 @@ class Game(Frame):
 				point = int(re.search(r'\d+', c).group())
 				result += point
 			else:
-				#non-numbers
+				# non-numbers
 				if ("two" in c or "reverse" in c or "stop" in c):
 					result += 20
 				else:
@@ -543,7 +543,7 @@ class Game(Frame):
 				msg = self.q.get(0)
 				# Played, pile, num_left, color, player, saiduno, taken
 				print("LOOKING AT MESSAGE")
-				#show(msg)
+				# show(msg)
 				# Normal play stage
 				if msg['stage'] == GO:
 					# Set the last played card and configure the pile + card counter
@@ -552,29 +552,28 @@ class Game(Frame):
 					print("Played: ", newC)
 					self.set_label_next(msg)
 					self.is_reversed = msg['dir']
-					self.direction_l.config(image = self.revdir if self.is_reversed else self.fordir)
+					self.direction_l.config(image=self.revdir if self.is_reversed else self.fordir)
 					self.direction_l.image = self.revdir if self.is_reversed else self.fordir
 					self.direction_l['image'] = self.revdir if self.is_reversed else self.fordir
 					if "plustwo" in newC and 'taken' not in msg:
 						self.card_counter = 2
 						if self.modes[1]:
 							self.stack_counter = msg['counter']
-							self.stack_label.config(text='Stack\n cards to take:\n'+str(
+							self.stack_label.config(text='Stack\n cards to take:\n' + str(
 								self.stack_counter))
-							print("CTR: ",self.stack_counter)
+							print("CTR: ", self.stack_counter)
 						self.taken_label.config(text='')
 					elif 'taken' in msg:
 						self.stack_counter = 0
-						self.stack_label.config(text='Stack\n cards to take:\n'+str(0))
+						self.stack_label.config(text='Stack\n cards to take:\n' + str(0))
 						self.taken_label.config(text='Other player took cards!')
 					else:
 						self.taken_label.config(text='')
 
-
 					for lbl in self.other_cards_lbls.keys():
 						crdtxt = " cards" if not msg['other_left'][lbl] == 1 else " card"
-						self.other_cards_lbls[lbl].config(text = \
-											str(msg['other_left'][lbl]) + crdtxt)
+						self.other_cards_lbls[lbl].config(text= \
+															  str(msg['other_left'][lbl]) + crdtxt)
 						for c in self.other_cards_imgs[lbl]:
 							c.destroy()
 						self.put_other_cards(lbl, msg['other_left'][lbl])
@@ -583,42 +582,44 @@ class Game(Frame):
 					if 'said_uno' in msg.keys() and not msg['said_uno']:
 						uno_said = "\nUNO not said!"
 						self.challenge = but(text="UNO not said!", bg='red', fg='white',
-											 width=150, height=30,command=self.challengeUno,border=0)
+											 width=150, height=30, command=self.challengeUno,
+											 border=0)
 						if msg['player'] == 1:
-							self.challenge.place(x=0.24*self.screen_width,
-												 y=0.49*self.screen_height)
+							self.challenge.place(x=0.24 * self.screen_width,
+												 y=0.49 * self.screen_height)
 					elif 'said_uno' in msg.keys() and msg['said_uno'] and 1 in msg['other_left']:
 						uno_said = "\nUNO said!"
 						p = msg['from']
 						print("From: ", p)
-						#todo this says wrong player if uno after 7/0
+						# todo this says wrong player if uno after 7/0
 						if '0' in newC and 'taken' not in msg and self.modes[0]:
 							if self.is_reversed:
 								p = (p - 1) % len(self.peeps)
 							else:
 								p = (p + 1) % len(self.peeps)
 						if p != self.identity:
-							#messagebox.showinfo("UNO", self.peeps[p]+" has only 1 card left!")
-							InfoPop(self, 'UNO', self.peeps[p]+" \nhas only 1 card left!")
+							# messagebox.showinfo("UNO", self.peeps[p]+" has only 1 card left!")
+							InfoPop(self, 'UNO', self.peeps[p] + " \nhas only 1 card left!")
 					else:
 						uno_said = ""
 					self.all_nums_of_cards = msg['other_left']
 
-					#left_cards_text = self.label_for_cards_left(msg['other_left'])
-					#left_cards_text += uno_said
+					# left_cards_text = self.label_for_cards_left(msg['other_left'])
+					# left_cards_text += uno_said
 					# Set up label with number of remaining cards
-					#self.cards_left.config(text=left_cards_text)
+					# self.cards_left.config(text=left_cards_text)
 					# Enable buttons for cards if your turn; make UNO show if necessary
 					if int(msg['player']) == 1:
 						print("Your turn, enabling buttons")
 						self.name_lbl.config(bg='green')
 						if 'plusfour' in newC and 'taken' not in msg and 'wild' in msg:
 							# Show 'challenge +4' button
-							self.valid_wild = but(text='Illegal +4?', bg='HotPink',fg='black',
-												  width=150, height=30, borderless=1,border=0,
-												  command=lambda valid=msg['wild']: self.challenge_plus(valid))
-							self.valid_wild.place(x=0.24*self.screen_width,
-												  y=0.55*self.screen_height)
+							self.valid_wild = but(text='Illegal +4?', bg='HotPink', fg='black',
+												  width=150, height=30, borderless=1, border=0,
+												  command=lambda
+													  valid=msg['wild']: self.challenge_plus(valid))
+							self.valid_wild.place(x=0.24 * self.screen_width,
+												  y=0.55 * self.screen_height)
 						# No moves possible, or move possible but need to take cards
 						if not self.possible_move() or (self.card_counter == 2
 														or self.card_counter == 4):
@@ -628,7 +629,7 @@ class Game(Frame):
 								(self.modes[2] and not self.card_counter == 4 and not
 								self.card_counter == 2) or (self.modes[1] and self.can_stack() and
 															'two' in newC):
-							self.turn_need_taking.config(text="",bg='#D1FFCC')
+							self.turn_need_taking.config(text="", bg='#D1FFCC')
 							for i in self.hand_btns:
 								self.hand_btns[i].config(state='normal')
 							if self.modes[1] and self.can_stack() and 'two' in newC \
@@ -637,7 +638,7 @@ class Game(Frame):
 									if 'two' not in self.hand_btns[i]['text']:
 										self.hand_btns[i].config(state='disabled')
 						else:
-							self.turn_need_taking.config(text="Take cards!",bg='orange')
+							self.turn_need_taking.config(text="Take cards!", bg='orange')
 				# Forgot to say UNO - enable taking new cards only
 				elif msg['stage'] == CHALLENGE:
 					self.new_card.config(state='normal')
@@ -657,9 +658,9 @@ class Game(Frame):
 				elif msg['stage'] == SHOWCHALLENGE:
 					print('other player tried to check you for illegal +4')
 					was_challenge = Label(text="Someone checked if +4 was illegal!",
-										  bg='blue',fg='white',width=40,height=1)
+										  bg='blue', fg='white', width=40, height=1)
 
-					was_challenge.place(x=0.4*self.screen_width,y=0.6*self.screen_height+1)
+					was_challenge.place(x=0.4 * self.screen_width, y=0.6 * self.screen_height + 1)
 					self.master.after(5000, was_challenge.destroy)
 
 				# Another player has finished the game; you either take cards if last is a plus,
@@ -674,25 +675,26 @@ class Game(Frame):
 						self.card_counter = 2 if "two" in msg['played'] else 4
 						if self.modes[1] and 'counter' in msg:
 							self.stack_counter = msg['counter']
-							self.stack_label.config(text='Stack\n cards to take:\n'+str(
+							self.stack_label.config(text='Stack\n cards to take:\n' + str(
 								self.stack_counter))
 
 					else:
 						# No cards need to be taken, send current points
-						points = {"stage" : CALC, "points" : self.calculate_points()}
-						points['padding'] = 'a'*(685-len(str(points)))
+						points = {"stage": CALC, "points": self.calculate_points()}
+						points['padding'] = 'a' * (685 - len(str(points)))
 						self.sock.send(dumps(points).encode('utf-8'))
 
-					#self.cards_left.config(text='Game over!')
+				# self.cards_left.config(text='Game over!')
 				# Get points from the opponent and show them
 				elif msg['stage'] == CALC:
 					table_of_points = ""
 					self.all_points = msg['total']
 					for i in range(len(msg['total'])):
-						table_of_points += "\n"+self.peeps[i]+": "+str(msg['total'][i])+" points\n"
+						table_of_points += "\n" + self.peeps[i] + ": " + str(
+							msg['total'][i]) + " points\n"
 					if msg['winner'] == self.identity:
-						messagebox.showinfo("Win", "You won "+str(msg['points'])+" points!\n\n"
-																				 " Total this session: \n"+table_of_points)
+						messagebox.showinfo("Win", "You won " + str(msg['points']) + " points!\n\n"
+																					 " Total this session: \n" + table_of_points)
 						ans = messagebox.askyesno("New", "Would you like to continue with a new "
 														 "game?")
 						if ans == 1:
@@ -703,13 +705,13 @@ class Game(Frame):
 																	"2. Stack +2\n"
 																	"3. Take many cards at once")
 							init = {'stage': INIT, "modes": modes}
-							init['padding'] = 'a'*(685-len(str(init)))
+							init['padding'] = 'a' * (685 - len(str(init)))
 							self.sock.send(dumps(init).encode('utf-8'))
 						else:
 							# Don't want the new game
 
 							bye = {"stage": BYE}
-							bye['padding'] = 'a'*(685-len(str(bye)))
+							bye['padding'] = 'a' * (685 - len(str(bye)))
 							self.sock.send(dumps(bye).encode('utf-8'))
 							print("No new game, sending a BYE message")
 							self.quit = True
@@ -717,8 +719,8 @@ class Game(Frame):
 
 					else:
 						messagebox.showinfo("Win", self.peeps[msg['winner']]
-											+" won "+str(msg['points'])+" points!\n"+
-											" Total this session: \n"+table_of_points)
+											+ " won " + str(msg['points']) + " points!\n" +
+											" Total this session: \n" + table_of_points)
 
 
 				elif msg['stage'] == SEVEN or msg['stage'] == ZERO:
@@ -728,11 +730,11 @@ class Game(Frame):
 							'from': self.identity}
 
 					self.update_btns(msg['hand'], msg['from'])
-					from_who = Label(text="You got cards from "+self.peeps[msg['from']],
-										  bg='blue',fg='white',width=40,height=1)
+					from_who = Label(text="You got cards from " + self.peeps[msg['from']],
+									 bg='blue', fg='white', width=40, height=1)
 
-					from_who.place(x=0.4*self.screen_width,y=0.6*self.screen_height+1)
-					#test 'you got cards from' stay for longer
+					from_who.place(x=0.4 * self.screen_width, y=0.6 * self.screen_height + 1)
+					# test 'you got cards from' stay for longer
 
 					self.master.after(10000, from_who.destroy)
 					# if msg['stage'] == SEVEN:
@@ -742,7 +744,7 @@ class Game(Frame):
 					# 	messagebox.showinfo("New cards", "A 0 was played. You get cards from \n"
 					# 						+self.peeps[msg['from']])
 
-					hand['padding'] = 'a'*(685-len(str(hand)))
+					hand['padding'] = 'a' * (685 - len(str(hand)))
 					m = dumps(hand)
 					if not 'end' in msg:
 						self.sock.send(m.encode('utf-8'))
@@ -750,10 +752,10 @@ class Game(Frame):
 
 				elif msg['stage'] == NUMUPDATE:
 					print()
-					#self.cards_left.config(text=self.label_for_cards_left(msg['other_left']))
+					# self.cards_left.config(text=self.label_for_cards_left(msg['other_left']))
 					for l in self.other_cards_lbls.keys():
 						crdtxt = " cards" if not msg['other_left'][l] == 1 else " card"
-						self.other_cards_lbls[l].config(text=str(msg['other_left'][l])+crdtxt)
+						self.other_cards_lbls[l].config(text=str(msg['other_left'][l]) + crdtxt)
 						o_cards = self.other_cards_imgs[l]
 						for car in o_cards:
 							car.destroy()
@@ -766,7 +768,7 @@ class Game(Frame):
 					who_updated = msg['from']
 					crdtxt = " cards" if not msg['num_cards'] == 1 else " card"
 					self.other_cards_lbls[who_updated].config(text=str(msg['num_cards']) \
-																 + crdtxt)
+																   + crdtxt)
 					o_cards = self.other_cards_imgs[who_updated]
 					for car in o_cards:
 						car.destroy()
@@ -775,7 +777,7 @@ class Game(Frame):
 					if msg['type'] == 0:
 						print('card placed design update')
 						img = ImageTk.PhotoImage(new_deck.get_card(msg['played']).card_pic)
-						self.last.config(image = img)
+						self.last.config(image=img)
 						self.last.image = img
 
 				elif msg['stage'] == INIT:
@@ -791,7 +793,6 @@ class Game(Frame):
 		if self.quit:
 			print("Loop ended")
 			self.close_window()
-
 
 	def set_played_img(self, msg):
 		newC = msg['played']
@@ -813,7 +814,6 @@ class Game(Frame):
 		self.last.image = img
 		self.pile = msg['pile']
 
-
 	# Put received message in queue for async processing
 	def receive(self):
 		global message, root
@@ -821,7 +821,7 @@ class Game(Frame):
 			print("Waiting")
 			try:
 				json, addr = self.sock.recvfrom(700)
-				#print("LENGTH: ", len(json))
+				# print("LENGTH: ", len(json))
 				data = json.decode('utf-8')
 				message = loads(data)
 				if len(data) < 700:
@@ -854,22 +854,22 @@ class Game(Frame):
 				raise
 		print("No more receiving messages")
 
-	def send_design_update(self,type, num, *args):
+	def send_design_update(self, type, num, *args):
 		# 1 = taken, 0 = placed
 		data = {'stage': DESIGNUPD,
 				'type': type,
 				'num_cards': num,
 				'from': self.identity
-		}
+				}
 		if type == 0:
 			data['played'] = args[0]
-		data['padding'] = 'a'*(685-len(str(data)))
+		data['padding'] = 'a' * (685 - len(str(data)))
 		self.sock.send(dumps(data).encode('utf-8'))
 		print('Design update sent')
 
 	# Disable all buttons when sending information and when it's not your turn anymore
 	def sendInfo(self, data_to_send):
-		data_to_send['padding'] = 'a'*(685-len(str(data_to_send)))
+		data_to_send['padding'] = 'a' * (685 - len(str(data_to_send)))
 		self.sock.send(dumps(data_to_send).encode('utf-8'))
 		self.new_card.config(state="disabled")
 		self.uno = False
@@ -906,40 +906,38 @@ class Game(Frame):
 		else:
 			self.card_counter = 6
 			data = {'stage': SHOWCHALLENGE, 'from': self.identity}
-			data['padding'] = 'a'*(685-len(str(data)))
+			data['padding'] = 'a' * (685 - len(str(data)))
 			self.sock.send(dumps(data).encode('utf-8'))
 			messagebox.showinfo("Legal move", "The player was honest, so take 6 cards!")
-
 
 	# If for some reason the turn didn't change, this sends current info to server who prints it
 	# out and changes turns
 	def send_debug(self):
 		print("Changing turns")
-		data = {'stage' : DEBUG,
-				"played" : self.last['text'],
-				"pile" : self.pile,
-				"hand" : [self.hand_cards[x].name for x in self.hand_cards],
-				"num_left" : len(self.hand_cards),
-				"color" : self.last['text'],
-				"taken" : True
+		data = {'stage': DEBUG,
+				"played": self.last['text'],
+				"pile": self.pile,
+				"hand": [self.hand_cards[x].name for x in self.hand_cards],
+				"num_left": len(self.hand_cards),
+				"color": self.last['text'],
+				"taken": True
 				}
 		self.sendInfo(data)
 
 	# Send all the final information with 0 cards left to end/finalise the game
-	def sendFinal(self,data_to_send):
+	def sendFinal(self, data_to_send):
 		print("END")
 		data_to_send['stage'] = ZEROCARDS
 		self.new_card.config(state="disabled")
 		self.uno = False
 		self.card_counter = 1 if not self.modes[2] else 500
 		self.taken_label.config(text='')
-		#self.uno_but.config(fg="red", bg="white", state='disabled')
-		#self.uno_but.place_forget()
+		# self.uno_but.config(fg="red", bg="white", state='disabled')
+		# self.uno_but.place_forget()
 		self.turn_need_taking.config(text="Getting results!", bg='#D1FFCC', fg='blue')
-		data_to_send['padding'] = 'a'*(685-len(str(data_to_send)))
+		data_to_send['padding'] = 'a' * (685 - len(str(data_to_send)))
 		self.sock.send(dumps(data_to_send).encode('utf-8'))
 		print("Not your turn anymore")
-
 
 	# Go through the hand and see if there are cards that could be played
 	def possible_move(self):
@@ -956,7 +954,7 @@ class Game(Frame):
 		curr = self.last['text']
 		for i in self.hand_cards:
 			c = self.hand_cards[i]
-			if curr[0:3] in c.name : # Color
+			if curr[0:3] in c.name:  # Color
 				result = False
 				break
 			else:
@@ -970,16 +968,17 @@ class Game(Frame):
 			if 'two' in self.hand_cards[i].name:
 				result = True
 		return result
+
 	# From a list of numbers of cards left from other players return the text to show
 	# in the label
 	def label_for_cards_left(self, others):
-		#left_cards_text = "Your cards: " + str(len(self.hand_cards))
+		# left_cards_text = "Your cards: " + str(len(self.hand_cards))
 		left_cards_text = "Your cards: " + str(others[self.identity])
 		pl = 0
 		for x in others:
 			if pl != self.identity:
 				crdtxt = " cards" if not self.peeps[pl] == 1 else " card"
-				left_cards_text += "\n "+self.peeps[pl] + ": " + str(x) + crdtxt
+				left_cards_text += "\n " + self.peeps[pl] + ": " + str(x) + crdtxt
 			pl += 1
 		return left_cards_text
 
@@ -992,7 +991,7 @@ class Game(Frame):
 		self.hand_btns = {}
 		self.hand_cards = {}
 		for i in range(len(new_hand)):
-			#Add new card
+			# Add new card
 			c = new_hand[i]
 			self.hand_cards[i] = new_deck.get_card(c)
 		self.setup_hand(self.hand_cards)
@@ -1001,9 +1000,10 @@ class Game(Frame):
 		self.all_nums_of_cards[self.identity] = new
 		self.all_nums_of_cards[player] = old
 		crdtxt = " cards" if not old == 1 else " card"
-		self.other_cards_lbls[player].config(text = str(old) + crdtxt)
-		self.cards_left.config(text = str(new))
-		#self.cards_left.config(text=self.label_for_cards_left(self.all_nums_of_cards))
+		self.other_cards_lbls[player].config(text=str(old) + crdtxt)
+		self.cards_left.config(text=str(new))
+
+	# self.cards_left.config(text=self.label_for_cards_left(self.all_nums_of_cards))
 
 	def set_label_next(self, msg):
 		if msg['player'] == 1:
@@ -1022,9 +1022,8 @@ class Game(Frame):
 			a = (self.identity + ind) % len(self.peeps)
 		else:
 			a = (self.identity - ind) % len(self.peeps)
-		#if a in self.other_names_lbls.keys():
+		# if a in self.other_names_lbls.keys():
 		self.other_names_lbls[a].config(bg='green')
-
 
 	def checkPeriodically(self):
 		self.incoming()
@@ -1041,7 +1040,7 @@ class Game(Frame):
 		screen_width = root.winfo_screenwidth()
 		screen_height = root.winfo_screenheight()
 		root.geometry("{}x{}".format(screen_width, screen_height))
-		root.title("UNO - player "+ str(message['whoami'])+" - "+message['peeps'][message[
+		root.title("UNO - player " + str(message['whoami']) + " - " + message['peeps'][message[
 			'whoami']])
 		root.protocol("WM_DELETE_WINDOW", self.close_window)
 		new = Game(root, self.q, message, self.sock, self.all_points)
@@ -1053,13 +1052,13 @@ class Game(Frame):
 		if message['player'] == 0:
 			self.new_card.config(state="disabled")
 			self.uno = False
-			#self.uno_but.config(fg="red", bg="white", state='disabled')
+			# self.uno_but.config(fg="red", bg="white", state='disabled')
 			for i in self.hand_btns:
 				self.hand_btns[i].config(state='disabled')
 		elif "plus" in message['played'] and (not self.can_stack() or not self.modes[1]):
 			self.card_counter = 2
 			self.uno = False
-			#self.uno_but.config(fg="red", bg="white", state='disabled')
+			# self.uno_but.config(fg="red", bg="white", state='disabled')
 			for i in self.hand_btns:
 				self.hand_btns[i].config(state='disabled')
 		elif "plus" in message['played'] and self.modes[1] and self.can_stack():
@@ -1077,7 +1076,7 @@ class Game(Frame):
 	def close_window(self):
 		try:
 			bye = {"stage": BYE}
-			bye['padding'] = 'a'*(685-len(str(bye)))
+			bye['padding'] = 'a' * (685 - len(str(bye)))
 			self.sock.send(dumps(bye).encode('utf-8'))
 			self.sock.close()
 		except OSError:
@@ -1087,6 +1086,7 @@ class Game(Frame):
 		print("I am closing")
 		self.master.destroy()
 		print("Bye")
+
 
 ######################################### SHOW FUNCTIONS #######################################
 def show(m):

@@ -41,7 +41,6 @@ root.geometry("700x553+250+120")
 screen_width = root.winfo_screenwidth()
 screen_height = root.winfo_screenheight()
 root.geometry("{}x{}".format(screen_width, screen_height))
-print(screen_width, screen_height)
 
 sock = socket(AF_INET, SOCK_STREAM)
 try:
