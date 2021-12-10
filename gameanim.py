@@ -85,9 +85,9 @@ class Game(Frame):
 		self.stack_label = Label(text="Stack\n cards to take:\n"+str(self.stack_counter),fg='black',
 								 bg='PeachPuff', width=10,height=3)
 		self.is_reversed = message['dir']
-		self.revdir = ImageTk.PhotoImage(PIL.Image.open("directionrev.jpg").resize((95,95),
+		self.revdir = ImageTk.PhotoImage(PIL.Image.open("directionrev.jpg.png").resize((150,150),
 																				PIL.Image.ANTIALIAS))
-		self.fordir = ImageTk.PhotoImage(PIL.Image.open("directionfor.jpg").resize((95,95),
+		self.fordir = ImageTk.PhotoImage(PIL.Image.open("directionfor.jpg.png").resize((150,150),
 																				PIL.Image.ANTIALIAS))
 
 

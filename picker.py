@@ -20,6 +20,7 @@ class Picker(Toplevel):
 		self.protocol("WM_DELETE_WINDOW", self.cancel)
 		self.options = options
 		self.result = '_'
+		self.attributes('-topmost', 'true')
 		self.createWidgets(title)
 		self.grab_set()
 		# wait.window ensures that calling function waits for the window to

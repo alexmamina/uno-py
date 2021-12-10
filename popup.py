@@ -21,6 +21,7 @@ class InfoPop(Toplevel):
 		self.protocol("WM_DELETE_WINDOW", self.destroy)
 
 		self.create_widgets()
+		self.attributes('-topmost', True)
 		self.grab_set()
 		self.focus_set()
 		self.focus()
