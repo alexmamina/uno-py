@@ -34,8 +34,11 @@ class Game(Frame):
 	# test if 7/0 when played is not too fast
 	# perhaps uno button has a white border that can't be removed- try style?
 	# perhaps make it more obvious if same card played twice in a row
-	# todo save/ load game
 	# perhaps unterminated string server when taking 4 ??
+	# perhaps animation when someone places their card
+	# test if animation is fast
+
+	# todo save/ load game
 
 	# Initialise a frame. Setup the pile, hand, last played card and all gui
 	def __init__(self, master, queue, msg, sock, all_points):
@@ -245,8 +248,6 @@ class Game(Frame):
 			coords = self.get_card_placement(n, i)
 			b.place(x=coords[1], y=coords[2])
 
-	# todo design update when placing - animation
-
 	def setup_other_players(self, peeps, frames):
 
 		if len(peeps) >= 2:
@@ -294,14 +295,14 @@ class Game(Frame):
 	# Move card to the pile in an animation
 	def move(self, origx, origy, dx, dy, i, binst, img, ind):
 		card = self.hand_cards[ind].name
-		ratio = 20 if abs(dx) < 250 else 40
-		time = 5 if abs(dx) < 250 else 2
+		ratio = 40 if abs(dx) < 250 else 200
+		time = 5 if abs(dx) < 250 else 1
 		if not i == ratio:
 			x = origx + (dx / ratio) * i
 			y = origy + (dy / ratio) * i
 			binst.place(x=x, y=y)
 			i += 1
-			self.move_id = self.after(5, self.move, origx, origy, dx, dy, i, binst, img, ind)
+			self.move_id = self.after(time, self.move, origx, origy, dx, dy, i, binst, img, ind)
 		else:
 			self.after_cancel(self.move_id)
 			binst.destroy()
@@ -343,7 +344,7 @@ class Game(Frame):
 			dy = dest_y - orig_y
 			# If animation is turned on, move, else place on pile straight away
 			if self.animated:
-				self.move_id = self.move(orig_x, orig_y, dx, dy, 0, binst, self.last.image, ind)
+				self.move(orig_x, orig_y, dx, dy, 0, binst, self.last.image, ind)
 			else:
 				binst.destroy()
 				self.complete_placement(card, ind)
