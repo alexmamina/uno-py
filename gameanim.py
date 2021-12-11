@@ -33,7 +33,6 @@ class Game(Frame):
 
 	# todo arrows for 7/0 (fix 7/0 to maybe not be as fast??)
 	# perhaps uno button has a white border that can't be removed- try style?
-	# todo change red/green bg or fg
 	# perhaps make it more obvious if same card played twice in a row
 	# todo save/ load game
 	# perhaps unterminated string server when taking 4 ??
@@ -63,15 +62,25 @@ class Game(Frame):
 		self.screen_width = master.winfo_screenwidth()
 		self.screen_height = master.winfo_screenheight() - 100
 		self.animated = False
+		frames = []
+		other_players = copy.deepcopy(self.peeps)
+		other_players.pop(self.identity)
+		self.childframes = {}
+		frameleft = Frame(width=0.2 * self.screen_width, height=0.6 * self.screen_height,
+						bg='#D1FFCC', highlightthickness=1, highlightbackground='black')
+		frameleft.place(x=0, y=0)
+		frames.append(frameleft)
+		frametop = Frame(width=0.6 * self.screen_width, height=0.3 * self.screen_height,
+						bg='#D1FFCC', highlightthickness=1, highlightbackground='black')
+		frametop.place(x=0.2 * self.screen_width, y=0)
+		frames.append(frametop)
+		frameright = Frame(width=0.2 * self.screen_width, height=0.6 * self.screen_height,
+						bg='#D1FFCC', highlightthickness=1, highlightbackground='black')
+		frameright.place(x=0.8 * self.screen_width, y=0)
+		frames.append(frameright)
 
-		Frame(width=0.2 * self.screen_width, height=0.6 * self.screen_height, bg='#D1FFCC',
-			  highlightthickness=1, highlightbackground='black').place(x=0, y=0)
-		Frame(width=0.6 * self.screen_width, height=0.3 * self.screen_height, bg='#D1FFCC',
-			  highlightthickness=1, highlightbackground='black').place(
-			x=0.2 * self.screen_width, y=0)
-		Frame(width=0.2 * self.screen_width, height=0.6 * self.screen_height, bg='#D1FFCC',
-			  highlightthickness=1, highlightbackground='black').place(
-			x=0.8 * self.screen_width, y=0)
+
+
 		Frame(width=0.6 * self.screen_width, height=0.3 * self.screen_height, bg='#D1FFCC',
 			  highlightthickness=1, highlightbackground='black').place(
 			x=0.2 * self.screen_width, y=0.3 * self.screen_height)
@@ -81,14 +90,14 @@ class Game(Frame):
 								highlightthickness=1, highlightbackground='black')
 		self.card_frame.place(
 			x=0, y=0.6 * self.screen_height)
-
+		self.childframes[self.identity] = self.card_frame
 		self.stack_label = Label(text="Stack\n cards to take:\n" + str(self.stack_counter),
 								 fg='black',
 								 bg='PeachPuff', width=10, height=3)
 		self.is_reversed = message['dir']
-		self.revdir = ImageTk.PhotoImage(PIL.Image.open("directionrev.jpg.png").resize((150, 150),
+		self.revdir = ImageTk.PhotoImage(PIL.Image.open("directionrev.jpg.png").resize((95, 95),
 																			PIL.Image.ANTIALIAS))
-		self.fordir = ImageTk.PhotoImage(PIL.Image.open("directionfor.jpg.png").resize((150, 150),
+		self.fordir = ImageTk.PhotoImage(PIL.Image.open("directionfor.jpg.png").resize((95, 95),
 																			PIL.Image.ANTIALIAS))
 
 		self.direction_l = Label(image=self.revdir if self.is_reversed else self.fordir,
@@ -108,14 +117,14 @@ class Game(Frame):
 								 fg='blue', bg='#D1FFCC', width=28, height=1)
 		self.taken_label.place(x=0.2 * self.screen_width + 1, y=0.3 * self.screen_height + 1)
 
-		self.name_lbl = Label(text='You', fg="black", bg="pale green", width=20,
-							  height=1)
+		self.name_lbl = Label(text='You', fg="black", bg="pale green", width=18,
+							  height=1,font=("TkDefaultFont", 15))
 		self.name_lbl.place(x=1, y=0.6 * self.screen_height + 1)
 
 		self.cards_left = Label(text=str(7), fg="black", bg="pale green", width=2,
 								height=1)
 		self.cards_left.place(x=0.15 * self.screen_width + 1, y=0.6 * self.screen_height + 1)
-		self.uno_but = but(text="UNO", fg="black", bg="deep sky blue", width=100, height=80,
+		self.uno_but = but(text="UNO", fg="black", bg="light sky blue", width=100, height=80,
 						   borderless=1, borderwidth=0,
 						   command=self.one_card)
 		self.uno_but.place(x=0.26 * self.screen_width, y=0.35 * self.screen_height)
@@ -144,13 +153,14 @@ class Game(Frame):
 										  fg='black', bg='#D1FFCC', width=12, height=1)
 		self.turn_need_taking.place(x=0.18 * self.screen_width, y=0.6 * self.screen_height + 1)
 
-		other_players = copy.deepcopy(self.peeps)
-		other_players.pop(self.identity)
-		self.setup_other_players(other_players)
+		self.setup_other_players(other_players, frames)
 		if msg['player'] == 1:
-			self.name_lbl.config(bg='green')
+			self.name_lbl.config(bg='green',fg='white')
+			# self.childframes[self.identity].config(highlightbackground='green',
+		# highlightthickness=2)
 		else:
-			self.name_lbl.config(bg='red')
+			self.name_lbl.config(bg='red',fg='white')
+			# self.childframes[self.identity].config(highlightbackground='red',highlightthickness=2)
 		self.set_label_next(msg)
 
 		txt_modes = ""
@@ -237,12 +247,13 @@ class Game(Frame):
 
 	# todo design update when placing - animation
 
-	def setup_other_players(self, peeps):
+	def setup_other_players(self, peeps, frames):
 
 		if len(peeps) >= 2:
 			x_coords = [0, 0.2, 0.8]
 		else:
 			x_coords = [0.2]
+			frames = [frames[1]]
 		self.other_cards_lbls = {}
 		self.other_names_lbls = {}
 		self.other_cards_imgs = {}
@@ -251,10 +262,11 @@ class Game(Frame):
 			# id is 3 range is [4,5,6,7] or [0,1,2,3]
 			# id 2 range [3,4,5,6] [3,0,1,2]
 			i = j % len(self.peeps)
-			name_lbl = Label(text=self.peeps[i], fg="black", bg="pale green", width=20,
-							 height=1)
+			name_lbl = Label(text=self.peeps[i], fg="black", bg="pale green", width=18,
+							 height=1,font=("TkDefaultFont",15))
 			name_lbl.place(x=x_coords[ctr] * self.screen_width + 1, y=1)
 			self.other_names_lbls[i] = name_lbl
+			self.childframes[i] = frames[ctr]
 			other_card_lbl = Label(text=str(7) + " cards", fg="black", bg="pale green", width=8,
 								   height=1)
 			self.other_cards_lbls[i] = other_card_lbl
@@ -504,7 +516,7 @@ class Game(Frame):
 		if self.uno:
 			self.uno = False
 			self.uno_but.config(bg="#D1FFCC")
-			self.uno_but.config(bg='deep sky blue')
+			self.uno_but.config(bg='light sky blue')
 
 		else:
 			self.uno = True
@@ -612,6 +624,7 @@ class Game(Frame):
 					if int(msg['player']) == 1:
 						print("Your turn, enabling buttons")
 						self.name_lbl.config(bg='green')
+						self.childframes[self.identity].config(highlightbackground='green',highlightthickness=2)
 						if 'plusfour' in newC and 'taken' not in msg and 'wild' in msg:
 							# Show 'challenge +4' button
 							self.valid_wild = but(text='Illegal +4?', bg='HotPink', fg='black',
@@ -671,6 +684,7 @@ class Game(Frame):
 						# Enable taking cards
 						self.turn_need_taking.config(text='Take cards!', bg='orange')
 						self.name_lbl.config(bg='green')
+						self.childframes[self.identity].config(highlightbackground='green',highlightthickness=2)
 						self.new_card.config(state='normal')
 						self.card_counter = 2 if "two" in msg['played'] else 4
 						if self.modes[1] and 'counter' in msg:
@@ -874,7 +888,7 @@ class Game(Frame):
 		self.new_card.config(state="disabled")
 		self.uno = False
 		self.card_counter = 1 if not self.modes[2] else 500
-		self.uno_but.config(bg="deep sky blue")
+		self.uno_but.config(bg="light sky blue")
 		if data_to_send['stage'] == GO and 'stop' in data_to_send['played'] \
 				and 'taken' not in data_to_send:
 			self.update_next_lbl(2)
@@ -884,7 +898,8 @@ class Game(Frame):
 		for i in self.hand_btns:
 			self.hand_btns[i].config(state='disabled')
 		self.turn_need_taking.config(text="", bg='#D1FFCC')
-		self.name_lbl.config(bg='red')
+		self.name_lbl.config(bg='red',fg='white')
+		# self.childframes[self.identity].config(highlightbackground='red',highlightthickness=2)
 		self.taken_label.config(text='')
 		print("Not your turn anymore")
 
@@ -1012,7 +1027,9 @@ class Game(Frame):
 			a = msg['curr']
 
 		for l in self.other_names_lbls.keys():
-			self.other_names_lbls[l].config(bg='green' if l == a else 'red')
+			self.other_names_lbls[l].config(bg='green' if l == a else 'red',fg='white')
+			# self.childframes[l].config(highlightbackground='green' if l == a else 'red',
+			#						   highlightthickness=2)
 
 	def update_next_lbl(self, ind):
 
@@ -1024,6 +1041,7 @@ class Game(Frame):
 			a = (self.identity - ind) % len(self.peeps)
 		# if a in self.other_names_lbls.keys():
 		self.other_names_lbls[a].config(bg='green')
+		# self.childframes[a].config(highlightbackground='green',highlightthickness=2)
 
 	def checkPeriodically(self):
 		self.incoming()

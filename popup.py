@@ -31,7 +31,7 @@ class InfoPop(Toplevel):
 
 	def create_widgets(self):
 		frmL = Frame(self)
-		Label(self, text=self.text, font=("Arial", 20),bg='Ivory').pack(side=TOP)
+		Label(self, text=self.text, font=("TkDefaultFont", 20),bg='Ivory').pack(side=TOP)
 		frmButton = Frame(self)
 		btn = but(self, text='OK',width=180,height=40,bg='light blue', command=self.cancel,
 				   borderless=1)
