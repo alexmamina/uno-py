@@ -31,7 +31,7 @@ class Game(Frame):
 	global message
 	message = {}
 
-	# todo arrows for 7/0 (fix 7/0 to maybe not be as fast??)
+	# test if 7/0 when played is not too fast
 	# perhaps uno button has a white border that can't be removed- try style?
 	# perhaps make it more obvious if same card played twice in a row
 	# todo save/ load game
@@ -624,7 +624,8 @@ class Game(Frame):
 					if int(msg['player']) == 1:
 						print("Your turn, enabling buttons")
 						self.name_lbl.config(bg='green')
-						self.childframes[self.identity].config(highlightbackground='green',highlightthickness=2)
+						#self.childframes[self.identity].config(highlightbackground='green',
+						# highlightthickness=2)
 						if 'plusfour' in newC and 'taken' not in msg and 'wild' in msg:
 							# Show 'challenge +4' button
 							self.valid_wild = but(text='Illegal +4?', bg='HotPink', fg='black',
@@ -684,7 +685,8 @@ class Game(Frame):
 						# Enable taking cards
 						self.turn_need_taking.config(text='Take cards!', bg='orange')
 						self.name_lbl.config(bg='green')
-						self.childframes[self.identity].config(highlightbackground='green',highlightthickness=2)
+						#self.childframes[self.identity].config(highlightbackground='green',
+						# highlightthickness=2)
 						self.new_card.config(state='normal')
 						self.card_counter = 2 if "two" in msg['played'] else 4
 						if self.modes[1] and 'counter' in msg:
@@ -748,8 +750,9 @@ class Game(Frame):
 									 bg='blue', fg='white', width=40, height=1)
 
 					from_who.place(x=0.4 * self.screen_width, y=0.6 * self.screen_height + 1)
-					# test 'you got cards from' stay for longer
-
+					what = '7' if msg['stage'] == SEVEN else '0'
+					InfoPop(self, 'A '+what+' was played',
+							what+' was played.\n You got cards from \n'+self.peeps[msg['from']])
 					self.master.after(10000, from_who.destroy)
 					# if msg['stage'] == SEVEN:
 					# 	messagebox.showinfo("New cards", "A 7 was played. \nYou swapped "
