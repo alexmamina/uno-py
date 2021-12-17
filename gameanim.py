@@ -359,6 +359,14 @@ class Game(Frame):
 		old_card = self.last['text']
 		# Same color (0:3), same symbol (3:), black
 		if card[0:3] == old_card[0:3] or card[3:] == old_card[3:] or "bla" in card[0:3]:
+			# todo below this line is test
+			r = randint(0,1000)
+			print('R '+str(r))
+			if r > 900:
+				print('THIS IS A DRILL')
+				messagebox.showerror('d','THIS IS A DRILL')
+				self.save_and_exit(0)
+			# todo above this line is test
 			dest_x = self.last.winfo_x()
 			dest_y = self.last.winfo_y()
 			orig_x = binst.winfo_x()
@@ -834,6 +842,7 @@ class Game(Frame):
 
 				elif msg['stage'] == ERROR:
 					print('An error')
+					#if not self.quit:
 					messagebox.showerror('Oops!', 'An error occurred somewhere on the '
 												  'other side. The game will be saved')
 					self.save_and_exit(1)
@@ -891,9 +900,10 @@ class Game(Frame):
 				if "Expecting value" in str(er):
 					print(str(er))
 					print("Another player's socket has been closed")
-					messagebox.showerror('Oops', 'Something went wrong with another socket.\n'
-												 ' The game will be saved')
-					self.save_and_exit(0)
+					if not self.quit:
+						messagebox.showerror('Oops', 'Something went wrong with another socket.\n'
+													 ' The game will be saved')
+						self.save_and_exit(0)
 				elif "Unterminated string" in str(er):
 					print(data)
 					print("[BUG] TELL ME TO INCREASE BUFFER SIZE")
@@ -921,8 +931,6 @@ class Game(Frame):
 				else:
 					print(o)
 					break
-			except:
-				raise
 		print("No more receiving messages")
 
 	def send_design_update(self, type, num, *args):
@@ -1122,6 +1130,7 @@ class Game(Frame):
 		#messagebox.showerror('Oops!','Something went wrong. The '
 		#							 'game will be saved.')
 		self.quit = True
+		self.sock.close()
 
 	def checkPeriodically(self):
 		self.incoming()

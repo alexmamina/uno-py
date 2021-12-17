@@ -127,9 +127,9 @@ else:
 		pile.append(first_card)
 		shuffle(pile)
 		first_card = pile.pop(7*num_players)
-
-	first_card = 'bluplustwo.png'
 	'''
+	first_card = 'bluplustwo.png'
+	
 	pile[0] = 'bluplustwo.png'
 	pile[1] = 'bluplustwo.png'
 	pile[2] = 'bluplustwo.png'
