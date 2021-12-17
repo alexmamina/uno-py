@@ -7,6 +7,7 @@ import PIL.Image
 from popup import *
 import card
 import deck
+import io
 import webbrowser
 from socket import *
 from sys import *
@@ -41,16 +42,20 @@ class Game(Frame):
 	# todo save/ load game
 
 	# Initialise a frame. Setup the pile, hand, last played card and all gui
-	def __init__(self, master, queue, msg, sock, all_points):
+	def __init__(self, master, queue, msg, sock, all_points, continue_old):
 		global message
 		message = msg
+		if continue_old:
+			f = io.open('.saved_game.txt')
+			oldthings = loads(f.read())
+			f.close()
 		super().__init__(master)
 		self.pack()
 		self.peeps = message['peeps']
 		self.move_id = '0'
 		self.modes = msg['modes']
 		self.sock = sock
-		self.all_points = all_points
+		self.all_points = msg['all_points'] if 'all_points' in msg.keys() else all_points
 		self.parent = master
 		self.master.protocol("WM_DELETE_WINDOW", self.close_window)
 		# Take one card only
@@ -61,7 +66,10 @@ class Game(Frame):
 		self.last = None
 		self.challenge = None
 		self.valid_wild = None
-		self.stack_counter = 0 if 'two' not in msg['played'] else 2
+		if 'two' not in msg['played'] or not ('two' in msg['played'] and msg['stage'] == INIT):
+			self.stack_counter = 0
+		else:
+			self.stack_counter = 2
 		self.screen_width = master.winfo_screenwidth()
 		self.screen_height = master.winfo_screenheight() - 100
 		self.animated = False
@@ -113,7 +121,9 @@ class Game(Frame):
 		else:
 			self.direction_l.place(x=0.68 * self.screen_width, y=0.3 * self.screen_height + 42)
 		self.hand_cards = {}
-		self.pile = msg['pile']
+
+		if 'pile' in msg.keys():
+			self.pile = msg['pile']
 		self.all_nums_of_cards = msg['other_left']
 
 		self.taken_label = Label(text="",
@@ -124,7 +134,8 @@ class Game(Frame):
 							  height=1,font=("TkDefaultFont", 15))
 		self.name_lbl.place(x=1, y=0.6 * self.screen_height + 1)
 
-		self.cards_left = Label(text=str(7), fg="black", bg="pale green", width=2,
+		cardsleft = str(7) if msg['stage'] == INIT else oldthings['num_left']
+		self.cards_left = Label(text=cardsleft, fg="black", bg="pale green", width=2,
 								height=1)
 		self.cards_left.place(x=0.15 * self.screen_width + 1, y=0.6 * self.screen_height + 1)
 		self.uno_but = but(text="UNO", fg="black", bg="light sky blue", width=100, height=80,
@@ -135,17 +146,22 @@ class Game(Frame):
 		self.new_card = None
 		self.setup_menu()
 		self.setup_pile(msg)
-		self.cards = self.deal_cards(msg)
+		self.hand_btns = {}
+		if not continue_old:
+			self.cards = self.deal_cards(msg)
+			self.setup_hand(self.cards)
+		else:
+			self.setup_hand(oldthings)
 		# Button for debugging
 		self.debug = but(text="Not my turn", fg='red', bg='white', borderless=1,
 						 borderwidth=0, width=100,
 						 height=30, border=0,
 						 command=self.send_debug)
 		self.debug.place(x=self.screen_width - 110, y=self.screen_height - 45)
-		self.hand_btns = {}
-		self.setup_hand(self.cards)
+
 		if msg['player'] == 1:
-			if 'two' in msg['played'] and (not self.can_stack() or not self.modes[1]):
+			if 'two' in msg['played'] and (not self.can_stack() or not self.modes[1]) \
+					and msg['stage'] == INIT:
 				self.turn_need_taking = Label(text="Take cards",
 											  fg='black', bg='orange', width=12, height=1)
 			else:
@@ -235,7 +251,14 @@ class Game(Frame):
 		self.last.place(x=0.56 * self.screen_width, y=0.32 * self.screen_height)
 
 	def setup_hand(self, dealt_cards):
-		n = len(dealt_cards)
+		if isinstance(dealt_cards, dict):
+			n = len(dealt_cards['hand'])
+			converted = []
+			for c in dealt_cards['hand']:
+				converted.append(new_deck.get_card(c))
+			dealt_cards = converted
+		else:
+			n = len(dealt_cards)
 		for i in range(n):
 			# Create a button for each card in dealt cards, add a command
 			photo = ImageTk.PhotoImage(dealt_cards[i].card_pic)
@@ -434,7 +457,13 @@ class Game(Frame):
 		global new_deck, message
 
 		# Take new card
-		new = new_deck.get_card(self.pile.pop(0))
+		# todo if >20 pop from empty list
+		try:
+			new = new_deck.get_card(self.pile.pop(0))
+		except IndexError:
+			messagebox.showerror('Oops!','Congratulations! You took more than 20 cards.'
+									' The game will be saved')
+			self.save_and_exit(0)
 		# Remove the 'uno not placed' button as was ignored
 		if self.challenge:
 			self.challenge.place_forget()
@@ -715,6 +744,7 @@ class Game(Frame):
 						ans = messagebox.askyesno("New", "Would you like to continue with a new "
 														 "game?")
 						if ans == 1:
+							# perhaps change asking for modes in new game
 							modes = simpledialog.askstring("Modes", "Input the modes (without "
 																	"spaces) that you'd like to use this game"
 																	" (or press enter for a normal game):\n"
@@ -801,6 +831,15 @@ class Game(Frame):
 				elif msg['stage'] == INIT:
 					print("New game!")
 					self.start_new(msg)
+
+				elif msg['stage'] == ERROR:
+					print('An error')
+					messagebox.showerror('Oops!', 'An error occurred somewhere on the '
+												  'other side. The game will be saved')
+					self.save_and_exit(1)
+					self.quit = True
+					break
+
 				elif msg['stage'] == BYE:
 					print("Received a BYE message, closing (another player decided to stop)")
 					self.quit = True
@@ -837,6 +876,7 @@ class Game(Frame):
 		global message, root
 		while not self.quit:
 			print("Waiting")
+			# test if nsalert shows on other computers on message.showerror
 			try:
 				json, addr = self.sock.recvfrom(700)
 				# print("LENGTH: ", len(json))
@@ -849,17 +889,30 @@ class Game(Frame):
 				self.q.put(message)
 			except JSONDecodeError as er:
 				if "Expecting value" in str(er):
+					print(str(er))
 					print("Another player's socket has been closed")
+					messagebox.showerror('Oops', 'Something went wrong with another socket.\n'
+												 ' The game will be saved')
+					self.save_and_exit(0)
 				elif "Unterminated string" in str(er):
 					print(data)
 					print("[BUG] TELL ME TO INCREASE BUFFER SIZE")
+					messagebox.showerror('Oops', 'Something went wrong when receiving a message.\n'
+												 ' The game will be saved')
+					self.save_and_exit(0)
 				elif "Extra data" in str(er):
 					print(data)
 					print("[BUG] TELL ME TO LOOK AT MESSAGE SIZE")
+					messagebox.showerror('Oops', 'Something went wrong when receiving a message.\n'
+												 ' The game will be saved')
+					self.save_and_exit(0)
 				else:
 					print(er)
 					print("[BUG] Different decoding error line 491")
 					print(data)
+					messagebox.showerror('Oops', 'Something went wrong when receiving a message.\n'
+												 ' The game will be saved')
+					self.save_and_exit(0)
 				break
 			except OSError as o:
 				if o.errno == 9:
@@ -1038,14 +1091,37 @@ class Game(Frame):
 	def update_next_lbl(self, ind):
 
 		# Take all players and move them up by 1/2 when turn finished
-		next = "Next:\n"
 		if not self.is_reversed:
 			a = (self.identity + ind) % len(self.peeps)
 		else:
 			a = (self.identity - ind) % len(self.peeps)
-		# if a in self.other_names_lbls.keys():
-		self.other_names_lbls[a].config(bg='green')
+		if a in self.other_names_lbls.keys():
+		#try:
+			self.other_names_lbls[a].config(bg='green')
+		#except KeyError:
+		#	print('Something went wrong - there are no other players')
+		#	messagebox.showerror('Oops!','Something went wrong when finding the next player. The '
+		#								 'game will be saved.')
+		#	self.save_and_exit()
 		# self.childframes[a].config(highlightbackground='green',highlightthickness=2)
+
+	def save_and_exit(self, send):
+		print('saving')
+		data = {'hand': [self.hand_cards[c].name for c in self.hand_cards.keys()],
+				'played': self.last['text'],
+				'num_left': len(self.hand_cards),
+				'other_left': self.all_nums_of_cards,
+				'player': self.identity}
+		f = io.open('.saved_game.txt','w')
+		f.write(dumps(data))
+		f.close()
+		if not send == 1:
+			err = {'stage': ERROR, 'played': self.last['text']}
+			err['padding'] = 'a' * (685 - len(str(err)))
+			self.sock.send(dumps(err).encode('utf-8'))
+		#messagebox.showerror('Oops!','Something went wrong. The '
+		#							 'game will be saved.')
+		self.quit = True
 
 	def checkPeriodically(self):
 		self.incoming()
@@ -1065,7 +1141,7 @@ class Game(Frame):
 		root.title("UNO - player " + str(message['whoami']) + " - " + message['peeps'][message[
 			'whoami']])
 		root.protocol("WM_DELETE_WINDOW", self.close_window)
-		new = Game(root, self.q, message, self.sock, self.all_points)
+		new = Game(root, self.q, message, self.sock, self.all_points, False)
 		new.config_start_btns(message)
 		new.checkPeriodically()
 		new.mainloop()
@@ -1077,13 +1153,15 @@ class Game(Frame):
 			# self.uno_but.config(fg="red", bg="white", state='disabled')
 			for i in self.hand_btns:
 				self.hand_btns[i].config(state='disabled')
-		elif "plus" in message['played'] and (not self.can_stack() or not self.modes[1]):
+		elif "plus" in message['played'] and (not self.can_stack() or not self.modes[1])\
+				and not message['stage'] == RESTORE:
 			self.card_counter = 2
 			self.uno = False
 			# self.uno_but.config(fg="red", bg="white", state='disabled')
 			for i in self.hand_btns:
 				self.hand_btns[i].config(state='disabled')
-		elif "plus" in message['played'] and self.modes[1] and self.can_stack():
+		elif "plus" in message['played'] and self.modes[1] and self.can_stack() \
+				and not message['stage'] == RESTORE:
 			self.stack_counter = 2
 			self.card_counter = 2
 			for i in self.hand_btns:
@@ -1108,6 +1186,7 @@ class Game(Frame):
 		print("I am closing")
 		self.master.destroy()
 		print("Bye")
+		print('If I haven\'t finished or the window is stuck, press Ctrl-C')
 
 
 ######################################### SHOW FUNCTIONS #######################################

@@ -2,21 +2,49 @@ from socket import *
 from sys import *
 import time
 import game
+import os
 from deck import *
 from stages import *
+from datetime import datetime
+from tkinter.simpledialog import *
+from picker import Picker
+
+
+# Reshuffle pile and all_played if few cards left, else just return original pile
+def fit_pile_to_size(pile, all_played):
+	if len(pile) < 20:
+		shuffle(all_played)
+		pile += all_played
+		all_played = []
+	return pile, all_played
+
+
+def save_and_end(played):
+	things_to_save = {
+		'pile': pile,
+		'current_player': current_player,
+		'scores': all_players_points,
+		'taking': False,
+		'all_played': all_played,
+		'modes': modes,
+		'left_cards': left_cards,
+		'peeps': peeps,
+		'lastplayed': played
+	}
+	f = open('.serverdata.txt','w')
+	f.write(dumps(things_to_save))
+	f.close()
+	for j in range(num_players):
+		if j != current_player:
+			dat = {'stage': ERROR}
+			dat['padding'] = 'a'*(685-len(str(dat)))
+			socks[j].sendto(dumps(dat).encode('utf-8'), addresses[j])
+	print('Error message sent, ending')
+
+
+
 sock = socket(AF_INET, SOCK_STREAM)
-# [0] = 7/0, [1] = stack, [2] = take forever
-modes = [False]*3
-if str(0) not in argv[4]:
-	modes[0] = str(1) in argv[4]
-	if modes[0]:
-		print("7/0 enabled")
-	modes[1] = str(2) in argv[4]
-	if modes[1]:
-		print("Stacking enabled")
-	modes[2] = str(3) in argv[4]
-	if modes[2]:
-		print("Taking many cards enabled")
+
 ip = argv[1]
 port = int(argv[2])
 sock.bind((ip, port))
@@ -29,53 +57,99 @@ sock.listen(128)
 player_counter = 0
 stack_counter = 0
 
+# todo save when closing not only on error
 
-# Reshuffle pile and all_played if few cards left, else just return original pile
-def fit_pile_to_size(pile, all_played):
-	if len(pile) < 20:
-		shuffle(all_played)
-		pile += all_played
-		all_played = []
-	return pile, all_played
+exists = False
+continue_game = 'n'
 
+if os.path.isfile('.serverdata.txt'):
+	exists = True
+	time = os.path.getmtime('.serverdata.txt')
+	time = datetime.fromtimestamp(time).strftime('%d-%m-%Y')
+	continue_game = input(f'A game exists from {time}. Continue? [Y/n]')
+if exists and ('y' in continue_game or 'Y' in continue_game or not continue_game):
+	continue_game = True
+	print('Restoring state...')
+	f = open('.serverdata.txt')
+	old_data = loads(f.read())
+	modes = old_data['modes']
+	pile = old_data['pile']
+	current_player = old_data['current_player']
+	all_players_points = old_data['scores']
+	taking = False
+	all_played = old_data['all_played']
+	left_cards = old_data['left_cards']
+	peeps = old_data['peeps']
+	first_card = old_data['lastplayed']
+	print("Connect in this order:")
+	for p in peeps:
+		print(p+'\n')
 
-# Deck initialisation
-d = Deck().deck
-pile = [c.name for c in d]
-resulting_points = 0
-first_card = pile.pop(7*num_players)
-previous_message = {}
-peeps = []
-all_played = []
-all_players_points = [0]*num_players
-total_games_played = 0
-# Black card will not be played first. If popped, reshuffle and get new
-while "bla" in first_card:
-	pile.append(first_card)
-	shuffle(pile)
+	data_to_send = {"stage": RESTORE,
+					"modes": modes,
+					"played": first_card,
+					"other_left": left_cards,
+					'all_points': all_players_points,
+					"player": 0}
+else:
+	print('Starting fresh')
+	if exists:
+		os.remove('.serverdata.txt')
+	continue_game = False
+	# [0] = 7/0, [1] = stack, [2] = take forever
+	modes = [False]*3
+
+	if str(0) not in argv[4]:
+		modes[0] = str(1) in argv[4]
+		if modes[0]:
+			print("7/0 enabled")
+		modes[1] = str(2) in argv[4]
+		if modes[1]:
+			print("Stacking enabled")
+		modes[2] = str(3) in argv[4]
+		if modes[2]:
+			print("Taking many cards enabled")
+
+	# Deck initialisation
+	d = Deck().deck
+	pile = [c.name for c in d]
+	resulting_points = 0
 	first_card = pile.pop(7*num_players)
-'''
-first_card = 'bluplustwo.png'
+	previous_message = {}
+	peeps = []
+	all_played = []
+	all_players_points = [0]*num_players
+	total_games_played = 0
+	# todo server saves first_card which is sent by the error msg
 
-pile[0] = 'bluplustwo.png'
-pile[1] = 'bluplustwo.png'
-pile[2] = 'bluplustwo.png'
-pile[9] = 'bluplustwo.png'
-pile[10] = 'greplustwo.png'
-pile[11] = 'greplustwo.png'
-pile[7] = 'yelplustwo.png'
-'''
-#pile[2] = 'blackplusfour.jpg'
-left_cards = [7]*num_players
+	# Black card will not be played first. If popped, reshuffle and get new
+	while "bla" in first_card:
+		pile.append(first_card)
+		shuffle(pile)
+		first_card = pile.pop(7*num_players)
+
+	first_card = 'bluplustwo.png'
+	'''
+	pile[0] = 'bluplustwo.png'
+	pile[1] = 'bluplustwo.png'
+	pile[2] = 'bluplustwo.png'
+	pile[9] = 'bluplustwo.png'
+	pile[10] = 'greplustwo.png'
+	pile[11] = 'greplustwo.png'
+	pile[7] = 'yelplustwo.png'
+	'''
+	left_cards = [7]*num_players
+
 # Skeleton of json to be sent
-data_to_send = {"stage": INIT,
-				"modes": modes,
-				"played": first_card,
-				"pile": pile[0:7],
-				"num_left": 7,
-				"other_left": left_cards,
-				"color": first_card[0:3],
-				"player": 0}
+	data_to_send = {"stage": INIT,
+					"modes": modes,
+					"played": first_card,
+					"pile": pile[0:7],
+					"num_left": 7,
+					"other_left": left_cards,
+					"color": first_card[0:3],
+					"player": 0}
+
 previous_message = data_to_send
 # End of initialisation
 list_of_players = []
@@ -84,11 +158,15 @@ list_of_players = []
 while player_counter < num_players:
 	player, addr = sock.accept()
 	name, a = player.recvfrom(200)
-	peeps.append(name.decode('utf-8'))
+	if name.decode('utf-8') not in peeps:
+		peeps.append(name.decode('utf-8'))
 	socks.append(player)
 	addresses.append(addr)
 	list_of_players.append(player_counter)
-	print("Connected player ", player_counter)
+	print("Connected player ", player_counter, ' ',name)
+	continuation = {'stage': INIT if not continue_game else RESTORE}
+	continuation['padding'] = 'a'*(685-len(str(continuation)))
+	player.sendto(dumps(continuation).encode('utf-8'), addr)
 	n = num_players - 1 - player_counter
 	print("Waiting for "+str(n)+" more players")
 	player_counter += 1
@@ -103,25 +181,42 @@ data_to_send['dir'] = is_reversed
 # Player 3 is current if reverse True
 # Player 2 is current if stop True
 # Else player 1 is current
-for i in list_of_players:
-	data_to_send['pile'] = pile[0:7] + pile[7*(num_players-i):7*(num_players-i)+20]
-	data_to_send['whoami'] = i
-	if (i == list_of_players[0] and "stop" not in first_card) or \
-			(i == 1 and "stop" in first_card):
-		data_to_send['player'] = 1
-		current_player = i
-		curr_list_index = 1 if (i == 1 and 'stop' in first_card) else 0
-		prev_player = list_of_players[num_players-1]
-	else:
-		data_to_send['player'] = 0
-		if i == list_of_players[0] and 'stop' in first_card:
-			data_to_send['curr'] = (current_player + 1) % num_players
+if not continue_game:
+	for i in list_of_players:
+		data_to_send['pile'] = pile[0:7] + pile[7*(num_players-i):7*(num_players-i)+20]
+		data_to_send['whoami'] = i
+		if (i == list_of_players[0] and "stop" not in first_card) or \
+				(i == 1 and "stop" in first_card):
+			data_to_send['player'] = 1
+			current_player = i
+			curr_list_index = 1 if (i == 1 and 'stop' in first_card) else 0
+			prev_player = list_of_players[num_players-1]
 		else:
+			data_to_send['player'] = 0
+			if i == list_of_players[0] and 'stop' in first_card:
+				data_to_send['curr'] = (current_player + 1) % num_players
+			else:
+				data_to_send['curr'] = current_player
+		data_to_send['padding'] = 'a'*(685-len(str(data_to_send)))
+		socks[i].sendto(dumps(data_to_send).encode('utf-8'), addresses[i])
+		print("Sent init to player ", i)
+		pile = pile[7:]
+else:
+	# test if need to take when +2 played first on restore
+	for i in list_of_players:
+		data_to_send['whoami'] = i
+		if current_player == i:
+			data_to_send['pile'] = pile[7*(num_players-i):7*(num_players-i)+20]
+			data_to_send['player'] = 1
+			# todo test this
+			curr_list_index = list_of_players.index(i)
+			prev_player = list_of_players[curr_list_index-1 % num_players]
+		else:
+			data_to_send['player'] = 0
 			data_to_send['curr'] = current_player
-	data_to_send['padding'] = 'a'*(685-len(str(data_to_send)))
-	socks[i].sendto(dumps(data_to_send).encode('utf-8'), addresses[i])
-	print("Sent init to player ", i)
-	pile = pile[7:]
+		data_to_send['padding'] = 'a'*(685-len(str(data_to_send)))
+		socks[i].sendto(dumps(data_to_send).encode('utf-8'), addresses[i])
+		print("Sent restore to player ", i)
 
 # ALL SENT
 # Go - regular play, regular relay
@@ -133,7 +228,12 @@ for i in list_of_players:
 #todo uno not said if stopped played sent to curr player on 2 (can't be fixed now)
 while True:
 	print("Waiting for player ", current_player)
-	json, addr = socks[current_player].recvfrom(700)
+	try:
+		json, addr = socks[current_player].recvfrom(700)
+	except error as e:
+		print('Error occurred when receiving')
+		print(str(e))
+		save_and_end(previous_message['played'])
 	try:
 		dec_json = json.decode('utf-8')
 		message = loads(dec_json)
@@ -491,7 +591,13 @@ while True:
 				data = message
 				socks[i].sendto(dumps(data).encode('utf-8'), addresses[i])
 
+	elif message['stage'] == ERROR:
+		print('An error has occurred on the client side. The game will be saved')
+		save_and_end(message['played'])
+		break
 	else:
+		print('Unknown message type received, ending')
+		print(message['stage'])
 		for i in range(num_players):
 			if i != current_player:
 				data = message
