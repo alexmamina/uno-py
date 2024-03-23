@@ -1,0 +1,1 @@
+for /f "tokens=2 delims=:" %i  in ('ipconfig ^| findstr "IPv4" ^| findstr [0-9]') do echo %i
