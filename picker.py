@@ -1,9 +1,4 @@
-from tkinter import *
-from tkinter import simpledialog
-from PIL import ImageTk, Image
-from os import *
-from sys import *
-from tkinter.simpledialog import *
+from tkinter import Toplevel, Frame, Label, Button
 from tkmacosx import Button as but
 
 
@@ -36,8 +31,13 @@ class Picker(Toplevel):
 		column = 0
 		for option in self.options:
 			if 'color' in title:
-				btn = but(frmButtons, text=option, command=lambda x=option: self.setOption(x),
-						bg=option, borderless=1)
+				btn = but(
+					frmButtons,
+					text=option,
+					command=lambda x=option: self.setOption(x),
+					bg=option,
+					borderless=1
+				)
 
 			else:
 				btn = Button(frmButtons, text=option, command=lambda x=option: self.setOption(x))

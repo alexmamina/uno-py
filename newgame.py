@@ -1,4 +1,5 @@
-from tkinter import *
+from tkinter import Tk, Frame, Button
+
 
 class New(Frame):
 	def __init__(self, master):
@@ -7,13 +8,13 @@ class New(Frame):
 		b = Button(text='newgame', command=self.newgame)
 		b.pack()
 
-
 	def newgame(self):
 		self.destroy()
 		self.master.destroy()
 		root = Tk()
 		n = New(root)
 		n.mainloop()
+
 
 def start():
 	root = Tk()
@@ -22,5 +23,5 @@ def start():
 	w = New(root)
 	w.mainloop()
 
-start()
 
+start()
