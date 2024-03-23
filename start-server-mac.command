@@ -1,10 +1,10 @@
-ip=$(ifconfig | grep "inet " | grep -v 127.0.0.1 | cut -d\  -f2)
+ip=$(ifconfig en0 inet | grep inet | awk {'print $2'})
 echo "INPUT PORT NUMBER (or press ENTER if you'd like to use the default 44444)"
 
 read port
 
 if [ -z "$port" ]
-then 
+then
 	port=44444
 fi
 
@@ -21,7 +21,7 @@ echo 3. Take many cards
 read modes
 
 if [ -z "$modes" ]
-then 
+then
 	modes="0"
 fi
 
@@ -31,5 +31,4 @@ echo $ip $port
 
 cd
 cd Downloads/uno-py-master
-#python server.py $ip $port $numplayers $modes
 python3 server.py $ip $port $numplayers $modes
