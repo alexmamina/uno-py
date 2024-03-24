@@ -1,3 +1,5 @@
+from enum import IntEnum
+
 # Go - regular play, regular relay
 # Debug - change turn, regular play, print data
 # Challenge - only send packet to make player take two cards
@@ -13,17 +15,20 @@
 # Numupdate - the finale of 7/0 to update all cards left
 # Designupd - relay to all just to see cards move on screen
 # Showchallenge - if player was honest, tell them someone else checked their cards
-INIT = -1
-GO = 0
-CHALLENGE = 1
-CHALLENGE_TAKEN = 6
-SHOWCHALLENGE = 810
-ZEROCARDS = 2
-DEBUG = 3
-TAKECARDS = 4
-CALC = 5
-SEVEN = 7
-ZERO = 70
-NUMUPDATE = 705
-BYE = 10
-DESIGNUPD = 123
+
+
+class Stage(IntEnum):
+    INIT = -1
+    GO = 0
+    CHALLENGE = 1
+    CHALLENGE_TAKEN = 6
+    SHOWCHALLENGE = 810
+    ZEROCARDS = 2
+    DEBUG = 3
+    TAKECARDS = 4
+    CALC = 5
+    SEVEN = 7
+    ZERO = 70
+    NUMUPDATE = 705
+    BYE = 10
+    DESIGNUPD = 123

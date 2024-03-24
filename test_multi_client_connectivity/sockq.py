@@ -12,7 +12,7 @@ port = argv[1]
 sock = socket(AF_INET, SOCK_DGRAM)
 sock.bind(('localhost', int(port)))
 
-global dest
+# global dest
 
 
 class Butt(Frame):
@@ -65,8 +65,6 @@ def periodic(win):
 
 
 if __name__ == "__main__":
-
-	global dest
 
 	# Start thread, receive first info
 	# Use it in here
