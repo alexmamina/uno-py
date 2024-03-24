@@ -94,7 +94,7 @@ class Player(Game):
 							from_player = (self.identity - 1) % len(msg['other_left']) \
 								if not self.is_reversed else \
 								self.identity + 1 % len(msg['other_left'])
-							prob_of_illegal = randint(0,100)
+							prob_of_illegal = randint(0, 100)
 							if self.valid_wild and prob_of_illegal > 90:
 								self.challenge_plus(msg['wild'])
 								self.am_challenging = True
@@ -140,7 +140,7 @@ class Player(Game):
 						self.card_counter = 2 if "two" in msg['played'] else 4
 						if self.modes[1] and 'counter' in msg:
 							self.stack_counter = msg['counter']
-							self.stack_label.config(text='Stack\n cards to take:\n'+str(
+							self.stack_label.config(text='Stack\n cards to take:\n' + str(
 								self.stack_counter))
 						for i in range(self.card_counter):
 							self.take_card()
@@ -410,7 +410,7 @@ class Player(Game):
 				for i in self.hand_btns.keys():
 					# Move all buttons
 					b = self.hand_btns[i]
-					coords = self.get_card_placement(len(self.hand_btns),ctr)
+					coords = self.get_card_placement(len(self.hand_btns), ctr)
 					b.place(x=coords[1], y=coords[2])
 					ctr += 1
 

@@ -46,14 +46,14 @@ class Deck:
 		for f in files:
 			if (f != ".DS_Store") and (f != ".idea"):
 				card_pic = Image.open(f"{CARD_IMAGE_PATH}UNO/" + f)
-				card = Card(card_pic, f)
-				self.deck.append(card)
+				new_card = Card(card_pic, f)
+				self.deck.append(new_card)
 				if "0" not in f:
 					# Non-zero cards appear twice
-					self.deck.append(card)
+					self.deck.append(new_card)
 				if "black" in f:
-					self.deck.append(card)
-					self.deck.append(card)
+					self.deck.append(new_card)
+					self.deck.append(new_card)
 		# Shuffles the deck in place
 		shuffle(self.deck)
 

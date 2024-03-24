@@ -174,7 +174,8 @@ class Game(Frame):
 
 	# Add the pile and last played buttons
 	def setup_pile(self, message):
-		photo = ImageTk.PhotoImage(deck.backofcard)  # deck is a class, backofcard is global. make dataclass?
+		photo = ImageTk.PhotoImage(deck.backofcard)
+		# deck is a class, backofcard is global. make dataclass?
 		# Button to take a card (so a pile)
 		self.new_card = Button(
 			image=photo, width=117, height=183, command=self.take_card
@@ -213,7 +214,7 @@ class Game(Frame):
 			b.image = photo
 			self.hand_btns[i] = b
 			self.hand_cards[i] = dealt_cards[i]
-			coords = self.get_card_placement(n,i)
+			coords = self.get_card_placement(n, i)
 			b.place(x=coords[1], y=coords[2])
 
 	# Move card to the pile in an animation
@@ -251,9 +252,10 @@ class Game(Frame):
 	# #################################### EVENTS ##################################
 	def place_card(self, ind, binst):
 		if self.challenge:
-			self.challenge.place_forget()
+			self.challenge.destroy()
 		if self.valid_wild:
-			self.valid_wild.place_forget()
+			self.valid_wild.destroy()
+		self.update_idletasks()
 		card = self.hand_cards[ind].name
 		old_card = self.last['text']
 		# Same color (0:3), same symbol (3:), black
@@ -310,7 +312,7 @@ class Game(Frame):
 		for i in self.hand_btns.keys():
 			# Move all buttons
 			b = self.hand_btns[i]
-			coords = self.get_card_placement(len(self.hand_btns),ctr)
+			coords = self.get_card_placement(len(self.hand_btns), ctr)
 			b.place(x=coords[1], y=coords[2])
 			ctr += 1
 
@@ -356,9 +358,9 @@ class Game(Frame):
 		new = new_deck.get_card(self.pile.pop(0))
 		# Remove the 'uno not placed' button as was ignored
 		if self.challenge:
-			self.challenge.place_forget()
+			self.challenge.destroy()
 		if self.valid_wild:
-			self.valid_wild.place_forget()
+			self.valid_wild.destroy()
 		# Decrease number of cards that need to be taken
 		self.card_counter -= 1
 		if self.stack_counter > 0 and self.modes[1] and "two" in self.last["text"]:
@@ -405,7 +407,7 @@ class Game(Frame):
 		for i in self.hand_btns.keys():
 			# Move all buttons
 			b = self.hand_btns[i]
-			coords = self.get_card_placement(len(self.hand_btns),ctr)
+			coords = self.get_card_placement(len(self.hand_btns), ctr)
 			b.place(x=coords[1], y=coords[2])
 			ctr += 1
 
@@ -446,7 +448,6 @@ class Game(Frame):
 		else:
 			self.uno = True
 			self.uno_but.config(bg="lime green")
-			# self.uno_but.place_forget()
 		print("UNO")
 
 	# Show the points that you have with your cards right now (option in menu)
@@ -772,17 +773,18 @@ class Game(Frame):
 		if self.modes[1] and self.stack_counter > 0:
 			data['counter'] = self.stack_counter
 		self.sendInfo(data)
-		self.challenge.place_forget()
+		self.challenge.destroy()
 
 	def challenge_plus(self, is_valid):
 		data = {'stage': Stage.CHALLENGE, 'why': 4}
 		# If true that can't put +4, so it was illegal, send it
 		if not is_valid:
 			self.sendInfo(data)
-			self.valid_wild.place_forget()
+			self.valid_wild.destroy()
 		else:
 			self.card_counter = 6
 			messagebox.showinfo("Legal move", "The player was honest, so take 6 cards!")
+			self.valid_wild.destroy()
 
 	# If for some reason the turn didn't change, this sends current info to server who prints it
 	# out and changes turns
@@ -808,7 +810,6 @@ class Game(Frame):
 		self.card_counter = 1 if not self.modes[2] else 500
 		self.taken_label.config(text='')
 		# self.uno_but.config(fg="red", bg="white", state='disabled')
-		# self.uno_but.place_forget()
 		self.turn.config(text="Waiting for the results!", bg='white', fg='blue')
 		data_to_send['padding'] = 'a' * (685 - len(json.dumps(data_to_send)))
 		self.sock.send(json.dumps(data_to_send).encode('utf-8'))

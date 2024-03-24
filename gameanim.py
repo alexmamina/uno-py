@@ -119,7 +119,7 @@ class Game(Frame):
 			Image.open(direction_rev_img_location).resize((95, 95), Image.ANTIALIAS)
 		)
 		self.fordir = ImageTk.PhotoImage(
-			Image.open(direction_for_img_location).resize((95, 95),Image.ANTIALIAS)
+			Image.open(direction_for_img_location).resize((95, 95), Image.ANTIALIAS)
 		)
 
 		self.direction_l = Label(
@@ -376,9 +376,9 @@ class Game(Frame):
 	# #################################### EVENTS ##################################
 	def place_card(self, ind, binst):
 		if self.challenge:
-			self.challenge.place_forget()
+			self.challenge.destroy()
 		if self.valid_wild:
-			self.valid_wild.place_forget()
+			self.valid_wild.destroy()
 		self.update_idletasks()
 		card = self.hand_cards[ind].name
 		old_card = self.last['text']
@@ -491,9 +491,9 @@ class Game(Frame):
 		new = new_deck.get_card(self.pile.pop(0))
 		# Remove the 'uno not placed' button as was ignored
 		if self.challenge:
-			self.challenge.place_forget()
+			self.challenge.destroy()
 		if self.valid_wild:
-			self.valid_wild.place_forget()
+			self.valid_wild.destroy()
 		self.update_idletasks()
 		# Decrease number of cards that need to be taken
 		self.card_counter -= 1
@@ -920,6 +920,7 @@ class Game(Frame):
 				self.q.put(message)
 			except JSONDecodeError as er:
 				if "Expecting value" in str(er):
+					self.quit = True
 					print("Another player's socket has been closed")
 				elif "Unterminated string" in str(er):
 					print(data)
@@ -983,22 +984,22 @@ class Game(Frame):
 		if self.modes[1] and self.stack_counter > 0:
 			data['counter'] = self.stack_counter
 		self.sendInfo(data)
-		# bug button doesn't disappear
-		self.challenge.place_forget()
+		self.challenge.destroy()
+		self.update_idletasks()
 
 	def challenge_plus(self, is_valid):
 		data = {'stage': Stage.CHALLENGE, 'why': 4}
 		# If true that can't put +4, so it was illegal, send it
 		if not is_valid:
 			self.sendInfo(data)
-			self.valid_wild.place_forget()
-			self.update_idletasks()
 		else:
 			self.card_counter = 6
 			data = {'stage': Stage.SHOWCHALLENGE, 'from': self.identity}
 			data['padding'] = 'a' * (685 - len(json.dumps(data)))
 			self.sock.send(json.dumps(data).encode('utf-8'))
 			messagebox.showinfo("Legal move", "The player was honest, so take 6 cards!")
+		self.valid_wild.destroy()
+		self.update_idletasks()
 
 	# If for some reason the turn didn't change, this sends current info to server who prints it
 	# out and changes turns
@@ -1116,7 +1117,7 @@ class Game(Frame):
 		else:
 			a = (self.identity - ind) % len(self.peeps)
 		# if a in self.other_names_lbls.keys():
-		# bug keyerror: 0 and 1 below
+		# bug keyerror: 0 and 1 below (mostly on stop. errors for the player who placed stop)
 		self.other_names_lbls[a].config(bg='green')
 		# self.childframes[a].config(highlightbackground='green',highlightthickness=2)
 
