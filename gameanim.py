@@ -763,7 +763,7 @@ class Game(Frame):
 					else:
 						# No cards need to be taken, send current points
 						points = {"stage": Stage.CALC, "points": self.calculate_points()}
-						points['padding'] = 'a' * (685 - len(str(points)))
+						points['padding'] = 'a' * (685 - len(json.dumps(points)))
 						self.sock.send(json.dumps(points).encode('utf-8'))
 
 				# self.cards_left.config(text='Game over!')
@@ -791,13 +791,13 @@ class Game(Frame):
 								"2. Stack +2\n"
 								"3. Take many cards at once")
 							init = {'stage': Stage.INIT, "modes": modes}
-							init['padding'] = 'a' * (685 - len(str(init)))
+							init['padding'] = 'a' * (685 - len(json.dumps(init)))
 							self.sock.send(json.dumps(init).encode('utf-8'))
 						else:
 							# Don't want the new game
 
 							bye = {"stage": Stage.BYE}
-							bye['padding'] = 'a' * (685 - len(str(bye)))
+							bye['padding'] = 'a' * (685 - len(json.dumps(bye)))
 							self.sock.send(json.dumps(bye).encode('utf-8'))
 							print("No new game, sending a BYE message")
 							self.quit = True
@@ -835,7 +835,7 @@ class Game(Frame):
 					# 	messagebox.showinfo("New cards", "A 0 was played. You get cards from \n"
 					# 						+self.peeps[msg['from']])
 
-					hand['padding'] = 'a' * (685 - len(str(hand)))
+					hand['padding'] = 'a' * (685 - len(json.dumps(hand)))
 					m = json.dumps(hand)
 					if 'end' not in msg:
 						self.sock.send(m.encode('utf-8'))
@@ -910,12 +910,11 @@ class Game(Frame):
 			print("Waiting")
 			try:
 				json_msg, addr = self.sock.recvfrom(700)
-				# print("LENGTH: ", len(json))
+				# print("LENGTH: ", len(json_msg))
 				data = json_msg.decode('utf-8')
 				message = json.loads(data)
 				if len(data) < 700:
 					print("[BUG] This message is short, find out why!")
-					# todo short message
 					print(message)
 					print("PADDING: ", len(message['padding']))
 				self.q.put(message)
@@ -952,13 +951,13 @@ class Game(Frame):
 		}
 		if type == 0:
 			data['played'] = args[0]
-		data['padding'] = 'a' * (685 - len(str(data)))
+		data['padding'] = 'a' * (685 - len(json.dumps(data)))
 		self.sock.send(json.dumps(data).encode('utf-8'))
 		print('Design update sent')
 
 	# Disable all buttons when sending information and when it's not your turn anymore
 	def sendInfo(self, data_to_send):
-		data_to_send['padding'] = 'a' * (685 - len(str(data_to_send)))
+		data_to_send['padding'] = 'a' * (685 - len(json.dumps(data_to_send)))
 		self.sock.send(json.dumps(data_to_send).encode('utf-8'))
 		self.new_card.config(state="disabled")
 		self.uno = False
@@ -997,7 +996,7 @@ class Game(Frame):
 		else:
 			self.card_counter = 6
 			data = {'stage': Stage.SHOWCHALLENGE, 'from': self.identity}
-			data['padding'] = 'a' * (685 - len(str(data)))
+			data['padding'] = 'a' * (685 - len(json.dumps(data)))
 			self.sock.send(json.dumps(data).encode('utf-8'))
 			messagebox.showinfo("Legal move", "The player was honest, so take 6 cards!")
 
@@ -1027,7 +1026,7 @@ class Game(Frame):
 		# self.uno_but.config(fg="red", bg="white", state='disabled')
 		# self.uno_but.place_forget()
 		self.turn_need_taking.config(text="Getting results!", bg=BACKGROUND_COLOR, fg='blue')
-		data_to_send['padding'] = 'a' * (685 - len(str(data_to_send)))
+		data_to_send['padding'] = 'a' * (685 - len(json.dumps(data_to_send)))
 		self.sock.send(json.dumps(data_to_send).encode('utf-8'))
 		print("Not your turn anymore")
 
@@ -1172,7 +1171,7 @@ class Game(Frame):
 	def close_window(self):
 		try:
 			bye = {"stage": Stage.BYE}
-			bye['padding'] = 'a' * (685 - len(str(bye)))
+			bye['padding'] = 'a' * (685 - len(json.dumps(bye)))
 			self.sock.send(json.dumps(bye).encode('utf-8'))
 			self.sock.close()
 		except OSError:

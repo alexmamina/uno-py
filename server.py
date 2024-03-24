@@ -122,7 +122,7 @@ for i in list_of_players:
 			data_to_send['curr'] = (current_player + 1) % num_players
 		else:
 			data_to_send['curr'] = current_player
-	data_to_send['padding'] = 'a' * (685 - len(str(data_to_send)))
+	data_to_send['padding'] = 'a' * (685 - len(json.dumps(data_to_send)))
 	socks[i].sendto(json.dumps(data_to_send).encode('utf-8'), addresses[i])
 	print("Sent init to player ", i)
 	pile = pile[7:]
@@ -203,7 +203,7 @@ while True:
 				"from": current_player
 			}
 			# Ask cards from the swapped player, send those to current, msg['cards'] to swapped
-			ask['padding'] = 'a' * (685 - len(str(ask)))
+			ask['padding'] = 'a' * (685 - len(json.dumps(ask)))
 			socks[swapped_player].sendto(json.dumps(ask).encode('utf-8'), addresses[swapped_player])
 			new_hand, add = socks[swapped_player].recvfrom(1000)
 			js = json.loads(new_hand.decode('utf-8'))
@@ -211,7 +211,7 @@ while True:
 			print("Player {} has {}".format(swapped_player, js['hand']))
 
 			js['end'] = True
-			js['padding'] = 'a' * (685 - len(str(js)))
+			js['padding'] = 'a' * (685 - len(json.dumps(js)))
 			socks[current_player].sendto(json.dumps(js).encode('utf-8'), addresses[current_player])
 			# Swap number of cards
 			left_cards[current_player] = len(json.loads(new_hand.decode('utf-8'))['hand'])
@@ -228,7 +228,7 @@ while True:
 				'hand': hand,
 				'from': list_of_players[i]
 			}
-			swap['padding'] = 'a' * (685 - len(str(swap)))
+			swap['padding'] = 'a' * (685 - len(json.dumps(swap)))
 			j = json.dumps(swap)
 			left_cards[list_of_players[next]] = len(hand)
 			print("{}, len {}, goes to player {}".format(hand, len(hand), list_of_players[next]))
@@ -245,7 +245,7 @@ while True:
 					'stage': Stage.ZERO,
 					'hand': hand,
 					'from': list_of_players[i]}
-				swap['padding'] = 'a' * (685 - len(str(swap)))
+				swap['padding'] = 'a' * (685 - len(json.dumps(swap)))
 				print("{} goes to player {}".format(hand, list_of_players[next]))
 
 				j = json.dumps(swap)
@@ -287,7 +287,7 @@ while True:
 				data['num_left'] = previous_message['num_left']
 				if 'padding' in data:
 					data.pop('padding')
-				data['padding'] = 'a' * (685 - len(str(data)))
+				data['padding'] = 'a' * (685 - len(json.dumps(data)))
 
 				print('in stop, ', len(str(data)))
 				socks[i].sendto(json.dumps(data).encode('utf-8'), addresses[i])
@@ -307,13 +307,13 @@ while True:
 						data['curr'] = list_of_players[((curr_list_index + 1) % num_players)]
 					if 'padding' in data:
 						data.pop('padding')
-					data['padding'] = 'a' * (685 - len(str(data)))
+					data['padding'] = 'a' * (685 - len(json.dumps(data)))
 					socks[i].sendto(json.dumps(data).encode('utf-8'), addresses[i])
 					print("Sent to player ", i)
 				else:
 
 					left = {'stage': Stage.NUMUPDATE, 'other_left': left_cards}
-					left['padding'] = 'a' * (685 - len(str(left)))
+					left['padding'] = 'a' * (685 - len(json.dumps(left)))
 					socks[i].sendto(json.dumps(left).encode('utf-8'), addresses[i])
 
 			prev_player = current_player
@@ -331,7 +331,7 @@ while True:
 		data['pile'] = pile[:20]
 		data.pop('padding')
 		rulebreaker = prev_player
-		data['padding'] = 'a' * (685 - len(str(data)))
+		data['padding'] = 'a' * (685 - len(json.dumps(data)))
 		# print("CHAL ", len(dumps(data)))
 		socks[rulebreaker].sendto(json.dumps(data).encode('utf-8'), addresses[rulebreaker])
 		# print("Sent to player who forgot to take UNO")
@@ -370,7 +370,7 @@ while True:
 			data['taken'] = True
 		data['dir'] = is_reversed
 		data['counter'] = stack_counter
-		data['padding'] = 'a' * (685 - len(str(data)))
+		data['padding'] = 'a' * (685 - len(json.dumps(data)))
 
 		for i in range(num_players):
 
@@ -381,7 +381,7 @@ while True:
 					data['player'] = 0
 					data['curr'] = current_player
 				data.pop('padding')
-				data['padding'] = 'a' * (685 - len(str(data)))
+				data['padding'] = 'a' * (685 - len(json.dumps(data)))
 				socks[i].sendto(json.dumps(data).encode('utf-8'), addresses[i])
 				# print("Sent to player ", i)
 
@@ -403,19 +403,18 @@ while True:
 			data['counter'] = message['counter']
 			stack_counter = message['counter']
 		# Either: next takes cards, then all send. Or: all send
-		data['padding'] = 'a' * (685 - len(str(data)))
+		data['padding'] = 'a' * (685 - len(json.dumps(data)))
 
 		for i in range(num_players):
 			if i != current_player:
 				if not ((i == list_of_players[(curr_list_index + 1) % num_players]) and taking_cards):
 					data.pop('padding')
 					data["to_take"] = False
-					data['padding'] = 'a' * (685 - len(str(data)))
+					data['padding'] = 'a' * (685 - len(json.dumps(data)))
 				else:
 					data.pop('padding')
 					data['to_take'] = True
-					data['padding'] = 'a' * (685 - len(str(data)))
-				# print(685-len(str(data)))
+					data['padding'] = 'a' * (685 - len(json.dumps(data)))
 				socks[i].sendto(json.dumps(data).encode('utf-8'), addresses[i])
 				pts, a = socks[i].recvfrom(1000)
 				resulting_points += json.loads(pts.decode('utf-8'))['points']
@@ -431,7 +430,7 @@ while True:
 				'total': all_players_points,
 				'winner': current_player
 			}
-			msg['padding'] = 'a' * (685 - len(str(msg)))
+			msg['padding'] = 'a' * (685 - len(json.dumps(msg)))
 			socks[i].sendto(json.dumps(msg).encode('utf-8'), addresses[i])
 
 	elif message['stage'] == Stage.INIT:
@@ -478,7 +477,6 @@ while True:
 		data_to_send['dir'] = is_reversed
 
 		data_to_send['padding'] = ''
-		# data_to_send['padding'] = 'a'*(685-len(str(data_to_send)))
 
 		for i in list_of_players:
 			data_to_send.pop('padding')
@@ -494,7 +492,7 @@ while True:
 			else:
 				data_to_send['player'] = 0
 				data_to_send['curr'] = current_player
-			data_to_send['padding'] = 'a' * (685 - len(str(data_to_send)))
+			data_to_send['padding'] = 'a' * (685 - len(json.dumps(data_to_send)))
 			socks[i].sendto(json.dumps(data_to_send).encode('utf-8'), addresses[i])
 			# print("Sent init to player ", i)
 			pile = pile[7:]

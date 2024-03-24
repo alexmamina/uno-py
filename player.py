@@ -148,7 +148,7 @@ class Player(Game):
 					else:
 						# No cards need to be taken, send current points
 						points = {"stage": Stage.CALC, "points": self.calculate_points()}
-						points["padding"] = 'a' * (685 - len(str(points)))
+						points["padding"] = 'a' * (685 - len(json.dumps(points)))
 						self.sock.send(json.dumps(points).encode('utf-8'))
 
 					self.cards_left.config(text='Game over!')
@@ -162,7 +162,7 @@ class Player(Game):
 						print("New game")
 						m = [str(i + 1) for i in range(3) if self.modes[i]]
 						init = {'stage': Stage.INIT, "modes": m}
-						init['padding'] = 'a' * (685 - len(str(init)))
+						init['padding'] = 'a' * (685 - len(json.dumps(init)))
 						self.sock.send(json.dumps(init).encode('utf-8'))
 
 				elif msg['stage'] == Stage.SEVEN or msg['stage'] == Stage.ZERO:
@@ -175,7 +175,7 @@ class Player(Game):
 
 					self.update_btns(msg['hand'], msg['from'])
 
-					hand['padding'] = 'a' * (685 - len(str(hand)))
+					hand['padding'] = 'a' * (685 - len(json.dumps(hand)))
 					m = json.dumps(hand)
 					if 'end' not in msg:
 						self.sock.send(m.encode('utf-8'))

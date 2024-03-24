@@ -1,0 +1,20 @@
+Linting:
+- todo All padding (685) - common method
+- todo bla/blu/gre words as constants
+  - stack\n cards to take is also a const
+  - root.title - or at least a function with a const
+
+- todo type hints
+- todo remove str(number) if formatting strings with f
+- todo fucking global variables?????
+  global new deck, message in Game are just game attributes (self.message)
+- todo double   quote strings
+- todo split up long if statements/when statements
+  - is false/== false/ is not etc
+- todo str(0) should really be a part of the string huh
+- todo rename but to macos button or smth
+- todo argument help for client and server
+- todo __init__ == __main__
+- todo stack cards to take on +4 not changing? does it need to?
+
+
