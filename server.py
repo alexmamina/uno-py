@@ -134,7 +134,7 @@ for i in list_of_players:
 # Zerocards - one player is out of cards, forward to the other who will either take cards or send
 	# points
 # Calc - other player sends points
-# todo uno not said if stopped played sent to curr player on 2 (can't be fixed now)
+# bug uno not said if stopped played sent to curr player on 2 (can't be fixed now)
 while True:
 	print("Waiting for player ", current_player)
 	json_msg, addr = socks[current_player].recvfrom(700)
@@ -284,6 +284,7 @@ while True:
 				else:
 					data['player'] = 0
 					data['curr'] = list_of_players[((curr_list_index + 2) % num_players)]
+				# todo this throws keyerror when stop played first on reload
 				data['num_left'] = previous_message['num_left']
 				if 'padding' in data:
 					data.pop('padding')
@@ -470,7 +471,7 @@ while True:
 		}
 		previous_message = data_to_send
 		data_to_send['peeps'] = peeps
-
+		# todo resulting points also threw an error when reloading
 		if 'reverse' in first_card:
 			list_of_players.reverse()
 			is_reversed = not is_reversed
