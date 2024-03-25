@@ -2,7 +2,7 @@ from tkinter import Tk, Frame, Button
 
 
 class New(Frame):
-	def __init__(self, master):
+	def __init__(self, master: Tk):
 		super().__init__(master)
 		self.pack()
 		b = Button(text='newgame', command=self.newgame)
