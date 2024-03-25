@@ -3,14 +3,11 @@ from tkmacosx import Button as but
 
 
 class InfoPop(Toplevel):
-	def __init__(self, parent, title, text):
+	def __init__(self, parent, title: str, text: str):
 		Toplevel.__init__(self, parent)
 		self.title(title)
-		# x = parent.winfo_rootx()
-		# y = parent.winfo_rooty()
 		self.config(bg='Ivory')
 		self.geometry("200x150+%d+%d" % (500, 250))
-		# self.geometry("385x50+%d+%d" % (x - 150, y + 150))
 		self.text = text
 		self.transient(parent)
 		self.protocol("WM_DELETE_WINDOW", self.destroy)

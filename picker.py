@@ -3,7 +3,7 @@ from tkmacosx import Button as but
 
 
 class Picker(Toplevel):
-	def __init__(self, parent, title, question, options):
+	def __init__(self, parent, title: str, question: str, options: list[str]):
 		Toplevel.__init__(self, parent)
 		self.title(title)
 		x = parent.winfo_rootx()
@@ -22,7 +22,7 @@ class Picker(Toplevel):
 		# close before the result is returned.
 		self.wait_window()
 
-	def createWidgets(self, title):
+	def createWidgets(self, title: str):
 		frmQuestion = Frame(self)
 		Label(frmQuestion, text=self.question).grid()
 		frmQuestion.grid(row=1)
@@ -44,7 +44,7 @@ class Picker(Toplevel):
 			btn.grid(column=column, row=0)
 			column += 1
 
-	def setOption(self, optionSelected):
+	def setOption(self, optionSelected: str):
 		self.result = optionSelected
 		self.destroy()
 
