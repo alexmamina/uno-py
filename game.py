@@ -37,7 +37,7 @@ class Game(Frame):
 		# Take one card only
 		self.card_counter = 1 if not self.modes[2] else 500
 		self.q = queue
-		self.quit = False
+		self.quit_game = False
 		self.identity = msg['whoami']
 		self.last = None
 		self.challenge = None
@@ -639,7 +639,7 @@ class Game(Frame):
 							bye['padding'] = 'a' * (685 - len(json.dumps(bye)))
 							self.sock.send(json.dumps(bye).encode('utf-8'))
 							print("No new game, sending a BYE message")
-							self.quit = True
+							self.quit_game = True
 							break
 
 					else:
@@ -680,12 +680,12 @@ class Game(Frame):
 					self.start_new(msg)
 				elif msg['stage'] == Stage.BYE:
 					print("Received a BYE message, closing (another player decided to stop)")
-					self.quit = True
+					self.quit_game = True
 					break
 
 			except queue.Empty:
 				pass
-		if self.quit:
+		if self.quit_game:
 			print("Loop ended")
 			self.close_window()
 
@@ -712,7 +712,7 @@ class Game(Frame):
 	# Put received message in queue for async processing
 	def receive(self):
 		global message, root
-		while not self.quit:
+		while not self.quit_game:
 			print("Waiting")
 			try:
 				json_msg, addr = self.sock.recvfrom(700)
@@ -922,7 +922,7 @@ class Game(Frame):
 
 	def checkPeriodically(self):
 		self.incoming()
-		if not self.quit:
+		if not self.quit_game:
 			self.after(100, self.checkPeriodically)
 
 	def start_new(self, message):
@@ -973,7 +973,7 @@ class Game(Frame):
 			self.sock.close()
 		except OSError:
 			pass
-		self.quit = True
+		self.quit_game = True
 
 		print("I am closing")
 		self.master.destroy()
