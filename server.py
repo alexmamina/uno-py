@@ -15,14 +15,14 @@ setup_logger(log)
 sock = socket(AF_INET, SOCK_STREAM)
 # [0] = 7/0, [1] = stack, [2] = take forever
 modes = [False] * 3
-if str(0) not in sys.argv[4]:
-    modes[0] = str(1) in sys.argv[4]
+if "0" not in sys.argv[4]:
+    modes[0] = "1" in sys.argv[4]
     if modes[0]:
         log.info("7/0 enabled")
-    modes[1] = str(2) in sys.argv[4]
+    modes[1] = "2" in sys.argv[4]
     if modes[1]:
         log.info("Stacking enabled")
-    modes[2] = str(3) in sys.argv[4]
+    modes[2] = "3" in sys.argv[4]
     if modes[2]:
         log.info("Taking many cards enabled")
 ip = sys.argv[1]
@@ -198,7 +198,7 @@ while True:
         data['pile'] = pile[:20]
         left_cards[current_player] = message['num_left']
         data['other_left'] = left_cards
-        if str(7) in card and modes[0] and 'taken' not in message:
+        if "7" in card and modes[0] and 'taken' not in message:
             swapped_player = message['swapwith']
             hand = message['hand']
             print("Player {} has {}".format(current_player, hand))
@@ -225,7 +225,7 @@ while True:
 
             data['other_left'] = left_cards
 
-        if str(0) in card and modes[0] and 'taken' not in message:
+        if "0" in card and modes[0] and 'taken' not in message:
             hand = message['hand']
             # Get the indices of current and next players
             i = list_of_players.index(current_player)

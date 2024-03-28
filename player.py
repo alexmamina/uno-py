@@ -50,7 +50,7 @@ class Player(Game):
                             print("CTR: ", self.stack_counter)
                     elif 'taken' in msg:
                         self.stack_counter = 0
-                        self.stack_label.config(text=f"Stack\n cards to take:\n{str(0)}")
+                        self.stack_label.config(text="Stack\n cards to take:\n0")
 
                     # Check if other player said UNO; place the challenge button if not said
                     # Update label to show that
@@ -427,14 +427,14 @@ class Player(Game):
                 elif 'two' in card and self.modes[1]:
                     data_to_send['counter'] = self.stack_counter + 2
                     self.stack_counter = 0
-                if str(7) in card and self.modes[0] and len(self.hand_cards) > 0:
+                if "7" in card and self.modes[0] and len(self.hand_cards) > 0:
                     players = [x for x in self.peeps if not self.peeps.index(x) == self.identity]
                     # swap = Picker(self,"Swap", "Who would you like to swap your cards with?",
                     # 			  players)
                     data_to_send['swapwith'] = self.peeps.index(players[0])
                     # data_to_send['stage'] = Stage.SEVEN
                     data_to_send['hand'] = [self.hand_cards[c].name for c in self.hand_cards]
-                if str(0) in card and self.modes[0] and len(self.hand_cards) > 0:
+                if "0" in card and self.modes[0] and len(self.hand_cards) > 0:
                     print("Zero")
                     data_to_send['hand'] = [self.hand_cards[c].name for c in self.hand_cards]
 

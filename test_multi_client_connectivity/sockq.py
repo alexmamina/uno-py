@@ -26,8 +26,8 @@ class Butt(Frame):
 		self.parent = master
 
 		text_cards_left = "Your cards left: " + \
-			str(7) + "\n Other player's cards " \
-			"left: " + str(7)
+			"7\n Other player's cards " \
+			"left: 7"
 		self.cards_left = Label(text=text_cards_left, fg="blue", bg="white", width=20, height=10)
 		self.cards_left.place(x=10, y=5)
 		self.uno = Button(text="UNO?", fg="red", bg="yellow", width=10, height=2, command=self.send)

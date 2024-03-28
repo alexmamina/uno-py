@@ -157,7 +157,7 @@ class Game(Frame):
         )
         self.name_lbl.place(x=1, y=0.6 * self.screen_height + 1)
 
-        self.cards_left = Label(text=str(7), fg="black", bg="pale green", width=2, height=1)
+        self.cards_left = Label(text="7", fg="black", bg="pale green", width=2, height=1)
         self.cards_left.place(x=0.15 * self.screen_width + 1, y=0.6 * self.screen_height + 1)
         self.uno_but = but(
             text="UNO",
@@ -323,7 +323,7 @@ class Game(Frame):
             self.other_names_lbls[i] = name_lbl
             self.childframes[i] = frames[ctr]
             other_card_lbl = Label(
-                text=str(7) + " cards", fg="black", bg="pale green", width=8, height=1)
+                text="7 cards", fg="black", bg="pale green", width=8, height=1)
             self.other_cards_lbls[i] = other_card_lbl
             other_card_lbl.place(x=(0.01 + x_coords[ctr]) * self.screen_width, y=31)
             self.other_cards_imgs[i] = []
@@ -469,7 +469,7 @@ class Game(Frame):
             self.stack_label.config(text='Stack\n cards to take:\n' + str(
                 self.stack_counter + 2))
             self.stack_counter = 0
-        if str(7) in card and self.modes[0] and len(self.hand_cards) > 0:
+        if "7" in card and self.modes[0] and len(self.hand_cards) > 0:
             self.send_design_update(0, len(self.hand_cards), card)
             players = [x for x in self.peeps if not self.peeps.index(x) == self.identity]
             swap = Picker(
@@ -480,7 +480,7 @@ class Game(Frame):
             data_to_send['swapwith'] = self.peeps.index(swap.result)
             # data_to_send['stage'] = Stage.SEVEN
             data_to_send['hand'] = [self.hand_cards[c].name for c in self.hand_cards]
-        if str(0) in card and self.modes[0] and len(self.hand_cards) > 0:
+        if "0" in card and self.modes[0] and len(self.hand_cards) > 0:
             print("Zero")
             data_to_send['hand'] = [self.hand_cards[c].name for c in self.hand_cards]
 
@@ -649,7 +649,7 @@ class Game(Frame):
                         self.taken_label.config(text='')
                     elif 'taken' in msg:
                         self.stack_counter = 0
-                        self.stack_label.config(text='Stack\n cards to take:\n' + str(0))
+                        self.stack_label.config(text='Stack\n cards to take:\n0')
                         self.taken_label.config(text='Other player took cards!')
                     else:
                         self.taken_label.config(text='')
