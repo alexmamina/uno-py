@@ -66,7 +66,7 @@ class Game(Frame):
         self.hand_cards = {}
         self.pile = msg['pile']
         self.all_nums_of_cards = msg['other_left']
-        text_cards_left = "Your cards: " + str(7)
+        text_cards_left = "Your cards: 7"
         pl = 0
         for x in msg['other_left']:
             if pl != self.identity:
@@ -329,7 +329,7 @@ class Game(Frame):
         elif "two" in card and self.modes[1]:
             data_to_send["counter"] = self.stack_counter + 2
             self.stack_counter = 0
-        if str(7) in card and self.modes[0] and len(self.hand_cards) > 0:
+        if "7" in card and self.modes[0] and len(self.hand_cards) > 0:
             players = [
                 x for x in self.peeps if not self.peeps.index(x) == self.identity
             ]
@@ -339,7 +339,7 @@ class Game(Frame):
             data_to_send["swapwith"] = self.peeps.index(swap.result)
             # data_to_send['stage'] = Stage.SEVEN
             data_to_send["hand"] = [self.hand_cards[c].name for c in self.hand_cards]
-        if str(0) in card and self.modes[0] and len(self.hand_cards) > 0:
+        if "0" in card and self.modes[0] and len(self.hand_cards) > 0:
             print("Zero")
             data_to_send["hand"] = [self.hand_cards[c].name for c in self.hand_cards]
 
@@ -501,7 +501,7 @@ class Game(Frame):
                         self.taken_label.config(text='')
                     elif 'taken' in msg:
                         self.stack_counter = 0
-                        self.stack_label.config(text=f'Stack\n cards to take:\n{str(0)}')
+                        self.stack_label.config(text='Stack\n cards to take:\n0')
                         self.taken_label.config(text='Other player took cards!')
                     else:
                         self.taken_label.config(text='')
