@@ -1,6 +1,5 @@
 from PIL import Image
 from card import Card
-from typing import Optional
 from dataclasses import dataclass
 from random import shuffle
 from os import listdir
@@ -10,7 +9,6 @@ CARD_IMAGE_PATH = "Images/Cards/"
 
 @dataclass
 class Deck:
-    global backofcard, smallback
     # backofcard: Image.Image
     # special_blacks: dict[str, Image.Image]
     # smallback: Image.Image
@@ -65,17 +63,18 @@ class Deck:
         # Shuffle the deck in place
         shuffle(self.deck)
 
-    def get_card(self, name: str) -> Optional[Card]:
+    def get_card(self, name: str) -> Card:
         for c in self.deck:
             if c.name == name:
                 return c
-        return None
+        # Return an empty card if no matches
+        return Card(Image.Image(), "")
 
-    def get_special(self, name: str) -> Optional[Image.Image]:
+    def get_special(self, name: str) -> Image.Image:
         for i in self.special_blacks:
             if i in name:
                 return self.special_blacks[i]
-        return None
+        return Image.Image()
 
     def __str__(self) -> str:
         string_like_deck = ""

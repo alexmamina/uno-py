@@ -4,6 +4,9 @@ import json
 from json import JSONDecodeError
 from threading import Thread
 import queue
+import logging
+import sys
+from logmanager import setup_logger
 from player import Player
 import gameanim
 from random import randint
@@ -15,7 +18,12 @@ parser.add_argument("--sentient", action="store_true")
 parser.add_argument("--human", action="store_true")
 parser.add_argument("-name", type=str)
 
+log = logging.getLogger(__name__)
+
+
 if __name__ == "__main__":
+    setup_logger(log)
+
     conditions = parser.parse_args()
     if not conditions.sentient:
         small_window = Tk()
@@ -40,6 +48,7 @@ if __name__ == "__main__":
     else:
         host, port = 'localhost', 44444
         name = "Pudding"
+    log.info(f"Host: {host}, port: {port}, name: {name}")
     root = Tk()
     root.configure(bg='white')
     root.geometry("700x553+250+120")
@@ -52,17 +61,19 @@ if __name__ == "__main__":
     try:
         sock.connect((host, int(port)))
         sock.send(name.encode('utf-8'))
-        print(
+        log.info(
             "Connected to server. Waiting for other players to connect before we can show you "
             "your cards!"
         )
     except Exception as e:
-        print("ERROR CONNECTING TO SERVER:")
-        print(str(e))
+        # print("ERROR CONNECTING TO SERVER:")
+        log.critical(f"Error connecting to server: {e}")
+        sys.exit(1)
     init, addr = sock.recvfrom(1000)
     try:
         data = init.decode('utf-8')
         message = json.loads(data)
+        log.debug(f"Received initial message: {message}")
         root.title(f"UNO - player {str(message['whoami'])} - {message['peeps'][message['whoami']]}")
         q = queue.Queue()
         all_points = [0] * len(message['other_left'])
@@ -78,6 +89,7 @@ if __name__ == "__main__":
         window.checkPeriodically()
         window.mainloop()
     except JSONDecodeError as e:
-        print(init.decode('utf-8'))
-        print(str(e))
-        print("Error decoding the response from the server")
+        # print(init.decode('utf-8'))
+        # print(str(e))
+        log.critical(f"Error decoding the response from the server: {e}")
+        sys.exit(1)

@@ -1,24 +1,30 @@
 from socket import socket, AF_INET, SOCK_STREAM
 import sys
-
+import logging
+from logmanager import setup_logger
 from deck import Deck
 from random import shuffle
 from stages import Stage
 import json
 from json import JSONDecodeError
+
+log = logging.getLogger(__name__)
+
+setup_logger(log)
+
 sock = socket(AF_INET, SOCK_STREAM)
 # [0] = 7/0, [1] = stack, [2] = take forever
 modes = [False] * 3
 if str(0) not in sys.argv[4]:
     modes[0] = str(1) in sys.argv[4]
     if modes[0]:
-        print("7/0 enabled")
+        log.info("7/0 enabled")
     modes[1] = str(2) in sys.argv[4]
     if modes[1]:
-        print("Stacking enabled")
+        log.info("Stacking enabled")
     modes[2] = str(3) in sys.argv[4]
     if modes[2]:
-        print("Taking many cards enabled")
+        log.info("Taking many cards enabled")
 ip = sys.argv[1]
 port = int(sys.argv[2])
 sock.bind((ip, port))
@@ -97,7 +103,7 @@ while player_counter < num_players:
     print(f"Waiting for {str(n)} more players")
     player_counter += 1
 curr_list_index = 0
-print(peeps)
+log.info(peeps)
 data_to_send['peeps'] = peeps
 if 'reverse' in first_card:
     list_of_players.reverse()
@@ -111,7 +117,7 @@ for i in list_of_players:
     data_to_send['pile'] = pile[0:7] + pile[7 * (num_players - i):7 * (num_players - i) + 20]
     data_to_send['whoami'] = i
     if (i == list_of_players[0] and "stop" not in first_card) or \
-        (i == 1 and "stop" in first_card):
+            (i == 1 and "stop" in first_card):
         data_to_send['player'] = 1
         current_player = i
         curr_list_index = 1 if (i == 1 and 'stop' in first_card) else 0
@@ -125,6 +131,7 @@ for i in list_of_players:
     data_to_send['padding'] = 'a' * (685 - len(json.dumps(data_to_send)))
     socks[i].sendto(json.dumps(data_to_send).encode('utf-8'), addresses[i])
     print("Sent init to player ", i)
+    log.info(data_to_send)
     pile = pile[7:]
 
 # ALL SENT
@@ -250,7 +257,10 @@ while True:
 
                 j = json.dumps(swap)
                 left_cards[list_of_players[next]] = len(hand)
-                socks[list_of_players[next]].sendto(j.encode('utf-8'), addresses[list_of_players[next]])
+                socks[list_of_players[next]].sendto(
+                    j.encode('utf-8'),
+                    addresses[list_of_players[next]]
+                )
                 other, ad = socks[list_of_players[next]].recvfrom(2000)
                 j = other.decode('utf-8')
                 j2 = json.loads(j)
@@ -408,7 +418,8 @@ while True:
 
         for i in range(num_players):
             if i != current_player:
-                if not ((i == list_of_players[(curr_list_index + 1) % num_players]) and taking_cards):
+                if not ((i == list_of_players[(curr_list_index + 1) % num_players]) and
+                        taking_cards):
                     data.pop('padding')
                     data["to_take"] = False
                     data['padding'] = 'a' * (685 - len(json.dumps(data)))
@@ -485,7 +496,7 @@ while True:
                 pile[7 * (num_players - i):7 * (num_players - i) + 20]
             data_to_send['whoami'] = i
             if (i == list_of_players[0] and "stop" not in first_card) or \
-                (i == 1 and "stop" in first_card):
+                    (i == 1 and "stop" in first_card):
                 data_to_send['player'] = 1
                 current_player = i
                 curr_list_index = 1 if (i == 1 and 'stop' in first_card) else 0
