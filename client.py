@@ -41,16 +41,16 @@ if __name__ == "__main__":
         if address is not None and len(address) > 0:
             host, port = address.split()
         else:
-            host, port = 'localhost', 44444
+            host, port = "localhost", 44444
 
         if name is None or len(name) == 0:
             name = f"default-{str(randint(0, 1000))}"
     else:
-        host, port = 'localhost', 44444
+        host, port = "localhost", 44444
         name = "Pudding"
     log.info(f"Host: {host}, port: {port}, name: {name}")
     root = Tk()
-    root.configure(bg='white')
+    root.configure(bg="white")
     root.geometry("700x553+250+120")
 
     screen_width = root.winfo_screenwidth()
@@ -60,7 +60,7 @@ if __name__ == "__main__":
     sock = socket(AF_INET, SOCK_STREAM)
     try:
         sock.connect((host, int(port)))
-        sock.send(name.encode('utf-8'))
+        sock.send(name.encode("utf-8"))
         log.info(
             "Connected to server. Waiting for other players to connect before we can show you "
             "your cards!"
@@ -71,12 +71,12 @@ if __name__ == "__main__":
         sys.exit(1)
     init, addr = sock.recvfrom(1000)
     try:
-        data = init.decode('utf-8')
+        data = init.decode("utf-8")
         message = json.loads(data)
         log.debug(f"Received initial message: {message}")
         root.title(f"UNO - player {str(message['whoami'])} - {message['peeps'][message['whoami']]}")
         q = queue.Queue()
-        all_points = [0] * len(message['other_left'])
+        all_points = [0] * len(message["other_left"])
         if conditions.sentient:
             window = Player(root, q, message, sock, all_points)
             root.withdraw()
@@ -89,7 +89,7 @@ if __name__ == "__main__":
         window.checkPeriodically()
         window.mainloop()
     except JSONDecodeError as e:
-        # print(init.decode('utf-8'))
+        # print(init.decode("utf-8"))
         # print(str(e))
         log.critical(f"Error decoding the response from the server: {e}")
         sys.exit(1)
