@@ -476,7 +476,6 @@ class Server():
         # Zerocards - one player is out of cards, forward to the other who will either take cards or
         # send points
         # Calc - other player sends points
-        # bug uno not said if stop played sent to curr player on 2 (can't be fixed now)
 
         while True:
             log.info(f"Waiting for player {self.current_player}")

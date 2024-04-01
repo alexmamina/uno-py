@@ -21,7 +21,7 @@ class ColorFormatter(logging.Formatter):
         logging.CRITICAL: purple + log_format + clear,
     }
 
-    def format(self, log_line: logging.LogRecord):
+    def format(self, log_line: logging.LogRecord) -> str:
         # Add color to logs on Unix. Otherwise just format information
         if platform.system() != "Windows":
             self.log_format = self.FORMATS.get(log_line.levelno)

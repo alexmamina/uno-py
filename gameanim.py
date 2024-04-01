@@ -27,15 +27,6 @@ class Game(Frame):
     global message
     message = {}
 
-    # test if 7/0 when played is not too fast
-    # perhaps uno button has a white border that can't be removed- try style?
-    # perhaps make it more obvious if same card played twice in a row
-    # perhaps unterminated string server when taking 4 ??
-    # perhaps animation when someone places their card
-    # test if animation is fast
-
-    # todo save/ load game
-
     # Initialise a frame. Setup the pile, hand, last played card and all gui
     def __init__(self, master: Tk, queue, msg, sock, all_points):
         setup_logger(log)
