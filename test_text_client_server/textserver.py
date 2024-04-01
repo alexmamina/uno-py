@@ -15,7 +15,7 @@ d = Deck().deck
 pile = [c.name for c in d]
 first_card = pile.pop(14)
 
-# todo played card is none if the other player takes cards. needs to be last played
+# warning: played card is none if the other player takes cards. needs to be last played
 
 # Skeleton of json to be sent
 data_to_send = {

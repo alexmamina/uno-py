@@ -522,7 +522,6 @@ class Game(Frame):
                         uno_said = "\nUNO said!"
                         p = msg["from"]
                         print("From: ", p)
-                        # todo this says wrong player if uno after 7/0
                         if "0" in newC and "taken" not in msg and self.modes[0]:
                             if self.is_reversed:
                                 p = (p - 1) % len(self.peeps)
