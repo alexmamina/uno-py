@@ -21,11 +21,9 @@ parser.add_argument("-name", type=str)
 log = logging.getLogger(__name__)
 
 
-if __name__ == "__main__":
-    setup_logger(log)
-
-    conditions = parser.parse_args()
+def get_player_info(conditions: argparse.Namespace) -> tuple[str, int, str]:
     if not conditions.sentient:
+        # Create and hide a tiny root for the popup to appear properly
         small_window = Tk()
         small_window.withdraw()
         address = None
@@ -38,38 +36,40 @@ if __name__ == "__main__":
         else:
             name = conditions.name
         small_window.destroy()
-        if address is not None and len(address) > 0:
+        if address:
             host, port = address.split()
         else:
+            # If the address is empty, just use defaults. Useful for local testing
             host, port = "localhost", 44444
 
-        if name is None or len(name) == 0:
-            name = f"default-{str(randint(0, 1000))}"
+        if not name:
+            name = f"default-{randint(0, 1000)}"
     else:
         host, port = "localhost", 44444
-        name = "Pudding"
-    log.info(f"Host: {host}, port: {port}, name: {name}")
-    root = Tk()
-    root.configure(bg="white")
-    root.geometry("700x553+250+120")
-
-    screen_width = root.winfo_screenwidth()
-    screen_height = root.winfo_screenheight()
-    root.geometry("{}x{}".format(screen_width, screen_height))
-
-    sock = socket(AF_INET, SOCK_STREAM)
+        name = "Not-a-robot"
     try:
-        sock.connect((host, int(port)))
+        port = int(port)
+    except ValueError:
+        log.critical(f"Couldn't convert port {port} to an integer - please try again!")
+        sys.exit(1)
+    return host, port, name
+
+
+def connect_to_server(sock: socket, host: str, port: int, name: str):
+    try:
+        sock.connect((host, port))
         sock.send(name.encode("utf-8"))
         log.info(
             "Connected to server. Waiting for other players to connect before we can show you "
             "your cards!"
         )
     except Exception as e:
-        # print("ERROR CONNECTING TO SERVER:")
         log.critical(f"Error connecting to server: {e}")
         sys.exit(1)
-    init, addr = sock.recvfrom(1000)
+
+
+def start_game(sock: socket, conditions: argparse.Namespace):
+    init, _ = sock.recvfrom(1000)
     try:
         data = init.decode("utf-8")
         message = json.loads(data)
@@ -89,7 +89,28 @@ if __name__ == "__main__":
         window.checkPeriodically()
         window.mainloop()
     except JSONDecodeError as e:
-        # print(init.decode("utf-8"))
-        # print(str(e))
         log.critical(f"Error decoding the response from the server: {e}")
         sys.exit(1)
+
+
+if __name__ == "__main__":
+    setup_logger(log)
+    conditions = parser.parse_args()
+
+    # Get the player's name and connection information
+    host, port, name = get_player_info(conditions)
+    log.info(f"Host: {host}, port: {port}, name: {name}")
+
+    # Create the main window
+    root = Tk()
+    root.configure(bg="white")
+
+    screen_width = root.winfo_screenwidth()
+    screen_height = root.winfo_screenheight()
+    root.geometry(f"{screen_width}x{screen_height}")
+
+    # Connect to the server and get initial game information
+    sock = socket(AF_INET, SOCK_STREAM)
+    connect_to_server(sock, host, port, name)
+
+    start_game(sock, conditions)
