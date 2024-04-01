@@ -908,7 +908,7 @@ class Game(Frame):
 
     # Put received message in queue for async processing
     def receive(self):
-        global message, root
+        global message
         while not self.quit_game:
             print("Waiting")
             try:
@@ -1078,7 +1078,6 @@ class Game(Frame):
         return left_cards_text
 
     def update_btns(self, new_hand, player):
-        global new_deck
         old = len(self.hand_btns)
         new = len(new_hand)
         for i in self.hand_btns:
