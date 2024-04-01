@@ -13,10 +13,13 @@ from random import randint
 from tkinter.simpledialog import askstring
 import argparse
 
-parser = argparse.ArgumentParser()
-parser.add_argument("--sentient", action="store_true")
-parser.add_argument("--human", action="store_true")
-parser.add_argument("-name", type=str)
+parser = argparse.ArgumentParser(
+    usage="No flags - play multiplayer. Add flags to play alone (temporarily deprecated)"
+)
+parser.add_argument("--sentient", action="store_true",
+                    help="add this flag to start a robot's side client")
+parser.add_argument("--human", type=str,
+                    help="use this flag followed by your name to start a game against a robot")
 
 log = logging.getLogger(__name__)
 
@@ -34,7 +37,7 @@ def get_player_info(conditions: argparse.Namespace) -> tuple[str, int, str]:
             )
             name = askstring("Name", "What's your name?")
         else:
-            name = conditions.name
+            name = conditions.human
         small_window.destroy()
         if address:
             host, port = address.split()
