@@ -1,4 +1,4 @@
-from tkinter import Frame, Label, Menu, Button, messagebox, Tk
+from tkinter import Frame, Label, Menu, Button, messagebox, Tk, TclError
 from tkinter import simpledialog
 import math
 from PIL import ImageTk, Image
@@ -1194,7 +1194,11 @@ class Game(Frame):
         self.quit_game = True
 
         print("I am closing")
-        self.master.destroy()
+        try:
+            self.master.destroy()
+        except TclError:
+            log.warning("The window seems to have been destroyed already")
+            pass
         print("Bye")
 
 
