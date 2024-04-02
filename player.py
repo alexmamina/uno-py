@@ -9,7 +9,7 @@ import json
 import re
 from random import randint
 
-from stages import Stage
+from game_classes import Stage
 
 
 class Player(Game):

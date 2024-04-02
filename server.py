@@ -7,7 +7,7 @@ from typing import Any
 from random import shuffle
 from copy import deepcopy
 from card import Card
-from stages import Stage
+from game_classes import Stage, Modes
 import json
 from json import JSONDecodeError
 
@@ -26,7 +26,7 @@ class Server():
         setup_logger(log)
         self.sock: socket = socket(AF_INET, SOCK_STREAM)
         self.num_players: int
-        self.modes = [False] * 3
+        self.modes = Modes()
         self.local_address: tuple[str, int]  # (ip, port)
         self.peeps: list[str] = []  # Names of players
         self.socks: list[socket] = []  # Socket information per player
@@ -70,14 +70,11 @@ class Server():
         if "0" not in args[4]:
             self.modes = self.get_modes(args[4])
 
-    def get_modes(self, mode_string: str) -> list[bool]:
-        result = [False] * 3
-        mode_types = ["7/0", "Stacking", "Taking many cards"]
-        for i in range(1, 4):
-            result[i - 1] = str(i) in mode_string
-            if result[i - 1]:
-                log.info(f"{mode_types[i - 1]} enabled")
-        return result
+    def get_modes(self, mode_string: str) -> Modes:
+        modes = Modes.from_string(mode_string)
+        for mode in modes.enabled_strings():
+            log.info(f"{mode} enabled")
+        return modes
 
     def connect_clients(self):
         player_counter = 0
@@ -135,7 +132,7 @@ class Server():
         # Skeleton of json to be sent
         data_to_send = {
             "stage": Stage.INIT,
-            "modes": self.modes,
+            "modes": self.modes.to_json(),
             "played": self.first_card,
             "pile": self.pile[0:7],
             "num_left": 7,
@@ -258,7 +255,7 @@ class Server():
             "to_take": taking_cards
         }
         # If stacking is enabled, someone may need to take many cards first
-        if "counter" in message and self.modes[1]:
+        if "counter" in message and self.modes.stack:
             data["counter"] = message["counter"]
             self.stack_counter = message["counter"]
         # Either: next takes cards, then all send. Or: all send
@@ -428,7 +425,7 @@ class Server():
             if not (self.pile[0:5] == message["pile"][0:5]):
                 self.pile.pop(0)
             # If taking multiple cards is enabled, make the server and client piles eqivalent
-            if self.modes[2]:
+            if self.modes.mult:
                 self.pop_pile_until_equivalent(message["num_left"])
         else:
             # The player took cards after a +2/+4 and reported it
@@ -439,17 +436,17 @@ class Server():
         data["pile"] = self.pile[:20]
         self.left_cards[self.current_player] = message["num_left"]
 
-        if "7" in card and self.modes[0] and "taken" not in message:
+        if "7" in card and self.modes.sevenzero and "taken" not in message:
             # A seven was placed right now, not that it was placed before but someone else took
             # cards afterwards
             self.swap_after_seven(message)
 
-        if "0" in card and self.modes[0] and "taken" not in message:
+        if "0" in card and self.modes.sevenzero and "taken" not in message:
             self.swap_after_zero(message)
 
         data["other_left"] = self.left_cards
 
-        if self.modes[1] and "counter" in message:
+        if self.modes.stack and "counter" in message:
             data["counter"] = message["counter"]
             self.stack_counter = message["counter"]
 
@@ -512,7 +509,7 @@ class Server():
                 log.info(f"New game! Total played: {self.total_games_played}")
                 self.list_of_players.sort()
                 self.init_deck()
-                self.modes = self.get_modes(message.get("modes", ""))
+                self.modes = Modes.from_json(message.get("modes"))
                 self.send_initial_pile()
 
             elif message["stage"] == Stage.DESIGNUPD:

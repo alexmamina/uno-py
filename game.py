@@ -5,7 +5,7 @@ from PIL import ImageTk
 import webbrowser
 from typing import Any
 from picker import Picker
-from stages import Stage
+from game_classes import Stage
 import re
 import queue
 import json
