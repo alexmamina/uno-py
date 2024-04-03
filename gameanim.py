@@ -19,6 +19,8 @@ from json import JSONDecodeError
 
 direction_for_img_location = "Images/directionfor.jpg.png"
 direction_rev_img_location = "Images/directionrev.jpg.png"
+icon_img_location = "Images/unoimg.png"
+
 BACKGROUND_COLOR = "#D1FFCC"
 log = logging.getLogger(__name__)
 
@@ -32,12 +34,14 @@ class Game(Frame):
         setup_logger(log)
         global message
         message = msg
+        icon = ImageTk.PhotoImage(Image.open(icon_img_location))
         super().__init__(master)
         self.pack()
         log.info(message)
         self.peeps = message["peeps"]
         self.move_id = "0"
         self.new_deck = Deck()
+        self.master.tk.call('wm', 'iconphoto', master, icon)
         self.modes = Modes.from_json(msg["modes"])
         self.sock = sock
         self.master = master
@@ -204,7 +208,8 @@ class Game(Frame):
             txt_modes = "\nRegular"
         else:
             txt_modes = "\n".join(self.modes.enabled_strings())
-        InfoPop(self, "Modes", txt_modes)
+        # InfoPop(self, "Modes", txt_modes)
+        messagebox.showinfo("Modes", message=txt_modes, icon=messagebox.QUESTION)
 
     # Create a hand of 7 cards from pile from message
     def deal_cards(self, message):
@@ -662,8 +667,8 @@ class Game(Frame):
                             else:
                                 p = (p + 1) % len(self.peeps)
                         if p != self.identity:
-                            # messagebox.showinfo("UNO", self.peeps[p]+" has only 1 card left!")
-                            InfoPop(self, "UNO", self.peeps[p] + " \nhas only 1 card left!")
+                            messagebox.showinfo("UNO", f"{self.peeps[p]} has only 1 card left!")
+                            # InfoPop(self, "UNO", self.peeps[p] + " \nhas only 1 card left!")
 
                     self.all_nums_of_cards = msg["other_left"]
 
