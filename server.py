@@ -484,6 +484,7 @@ class Server():
                 pretty_print_message(message)
             except JSONDecodeError as e:
                 log.critical(f"Error decoding response from a player: {e}")
+                log.critical(json_msg)
                 break
             if message["stage"] == Stage.GO or message["stage"] == Stage.DEBUG:
                 self.process_regular_message(message)
