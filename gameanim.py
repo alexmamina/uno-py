@@ -73,8 +73,8 @@ class Game(Frame):
 
         self.init_ui_elements(msg, other_players)
 
+    # UI settings
     def init_ui_elements(self, msg: dict[str, Any], opponents: list[str]):
-        # UI settings
         icon = ImageTk.PhotoImage(Image.open(icon_img_location))
         self.master.tk.call('wm', 'iconphoto', self.master, icon)
         self.last: Button
@@ -230,7 +230,6 @@ class Game(Frame):
         messagebox.showinfo("Modes", message=txt_modes, icon=messagebox.QUESTION)
 
     # Create a hand of 7 cards from pile from message. Return a dict as we want cards to have ids
-    # Non-UI settings
     def deal_cards(self) -> dict[int, Card]:
         hand = {}
         for i in range(7):
@@ -423,6 +422,7 @@ class Game(Frame):
                 self.complete_placement(card, ind)
 
     # Set new card on pile, send information, update hand - after animation or straight away
+    # both settings
     def complete_placement(self, card: str, ind: int):
         if "reverse" in card:
             self.is_reversed = not self.is_reversed
@@ -517,6 +517,7 @@ class Game(Frame):
         self.last["text"] = card_col
         self.last_played = card_col
 
+    # Both settings
     def take_card(self):
         global message
 
@@ -630,7 +631,6 @@ class Game(Frame):
             text += "{}: {} points\n".format(self.peeps[i], self.all_points[i])
         messagebox.showinfo("Points", text)
 
-    # Non-UI settings
     # Go through the hand and calculate points; regex is for finding numbers
     def calculate_points(self):
         result = 0
@@ -648,6 +648,7 @@ class Game(Frame):
                     result += 50
         return result
 
+    # both settings
     def incoming(self):
         while self.q.qsize():
             try:
@@ -938,7 +939,6 @@ class Game(Frame):
         self.last["image"] = img
         self.last.__setattr__("image", img)
 
-    # Non-UI settings
     # Put received message in queue for async processing
     def receive(self):
         global message
@@ -979,7 +979,6 @@ class Game(Frame):
                     break
         log.info("Stopping listening for messages")
 
-    # Non-UI settings
     def send_design_update(self, type: int, num: int, *args):
         # todo what are args
         # 1 = taken, 0 = placed
@@ -1033,6 +1032,7 @@ class Game(Frame):
         self.sendInfo(data)
         self.handle_challenge_button(player=None, destroy=True)
 
+    # UI settings
     def handle_challenge_button(self, player: Optional[int], destroy: bool = False):
         if destroy:
             if self.challenge:
@@ -1061,6 +1061,7 @@ class Game(Frame):
             messagebox.showinfo("Legal move", "The player was honest, so take 6 cards!")
         self.handle_wild_button(destroy=True)
 
+    # UI settings
     def handle_wild_button(self, validity: bool = False, destroy: bool = False):
         if destroy:
             if self.valid_wild:
@@ -1075,7 +1076,6 @@ class Game(Frame):
                 y=0.55 * self.screen_height)
         self.update_idletasks()
 
-    # Non-UI settings
     # If for some reason the turn didn't change, this sends current info to server who prints it
     # out and changes turns
     def send_debug(self):
@@ -1103,7 +1103,6 @@ class Game(Frame):
         self.disable_buttons(data_to_send)
         log.info("Not your turn anymore")
 
-    # Non-UI settings
     # Go through the hand and see if there are cards that could be played
     def possible_move(self) -> bool:
         for hand_card in self.hand_cards.values():
@@ -1114,7 +1113,6 @@ class Game(Frame):
                 return True
         return False
 
-    # Non-UI settings
     def can_put_plusfour(self) -> bool:
         last_played_color = self.last_played[0:3]
         for hand_card in self.hand_cards.values():
@@ -1122,7 +1120,6 @@ class Game(Frame):
                 return False
         return True
 
-    # Non-UI settings
     def can_stack(self) -> bool:
         for hand_card in self.hand_cards.values():
             if "two" in hand_card.name:
@@ -1143,6 +1140,7 @@ class Game(Frame):
             pl += 1
         return left_cards_text
 
+    # UI settings
     def update_btns(self, new_hand: list[str], player: int):
         old_hand_size = len(self.hand_cards)
         new_hand_size = len(new_hand)
