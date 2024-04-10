@@ -5,6 +5,7 @@ from PIL import ImageTk, Image
 from popup import InfoPop
 import webbrowser
 import logging
+from typing import Optional
 from logmanager import setup_logger
 from picker import Picker
 from game_classes import Stage, Modes
@@ -54,7 +55,7 @@ class Game(Frame):
         self.sock = sock
         self.master = master
         self.all_points = all_points
-        self.master.protocol("WM_DELETE_WINDOW", self.close_window)
+        self.master.protocol("WM_DELETE_WINDOW", self.send_bye_and_exit)
         # Take one card only
         self.card_counter = 1 if not self.modes.mult else 500
         self.q = queue
@@ -283,6 +284,12 @@ class Game(Frame):
 
     # UI settings
     def setup_hand(self):
+        # Setup a fresh hand, deleting anything that was there before (either on new game or card
+        # swap)
+        if len(self.hand_btns) > 0:
+            for i in self.hand_btns:
+                self.hand_btns[i].destroy()
+        self.hand_btns: dict[int, Button] = {}
         dealt_cards = self.hand_cards
         n = len(dealt_cards)
         for i in range(n):
@@ -683,14 +690,7 @@ class Game(Frame):
                     # Check if other player said UNO; place the challenge button if not said
                     # Update label to show that
                     if "said_uno" in msg.keys() and not msg["said_uno"]:
-                        self.challenge = but(
-                            text="UNO not said!", bg="red", fg="white",
-                            width=150, height=30, command=self.challengeUno,
-                            border=0)
-                        if msg["player"] == 1:
-                            self.challenge.place(
-                                x=0.24 * self.screen_width,
-                                y=0.49 * self.screen_height)
+                        self.handle_challenge_button(msg["player"])
                     elif "said_uno" in msg.keys() and msg["said_uno"] and 1 in msg["other_left"]:
                         p = msg["from"]
                         print("From: ", p)
@@ -718,13 +718,7 @@ class Game(Frame):
                         # highlightthickness=2)
                         if "plusfour" in newC and "taken" not in msg and "wild" in msg:
                             # Show "challenge +4" button
-                            self.valid_wild = but(
-                                text="Illegal +4?", bg="HotPink", fg="black",
-                                width=150, height=30, borderless=1, border=0,
-                                command=lambda valid=msg["wild"]: self.challenge_plus(valid))
-                            self.valid_wild.place(
-                                x=0.24 * self.screen_width,
-                                y=0.55 * self.screen_height)
+                            self.handle_wild_button(validity=msg["wild"])
                         # No moves possible, or move possible but need to take cards
                         if not self.possible_move() or (self.card_counter == 2 or
                                                         self.card_counter == 4):
@@ -915,7 +909,7 @@ class Game(Frame):
                 pass
         if self.quit_game:
             print("Loop ended")
-            self.close_window()
+            self.send_bye_and_exit()
 
     def set_last_played(self, msg: dict[str, Any]):
         newC = msg["played"]
@@ -1001,7 +995,6 @@ class Game(Frame):
         self.sock.send(json.dumps(data).encode("utf-8"))
         print("Design update sent")
 
-    # Both settings
     # Disable all buttons when sending information and when it's not your turn anymore
     def sendInfo(self, data_to_send: dict[str, Any]):
         data_to_send["padding"] = "a" * (685 - len(json.dumps(data_to_send)))
@@ -1022,23 +1015,39 @@ class Game(Frame):
         elif sent_message["stage"] == Stage.GO:
             self.update_next_lbl(1)
 
+        if sent_message["stage"] == Stage.ZEROCARDS:
+            self.turn_need_taking.config(text="Getting results!", bg=BACKGROUND_COLOR, fg="blue")
+        else:
+            self.turn_need_taking.config(text="", bg=BACKGROUND_COLOR)
+
         for i in self.hand_btns:
             self.hand_btns[i].config(state="disabled")
-        self.turn_need_taking.config(text="", bg=BACKGROUND_COLOR)
         self.name_lbl.config(bg="red", fg="white")
         self.taken_label.config(text="")
 
-    # Both settings
     # Notify opponent that they forgot to say UNO; when clicking button
     def challengeUno(self):
         data = {"stage": Stage.CHALLENGE, "why": 1}
         if self.modes.stack and self.stack_counter > 0:
             data["counter"] = self.stack_counter
         self.sendInfo(data)
-        self.challenge.destroy()
+        self.handle_challenge_button(player=None, destroy=True)
+
+    def handle_challenge_button(self, player: Optional[int], destroy: bool = False):
+        if destroy:
+            if self.challenge:
+                self.challenge.destroy()
+        else:
+            self.challenge = but(
+                text="UNO not said!", bg="red", fg="white",
+                width=150, height=30, command=self.challengeUno,
+                border=0)
+            if player and player == 1:
+                self.challenge.place(
+                    x=0.24 * self.screen_width,
+                    y=0.49 * self.screen_height)
         self.update_idletasks()
 
-    # Both settings
     def challenge_plus(self, is_valid: bool):
         data = {"stage": Stage.CHALLENGE, "why": 4}
         # If true that can't put +4, so it was illegal, send it
@@ -1050,7 +1059,20 @@ class Game(Frame):
             data["padding"] = "a" * (685 - len(json.dumps(data)))
             self.sock.send(json.dumps(data).encode("utf-8"))
             messagebox.showinfo("Legal move", "The player was honest, so take 6 cards!")
-        self.valid_wild.destroy()
+        self.handle_wild_button(destroy=True)
+
+    def handle_wild_button(self, validity: bool = False, destroy: bool = False):
+        if destroy:
+            if self.valid_wild:
+                self.valid_wild.destroy()
+        else:
+            self.valid_wild = but(
+                text="Illegal +4?", bg="HotPink", fg="black",
+                width=150, height=30, borderless=1, border=0,
+                command=lambda valid=validity: self.challenge_plus(valid))
+            self.valid_wild.place(
+                x=0.24 * self.screen_width,
+                y=0.55 * self.screen_height)
         self.update_idletasks()
 
     # Non-UI settings
@@ -1069,21 +1091,17 @@ class Game(Frame):
         }
         self.sendInfo(data)
 
-    # Both settings
     # Send all the final information with 0 cards left to end/finalise the game
     def sendFinal(self, data_to_send: dict[str, Any]):
         print("END")
         data_to_send["stage"] = Stage.ZEROCARDS
-        self.new_card.config(state="disabled")
         self.uno = False
         self.card_counter = 1 if not self.modes.mult else 500
-        self.taken_label.config(text="")
-        # self.uno_but.config(fg="red", bg="white", state="disabled")
-        # self.uno_but.place_forget()
-        self.turn_need_taking.config(text="Getting results!", bg=BACKGROUND_COLOR, fg="blue")
         data_to_send["padding"] = "a" * (685 - len(json.dumps(data_to_send)))
         self.sock.send(json.dumps(data_to_send).encode("utf-8"))
-        print("Not your turn anymore")
+
+        self.disable_buttons(data_to_send)
+        log.info("Not your turn anymore")
 
     # Non-UI settings
     # Go through the hand and see if there are cards that could be played
@@ -1125,26 +1143,28 @@ class Game(Frame):
             pl += 1
         return left_cards_text
 
-    # Both settings
     def update_btns(self, new_hand: list[str], player: int):
-        old = len(self.hand_btns)
-        new = len(new_hand)
-        for i in self.hand_btns:
-            self.hand_btns[i].destroy()
-        self.hand_btns = {}
+        old_hand_size = len(self.hand_cards)
+        new_hand_size = len(new_hand)
         self.hand_cards = {}
         for i in range(len(new_hand)):
             # Add new card
             c = new_hand[i]
             self.hand_cards[i] = self.new_deck.get_card(c)
+        self.all_nums_of_cards[self.identity] = new_hand_size
+        self.all_nums_of_cards[player] = old_hand_size
+
+        self.sevenzero_update_buttons(player, old_hand_size, new_hand_size)
+
+    # UI settings
+    def sevenzero_update_buttons(self, player: int, old_hand_size: int, new_hand_size: int):
         self.setup_hand()
         for j in self.hand_btns:
             self.hand_btns[j].config(state="disabled")
-        self.all_nums_of_cards[self.identity] = new
-        self.all_nums_of_cards[player] = old
-        crdtxt = " cards" if not old == 1 else " card"
-        self.other_cards_lbls[player].config(text=str(old) + crdtxt)
-        self.cards_left.config(text=str(new))
+
+        crdtxt = " card" if old_hand_size == 1 else " cards"
+        self.other_cards_lbls[player].config(text=str(old_hand_size) + crdtxt)
+        self.cards_left.config(text=str(new_hand_size))
 
     # UI settings
     def set_label_next(self, msg: dict[str, Any]):
@@ -1192,40 +1212,44 @@ class Game(Frame):
         root.geometry("{}x{}".format(screen_width, screen_height))
         root.title("UNO - player " + str(message["whoami"]) + " - " + message["peeps"][message[
             "whoami"]])
-        root.protocol("WM_DELETE_WINDOW", self.close_window)
+        root.protocol("WM_DELETE_WINDOW", self.send_bye_and_exit)
         new = Game(root, self.q, message, self.sock, self.all_points)
-        new.config_start_btns(message)
+        new.start_config(message)
         new.checkPeriodically()
         new.mainloop()
 
-    # Both settings
-    def config_start_btns(self, message: dict[str, Any]):
+    def start_config(self, message: dict[str, Any]):
         if message["player"] == 0:
-            self.new_card.config(state="disabled")
             self.uno = False
-            for i in self.hand_btns:
-                self.hand_btns[i].config(state="disabled")
         elif "plus" in message["played"] and (not self.can_stack() or not self.modes.stack):
             self.card_counter = 2
             self.uno = False
-
-            for i in self.hand_btns:
-                self.hand_btns[i].config(state="disabled")
         elif "plus" in message["played"] and self.modes.stack and self.can_stack():
             self.stack_counter = 2
             self.card_counter = 2
+        self.config_start_buttons()
+
+    # UI settings
+    def config_start_buttons(self):
+        not_current = message["player"] == 0
+        played_plus = "plus" in message["played"]
+        no_stack = not self.can_stack() or not self.modes.stack
+        stack_possible = self.modes.stack and self.can_stack()
+        if not_current or self.possible_move():
+            self.new_card.config(state="disabled")
+        if not_current or (no_stack and played_plus):
+            for i in self.hand_btns:
+                self.hand_btns[i].config(state="disabled")
+        if stack_possible and played_plus:
             for i in self.hand_btns:
                 if "two" not in self.hand_btns[i]["text"]:
                     self.hand_btns[i].config(state="disabled")
-        elif self.possible_move():
-            self.new_card.config(state="disabled")
 
     # UI settings
     def set_anim(self):
         self.animated = not self.animated
 
-    # Both settings
-    def close_window(self):
+    def send_bye_and_exit(self):
         try:
             bye: dict[str, Any] = {"stage": Stage.BYE}
             bye["padding"] = "a" * (685 - len(json.dumps(bye)))
@@ -1235,13 +1259,17 @@ class Game(Frame):
             pass
         self.quit_game = True
 
-        print("I am closing")
+        log.info("I am closing")
+        self.close_window()
+
+    # UI settings
+    def close_window(self):
         try:
             self.master.destroy()
         except TclError:
             log.warning("The window seems to have been destroyed already")
             pass
-        print("Bye")
+        log.info("Bye")
 
 
 # ######################################## SHOW FUNCTIONS #######################################
