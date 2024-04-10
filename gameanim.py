@@ -517,26 +517,19 @@ class Game(Frame):
         self.last["text"] = card_col
         self.last_played = card_col
 
-    # Both settings
     def take_card(self):
         global message
 
         # Take new card
         new = self.new_deck.get_card(self.pile.pop(0))
         # Remove the "uno not placed" button as was ignored
-        if self.challenge:
-            self.challenge.destroy()
-        if self.valid_wild:
-            self.valid_wild.destroy()
-        self.update_idletasks()
+        self.handle_challenge_button(player=None, destroy=True)
+        self.handle_wild_button(destroy=True)
         # Decrease number of cards that need to be taken
         self.card_counter -= 1
-        # this at the bottom used to have "and self.modes.stack" which it doesn't bc stack needs
-        # to change always, no matter the mode
-        if self.stack_counter > 0 and "two" in self.last_played:
+
+        if self.stack_counter > 0 and "two" in self.last_played:  # or "four" in self.last_played
             self.stack_counter -= 1
-            self.stack_label.config(text="Stack\n cards to take:\n" + str(self.stack_counter))
-            print("Stack: ", self.stack_counter)
 
         if not ("stage" in message.keys() and message["stage"] == Stage.ZEROCARDS):
             self.send_design_update(1, len(self.hand_cards) + 1)
@@ -545,39 +538,14 @@ class Game(Frame):
         ind = max(list(self.hand_cards.keys())) + 1
         # Add new card to the "hand", create new button, update number
         self.hand_cards[ind] = new
-        photo = ImageTk.PhotoImage(new.card_pic)
-        b = Button(
-            text=new.name,
-            image=photo,
-            width=117,
-            height=183,
-            border=0,
-            bg=BACKGROUND_COLOR,
-            state="disabled"
-        )
-        b["command"] = lambda ind=ind, binst=b: self.place_card(ind, binst)
-        b.__setattr__("image", photo)
-        self.hand_btns[ind] = b
         self.all_nums_of_cards[self.identity] += 1
-        # text = self.label_for_cards_left(self.all_nums_of_cards)
-        self.cards_left.config(text=self.all_nums_of_cards[self.identity])
-        ctr = 0
-        print("Card counter: ", self.card_counter)
-        print("Stack counter: ", self.stack_counter)
+        log.info("Card counter: ", self.card_counter)
+        log.info("Stack counter: ", self.stack_counter)
         # Is it possible to place a card right now?
         possible_move = self.possible_move()
 
-        if possible_move and \
-            (self.card_counter == 0 or (self.modes.mult and self.card_counter > 6)) and \
-                self.stack_counter == 0:
-            self.new_card.config(state="disabled")
-            b.config(state="normal")
-        for i in self.hand_btns.keys():
-            # Move all buttons
-            b = self.hand_btns[i]
-            coords = self.get_card_placement(len(self.hand_btns), ctr)
-            b.place(x=coords[1], y=coords[2])
-            ctr += 1
+        # Create and enable a new button for the card + update labels
+        self.update_labels_buttons_card_taken(new, ind, possible_move)
 
         # Send the points from the cards if you had to take them at the end (last played was +,
         # but game is over)
@@ -605,6 +573,38 @@ class Game(Frame):
                 data_to_send["stage"] = Stage.CHALLENGE_TAKEN
                 data_to_send["why"] = message["why"]
             self.sendInfo(data_to_send)
+
+    # UI settings
+    def update_labels_buttons_card_taken(self, new_card: Card, index: int, move_is_possible: bool):
+        if self.stack_counter >= 0 and "two" in self.last_played:  # or "four" in self.last_played
+            self.stack_label.config(text="Stack\n cards to take:\n" + str(self.stack_counter))
+        self.cards_left.config(text=self.all_nums_of_cards[self.identity])
+
+        photo = ImageTk.PhotoImage(new_card.card_pic)
+        b = Button(
+            text=new_card.name,
+            image=photo,
+            width=117,
+            height=183,
+            border=0,
+            bg=BACKGROUND_COLOR,
+            state="disabled"
+        )
+        b["command"] = lambda ind=index, binst=b: self.place_card(ind, binst)
+        b.__setattr__("image", photo)
+        self.hand_btns[index] = b
+        ctr = 0
+        if move_is_possible and \
+            (self.card_counter == 0 or (self.modes.mult and self.card_counter > 6)) and \
+                self.stack_counter == 0:
+            self.new_card.config(state="disabled")
+            b.config(state="normal")
+        for i in self.hand_btns.keys():
+            # Move all buttons
+            b = self.hand_btns[i]
+            coords = self.get_card_placement(len(self.hand_btns), ctr)
+            b.place(x=coords[1], y=coords[2])
+            ctr += 1
 
     # Change the button color and enable/disable the parameter
     def toggle_uno(self):
@@ -1231,17 +1231,21 @@ class Game(Frame):
     def config_start_buttons(self):
         not_current = message["player"] == 0
         played_plus = "plus" in message["played"]
-        no_stack = not self.can_stack() or not self.modes.stack
         stack_possible = self.modes.stack and self.can_stack()
-        if not_current or self.possible_move():
+        no_stack = not stack_possible
+        if not_current:
             self.new_card.config(state="disabled")
-        if not_current or (no_stack and played_plus):
             for i in self.hand_btns:
                 self.hand_btns[i].config(state="disabled")
-        if stack_possible and played_plus:
+        elif played_plus and no_stack:
+            for i in self.hand_btns:
+                self.hand_btns[i].config(state="disabled")
+        elif played_plus and stack_possible:
             for i in self.hand_btns:
                 if "two" not in self.hand_btns[i]["text"]:
                     self.hand_btns[i].config(state="disabled")
+        elif self.possible_move():
+            self.new_card.config(state="disabled")
 
     # UI settings
     def set_anim(self):
