@@ -147,7 +147,6 @@ class Game(Frame):
             height=95,
             border=0
         )
-        # self.direction_l.image = self.revdir if self.is_reversed else self.fordir
         self.direction_l["image"] = self.revdir if self.is_reversed else self.fordir
         if self.modes.stack:
             self.stack_label.place(x=0.68 * self.screen_width, y=0.3 * self.screen_height + 2)
@@ -496,9 +495,13 @@ class Game(Frame):
                 self.stack_counter + 2))
 
     # UI settings
-    def pick_option(self, title: str, question: str, options: list[str]) -> str:
-        picker = Picker(self, title, question, options)
-        return picker.result
+    def pick_option(self, title: str, question: str, options: Optional[list[str]]) -> str:
+        if options:
+            picker = Picker(self, title, question, options)
+            return picker.result
+        else:
+            response = simpledialog.askstring(title, question)
+            return response if response else "0"
 
     def take_card(self):
         global message
@@ -522,8 +525,8 @@ class Game(Frame):
         # Add new card to the "hand", create new button, update number
         self.hand_cards[ind] = new
         self.all_nums_of_cards[self.identity] += 1
-        log.info("Card counter: ", self.card_counter)
-        log.info("Stack counter: ", self.stack_counter)
+        log.info(f"Card counter: {self.card_counter}")
+        log.info(f"Stack counter: {self.stack_counter}")
         # Is it possible to place a card right now?
         possible_move = self.possible_move()
 
@@ -640,7 +643,7 @@ class Game(Frame):
             try:
                 msg = self.q.get(0)
                 # Played, pile, num_left, color, player, saiduno, taken
-                print("LOOKING AT MESSAGE")
+                log.info("Processing message")
                 # Normal play stage
                 if msg["stage"] == Stage.GO:
                     # Set the last played card and configure the pile + card counter
@@ -650,7 +653,6 @@ class Game(Frame):
                     self.set_label_next(msg)
                     self.is_reversed = msg["dir"]
                     self.direction_l.config(image=self.revdir if self.is_reversed else self.fordir)
-                    # self.direction_l.image = self.revdir if self.is_reversed else self.fordir
                     self.direction_l["image"] = self.revdir if self.is_reversed else self.fordir
                     if "plustwo" in newC and "taken" not in msg:
                         self.card_counter = 2
@@ -693,10 +695,6 @@ class Game(Frame):
 
                     self.all_nums_of_cards = msg["other_left"]
 
-                    # left_cards_text = self.label_for_cards_left(msg["other_left"])
-                    # left_cards_text += uno_said
-                    # Set up label with number of remaining cards
-                    # self.cards_left.config(text=left_cards_text)
                     # Enable buttons for cards if your turn; make UNO show if necessary
                     if int(msg["player"]) == 1:
                         print("Your turn, enabling buttons")
@@ -727,29 +725,11 @@ class Game(Frame):
                             self.turn_need_taking.config(text="Take cards!", bg="orange")
                 # Forgot to say UNO - enable taking new cards only
                 elif msg["stage"] == Stage.CHALLENGE:
-                    self.new_card.config(state="normal")
-                    if msg["why"] == 1:
-                        self.card_counter = 2
-                        messagebox.showinfo(
-                            "UNO not said!",
-                            "You forgot to click UNO, so take 2 cards!")
-                        self.turn_need_taking.config(text="Take 2 cards!", bg="orange")
-                    else:
-                        self.card_counter = 4
-                        messagebox.showinfo(
-                            "Illegal +4!",
-                            "You can't put +4 when you have other cards, so take 4!")
-                        self.turn_need_taking.config(text="Take 4 cards!", bg="orange")
-                    self.name_lbl.config(bg="orange")
+                    self.enable_taking_for_challenge(msg["why"])
 
                 elif msg["stage"] == Stage.SHOWCHALLENGE:
-                    print("other player tried to check you for illegal +4")
-                    was_challenge = Label(
-                        text="Someone checked if +4 was illegal!",
-                        bg="blue", fg="white", width=40, height=1)
-
-                    was_challenge.place(x=0.4 * self.screen_width, y=0.6 * self.screen_height + 1)
-                    self.master.after(5000, was_challenge.destroy)
+                    log.info("Another player tried to check you for illegal +4")
+                    self.show_temp_banner("Someone checked if +4 was illegal!", 5000)
 
                 # Another player has finished the game; you either take cards if last is a plus,
                 # or automatically send the remaining points for the other player
@@ -757,11 +737,8 @@ class Game(Frame):
                     self.set_last_played(msg)
                     if msg["to_take"]:
                         # Enable taking cards
-                        self.turn_need_taking.config(text="Take cards!", bg="orange")
-                        self.name_lbl.config(bg="green")
-                        # self.childframes[self.identity].config(highlightbackground="green",
-                        # highlightthickness=2)
-                        self.new_card.config(state="normal")
+                        self.enable_taking_for_final_plus(msg)
+
                         self.card_counter = 2 if "two" in msg["played"] else 4
                         if self.modes.stack and "counter" in msg:
                             self.stack_counter = msg["counter"]
@@ -774,7 +751,6 @@ class Game(Frame):
                         points["padding"] = "a" * (685 - len(json.dumps(points)))
                         self.sock.send(json.dumps(points).encode("utf-8"))
 
-                # self.cards_left.config(text="Game over!")
                 # Get points from the opponent and show them
                 elif msg["stage"] == Stage.CALC:
                     table_of_points = ""
@@ -782,121 +758,173 @@ class Game(Frame):
                     for i in range(len(msg["total"])):
                         table_of_points += "\n" + self.peeps[i] + ": " + str(
                             msg["total"][i]) + " points\n"
+
                     if msg["winner"] == self.identity:
-                        messagebox.showinfo(
+                        self.show_information(
                             "Win",
-                            f"You won {str(msg['points'])} points!\n\n Total this session: \n" +
-                            table_of_points)
-                        ans = messagebox.askyesno(
-                            "New",
-                            "Would you like to continue with a new game?")
+                            f"You won {msg['points']} points!\n\n Total this session: \n" +
+                            table_of_points,
+                            default=True)
+                        ans = self.ask_yes_no("New", "Would you like to continue with a new game?")
                         if ans == 1:
-                            modes_response = simpledialog.askstring(
+                            modes_response = self.pick_option(
                                 "Modes",
                                 "Input the modes (without spaces) that you'd like to use this game"
                                 " (or press enter for a normal game):\n"
                                 "1. 7/0\n"
                                 "2. Stack +2\n"
-                                "3. Take many cards at once")
-                            if not modes_response:
-                                modes_response = "0"
+                                "3. Take many cards at once", options=[])
                             modes = Modes.from_string(modes_response)
                             init = {"stage": Stage.INIT, "modes": modes.to_json()}
                             init["padding"] = "a" * (685 - len(json.dumps(init)))
                             self.sock.send(json.dumps(init).encode("utf-8"))
                         else:
-                            # Don"t want the new game
+                            # Don't want the new game
 
                             bye: dict[str, Any] = {"stage": Stage.BYE}
                             bye["padding"] = "a" * (685 - len(json.dumps(bye)))
                             self.sock.send(json.dumps(bye).encode("utf-8"))
-                            print("No new game, sending a BYE message")
+                            log.info("No new game, sending a BYE message")
+                            # self.send_bye_and_exit()
                             self.quit_game = True
                             break
 
                     else:
-                        messagebox.showinfo(
+                        self.show_information(
                             "Win",
                             f"{self.peeps[msg['winner']]} won {str(msg['points'])} points!\n" +
-                            " Total this session: \n" + table_of_points)
+                            " Total this session: \n" + table_of_points,
+                            default=True
+                        )
 
                 elif msg["stage"] == Stage.SEVEN or msg["stage"] == Stage.ZERO:
                     # Show hand, say who from, send back own hand
                     hand = {
                         "stage": msg["stage"],
                         "hand": [self.hand_cards[c].name for c in self.hand_cards],
-                        "from": self.identity}
-
-                    self.update_btns(msg["hand"], msg["from"])
-                    from_who = Label(
-                        text="You got cards from " + self.peeps[msg["from"]],
-                        bg="blue", fg="white", width=40, height=1)
-
-                    from_who.place(x=0.4 * self.screen_width, y=0.6 * self.screen_height + 1)
+                        "from": self.identity
+                    }
                     what = "7" if msg["stage"] == Stage.SEVEN else "0"
-                    InfoPop(
-                        self,
-                        f"A {what} was played",
-                        f"{what} was played.\n You got cards from \n {self.peeps[msg['from']]}")
-                    self.master.after(10000, from_who.destroy)
-                    # if msg["stage"] == Stage.SEVEN:
-                    # 	messagebox.showinfo("New cards", "A 7 was played. \nYou swapped "
-                    # 									 "cards with "+self.peeps[msg["from"]])
-                    # else:
-                    # 	messagebox.showinfo("New cards", "A 0 was played. You get cards from \n"
-                    # 						+self.peeps[msg["from"]])
 
                     hand["padding"] = "a" * (685 - len(json.dumps(hand)))
                     m = json.dumps(hand)
                     if "end" not in msg:
                         self.sock.send(m.encode("utf-8"))
 
-                elif msg["stage"] == Stage.NUMUPDATE:
-                    print()
-                    # self.cards_left.config(text=self.label_for_cards_left(msg["other_left"]))
-                    for other_label in self.other_cards_lbls.keys():
-                        crdtxt = " cards" if not msg["other_left"][other_label] == 1 else " card"
-                        self.other_cards_lbls[other_label].config(
-                            text=str(msg["other_left"][other_label]) + crdtxt
-                        )
-                        o_cards = self.other_cards_imgs[other_label]
-                        for car in o_cards:
-                            car.destroy()
+                    self.inform_about_sevenzero(msg, what)
 
-                        self.put_other_cards(other_label, msg["other_left"][other_label])
+                elif msg["stage"] == Stage.NUMUPDATE:
+                    self.update_other_nums_of_cards(msg)
 
                 elif msg["stage"] == Stage.DESIGNUPD:
-                    print("design update")
-                    who_updated = msg["from"]
-                    crdtxt = " cards" if not msg["num_cards"] == 1 else " card"
-                    self.other_cards_lbls[who_updated].config(
-                        text=str(msg["num_cards"]) + crdtxt)
-                    o_cards = self.other_cards_imgs[who_updated]
-                    for car in o_cards:
-                        car.destroy()
-
-                    self.put_other_cards(who_updated, msg["num_cards"])
-                    if msg["type"] == 0:
-                        print("card placed design update")
-                        img = ImageTk.PhotoImage(self.new_deck.get_card(msg["played"]).card_pic)
-                        self.last.config(image=img)
-                        self.last["image"] = img
-                        self.last.__setattr__("image", img)
-                        self.last_played = msg["played"]
+                    self.process_design_update(msg)
 
                 elif msg["stage"] == Stage.INIT:
-                    print("New game!")
+                    log.info("New game!")
                     self.start_new(msg)
                 elif msg["stage"] == Stage.BYE:
-                    print("Received a BYE message, closing (another player decided to stop)")
+                    log.info("Received a BYE message, closing (another player decided to stop)")
                     self.quit_game = True
                     break
 
             except queue.Empty:
                 pass
         if self.quit_game:
-            print("Loop ended")
+            log.info("Loop ended")
             self.send_bye_and_exit()
+
+    # UI settings
+    def ask_yes_no(self, title: str, question: str) -> int:
+        return messagebox.askyesno(title, question)
+
+    # UI settings
+    def enable_taking_for_challenge(self, reason: str):
+        self.new_card.config(state="normal")
+        if reason == 1:
+            self.card_counter = 2
+            self.show_information(
+                "UNO not said!",
+                "You forgot to click UNO, so take 2 cards!",
+                default=True
+            )
+            self.turn_need_taking.config(text="Take 2 cards!", bg="orange")
+        else:
+            self.card_counter = 4
+            self.show_information(
+                "Illegal +4!",
+                "You can't put +4 when you have other cards, so take 4!",
+                default=True
+            )
+            self.turn_need_taking.config(text="Take 4 cards!", bg="orange")
+        self.name_lbl.config(bg="orange")
+
+    # UI settings
+    def show_information(self, title: str, information: str, default: bool):
+        if default:
+            messagebox.showinfo(title, information)
+        else:
+            InfoPop(self, title, information)
+
+    # UI settings
+    def enable_taking_for_final_plus(self, message: dict[str, Any]):
+        self.turn_need_taking.config(text="Take cards!", bg="orange")
+        self.name_lbl.config(bg="green")
+        self.new_card.config(state="normal")
+        if self.modes.stack and "counter" in message:
+            self.stack_label.config(text="Stack\n cards to take:\n" + str(
+                self.stack_counter))
+
+    # UI settings
+    def show_temp_banner(self, text: str, ttl: int):
+        temp_banner = Label(text=text, bg="blue", fg="white", width=40, height=1)
+        temp_banner.place(x=0.4 * self.screen_width, y=0.6 * self.screen_height + 1)
+        self.master.after(ttl, temp_banner.destroy)
+
+    # UI settings
+    def inform_about_sevenzero(self, message: dict[str, Any], number_played: str):
+        self.update_btns(message["hand"], message["from"])
+        self.show_temp_banner("You got cards from " + self.peeps[message["from"]], 10000)
+        self.show_information(
+            f"A {number_played} was played",
+            f"{number_played} was played.\n You got cards from \n {self.peeps[message['from']]}",
+            default=False
+        )
+
+    # UI settings
+    def update_other_nums_of_cards(self, message: dict[str, Any]):
+        log.info("Updating the number of remaining cards for other players")
+        for other_label in self.other_cards_lbls.keys():
+            crdtxt = " cards" if not message["other_left"][other_label] == 1 else " card"
+            self.other_cards_lbls[other_label].config(
+                text=str(message["other_left"][other_label]) + crdtxt
+            )
+            o_cards = self.other_cards_imgs[other_label]
+            for car in o_cards:
+                car.destroy()
+
+            self.put_other_cards(other_label, message["other_left"][other_label])
+
+    # UI settings
+    # Another player either took a card, or placed a seven-zero, mostly
+    def process_design_update(self, message: dict[str, Any]):
+        log.info("A player has taken or placed a card")
+        who_updated = message["from"]
+        crdtxt = " cards" if not message["num_cards"] == 1 else " card"
+        self.other_cards_lbls[who_updated].config(
+            text=str(message["num_cards"]) + crdtxt)
+        o_cards = self.other_cards_imgs[who_updated]
+        for car in o_cards:
+            car.destroy()
+        self.put_other_cards(who_updated, message["num_cards"])
+
+        if message["type"] == 0:
+            log.info("A new card was placed, updating")
+            # img = ImageTk.PhotoImage(self.new_deck.get_card(message["played"]).card_pic)
+            # self.last.config(image=img)
+            # self.last["image"] = img
+            # self.last.__setattr__("image", img)
+            self.set_last_played(message)
+            self.last_played = message["played"]
 
     def set_last_played(self, msg: dict[str, Any]):
         newC = msg["played"]
@@ -933,13 +961,13 @@ class Game(Frame):
             try:
                 json_msg, _ = self.sock.recvfrom(700)
                 data = json_msg.decode("utf-8")
-                message = json.loads(data)
-                log.debug(message)
-                if len(data) < 700:
+                if len(data) < 700 and len(data) > 0:
                     log.warning(
-                        f"The message is short: {message}, length: {len(data)},"
-                        f"padding: {len(message['padding'])}"
+                        f"The message is short: {json_msg}, length: {len(data)}"
                     )
+                message = json.loads(data)
+                message.pop("padding")
+                log.debug(message)
                 self.q.put(message)
             except JSONDecodeError as er:
                 if "Expecting value" in str(er):
