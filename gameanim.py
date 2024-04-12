@@ -646,83 +646,7 @@ class Game(Frame):
                 log.info("Processing message")
                 # Normal play stage
                 if msg["stage"] == Stage.GO:
-                    # Set the last played card and configure the pile + card counter
-                    self.set_last_played(msg)
-                    newC = msg["played"]
-                    print("Played: ", newC)
-                    self.set_label_next(msg)
-                    self.is_reversed = msg["dir"]
-                    self.direction_l.config(image=self.revdir if self.is_reversed else self.fordir)
-                    self.direction_l["image"] = self.revdir if self.is_reversed else self.fordir
-                    if "plustwo" in newC and "taken" not in msg:
-                        self.card_counter = 2
-                        if self.modes.stack:
-                            self.stack_counter = msg["counter"]
-                            self.stack_label.config(text="Stack\n cards to take:\n" + str(
-                                self.stack_counter))
-                            print("CTR: ", self.stack_counter)
-                        self.taken_label.config(text="")
-                    elif "taken" in msg:
-                        self.stack_counter = 0
-                        self.stack_label.config(text="Stack\n cards to take:\n0")
-                        self.taken_label.config(text="Other player took cards!")
-                    else:
-                        self.taken_label.config(text="")
-
-                    for lbl in self.other_cards_lbls.keys():
-                        crdtxt = " cards" if not msg["other_left"][lbl] == 1 else " card"
-                        self.other_cards_lbls[lbl].config(
-                            text=str(msg["other_left"][lbl]) + crdtxt)
-                        for c in self.other_cards_imgs[lbl]:
-                            c.destroy()
-                        self.put_other_cards(lbl, msg["other_left"][lbl])
-                    # Check if other player said UNO; place the challenge button if not said
-                    # Update label to show that
-                    if "said_uno" in msg.keys() and not msg["said_uno"]:
-                        self.handle_challenge_button(msg["player"])
-                    elif "said_uno" in msg.keys() and msg["said_uno"] and 1 in msg["other_left"]:
-                        p = msg["from"]
-                        print("From: ", p)
-                        # todo this says wrong player if uno after 7/0
-                        if "0" in newC and "taken" not in msg and self.modes.sevenzero:
-                            if self.is_reversed:
-                                p = (p - 1) % len(self.peeps)
-                            else:
-                                p = (p + 1) % len(self.peeps)
-                        if p != self.identity:
-                            messagebox.showinfo("UNO", f"{self.peeps[p]} has only 1 card left!")
-                            # InfoPop(self, "UNO", self.peeps[p] + " \nhas only 1 card left!")
-
-                    self.all_nums_of_cards = msg["other_left"]
-
-                    # Enable buttons for cards if your turn; make UNO show if necessary
-                    if int(msg["player"]) == 1:
-                        print("Your turn, enabling buttons")
-                        self.name_lbl.config(bg="green")
-                        # self.childframes[self.identity].config(highlightbackground="green",
-                        # highlightthickness=2)
-                        if "plusfour" in newC and "taken" not in msg and "wild" in msg:
-                            # Show "challenge +4" button
-                            self.handle_wild_button(validity=msg["wild"])
-                        # No moves possible, or move possible but need to take cards
-                        if not self.possible_move() or (self.card_counter == 2 or
-                                                        self.card_counter == 4):
-                            self.new_card.config(state="normal")
-                        # Say your turn if either mode is normal, or take forever and not plus
-                        if (self.card_counter < 2 and not self.modes.mult) or \
-                            (self.modes.mult and not self.card_counter == 4 and not
-                                self.card_counter == 2) or \
-                                (self.modes.stack and self.can_stack() and "two" in newC):
-                            self.turn_need_taking.config(text="", bg=BACKGROUND_COLOR)
-                            for i in self.hand_btns:
-                                self.hand_btns[i].config(state="normal")
-                            if self.modes.stack and self.can_stack() and "two" in newC \
-                                    and "taken" not in msg and self.stack_counter > 0:
-                                for i in self.hand_btns:
-                                    if "two" not in self.hand_btns[i]["text"]:
-                                        self.hand_btns[i].config(state="disabled")
-                        else:
-                            self.turn_need_taking.config(text="Take cards!", bg="orange")
+                    self.process_regular_message(msg)
                 # Forgot to say UNO - enable taking new cards only
                 elif msg["stage"] == Stage.CHALLENGE:
                     self.enable_taking_for_challenge(msg["why"])
@@ -760,35 +684,9 @@ class Game(Frame):
                             msg["total"][i]) + " points\n"
 
                     if msg["winner"] == self.identity:
-                        self.show_information(
-                            "Win",
-                            f"You won {msg['points']} points!\n\n Total this session: \n" +
-                            table_of_points,
-                            default=True)
-                        ans = self.ask_yes_no("New", "Would you like to continue with a new game?")
-                        if ans == 1:
-                            modes_response = self.pick_option(
-                                "Modes",
-                                "Input the modes (without spaces) that you'd like to use this game"
-                                " (or press enter for a normal game):\n"
-                                "1. 7/0\n"
-                                "2. Stack +2\n"
-                                "3. Take many cards at once", options=[])
-                            modes = Modes.from_string(modes_response)
-                            init = {"stage": Stage.INIT, "modes": modes.to_json()}
-                            init["padding"] = "a" * (685 - len(json.dumps(init)))
-                            self.sock.send(json.dumps(init).encode("utf-8"))
-                        else:
-                            # Don't want the new game
-
-                            bye: dict[str, Any] = {"stage": Stage.BYE}
-                            bye["padding"] = "a" * (685 - len(json.dumps(bye)))
-                            self.sock.send(json.dumps(bye).encode("utf-8"))
-                            log.info("No new game, sending a BYE message")
-                            # self.send_bye_and_exit()
-                            self.quit_game = True
+                        start_new_game = self.process_winning(msg["points"], table_of_points)
+                        if not start_new_game:
                             break
-
                     else:
                         self.show_information(
                             "Win",
@@ -832,6 +730,117 @@ class Game(Frame):
         if self.quit_game:
             log.info("Loop ended")
             self.send_bye_and_exit()
+
+    def process_regular_message(self, msg: dict[str, Any]):
+        # Set the last played card and configure the pile + card counter
+        self.set_last_played(msg)
+        newC = msg["played"]
+        log.info(f"Played: {newC}")
+        if "plustwo" in newC and "taken" not in msg:
+            self.card_counter = 2
+            if self.modes.stack:
+                self.stack_counter = msg["counter"]
+        elif "taken" in msg:
+            self.stack_counter = 0
+        self.update_labels_new_turn(newC, msg)
+        self.update_other_nums_of_cards(msg)
+
+        # Check if other player said UNO; place the challenge button if not said
+        if "said_uno" in msg.keys() and not msg["said_uno"]:
+            self.handle_challenge_button(msg["player"])
+        elif "said_uno" in msg.keys() and msg["said_uno"] and 1 in msg["other_left"]:
+            from_player = msg["from"]
+            # todo this says wrong player if uno after 7/0
+            if "0" in newC and "taken" not in msg and self.modes.sevenzero:
+                if self.is_reversed:
+                    from_player = (from_player - 1) % len(self.peeps)
+                else:
+                    from_player = (from_player + 1) % len(self.peeps)
+            if from_player != self.identity:
+                self.show_information(
+                    "UNO",
+                    f"{self.peeps[from_player]}\n has only 1 card left!",
+                    default=False
+                )
+
+        self.all_nums_of_cards = msg["other_left"]
+
+        # Enable buttons for cards if your turn; make UNO show if necessary
+        if int(msg["player"]) == 1:
+            log.info("Your turn, enabling buttons")
+            self.enable_buttons_regular_turn(newC, msg)
+
+    # UI settings
+    def update_labels_new_turn(self, played_card: str, msg: dict[str, Any]):
+        self.set_label_next(msg)
+        self.is_reversed = msg["dir"]
+        self.direction_l.config(image=self.revdir if self.is_reversed else self.fordir)
+        self.direction_l["image"] = self.revdir if self.is_reversed else self.fordir
+        if "plustwo" in played_card and "taken" not in msg:
+            if self.modes.stack:
+                self.stack_label.config(text="Stack\n cards to take:\n" + str(
+                    self.stack_counter))
+            self.taken_label.config(text="")
+        elif "taken" in msg:
+            self.stack_label.config(text="Stack\n cards to take:\n0")
+            self.taken_label.config(text="Other player took cards!")
+        else:
+            self.taken_label.config(text="")
+
+    # UI settings
+    def enable_buttons_regular_turn(self, card: str, msg: dict[str, Any]):
+        self.name_lbl.config(bg="green")
+        if "plusfour" in card and "taken" not in msg and "wild" in msg:
+            # Show "challenge +4" button
+            self.handle_wild_button(validity=msg["wild"])
+        # No moves possible, or move possible but need to take cards
+        if not self.possible_move() or (self.card_counter == 2 or
+                                        self.card_counter == 4):
+            self.new_card.config(state="normal")
+        # Say your turn if either mode is normal, or take forever and not plus
+        if (self.card_counter < 2 and not self.modes.mult) or \
+            (self.modes.mult and not self.card_counter == 4 and not
+                self.card_counter == 2) or \
+                (self.modes.stack and self.can_stack() and "two" in card):
+            self.turn_need_taking.config(text="", bg=BACKGROUND_COLOR)
+            for i in self.hand_btns:
+                self.hand_btns[i].config(state="normal")
+            if self.modes.stack and self.can_stack() and "two" in card \
+                    and "taken" not in msg and self.stack_counter > 0:
+                for i in self.hand_btns:
+                    if "two" not in self.hand_btns[i]["text"]:
+                        self.hand_btns[i].config(state="disabled")
+        else:
+            self.turn_need_taking.config(text="Take cards!", bg="orange")
+
+    def process_winning(self, points: int, table_of_points: str) -> bool:
+        self.show_information(
+            "Win",
+            f"You won {points} points!\n\n Total this session: \n" +
+            table_of_points,
+            default=True)
+        ans = self.ask_yes_no("New", "Would you like to continue with a new game?")
+        if ans == 1:
+            modes_response = self.pick_option(
+                "Modes",
+                "Input the modes (without spaces) that you'd like to use this game"
+                " (or press enter for a normal game):\n"
+                "1. 7/0\n"
+                "2. Stack +2\n"
+                "3. Take many cards at once", options=[])
+            modes = Modes.from_string(modes_response)
+            init = {"stage": Stage.INIT, "modes": modes.to_json()}
+            init["padding"] = "a" * (685 - len(json.dumps(init)))
+            self.sock.send(json.dumps(init).encode("utf-8"))
+        else:
+            # Don't want the new game
+            bye: dict[str, Any] = {"stage": Stage.BYE}
+            bye["padding"] = "a" * (685 - len(json.dumps(bye)))
+            self.sock.send(json.dumps(bye).encode("utf-8"))
+            log.info("No new game, sending a BYE message")
+            # self.send_bye_and_exit()
+            self.quit_game = True
+        return ans == 1
 
     # UI settings
     def ask_yes_no(self, title: str, question: str) -> int:
@@ -940,7 +949,8 @@ class Game(Frame):
         else:
             self.card_counter = 1 if not self.modes.mult else 500
         self.last_played = newC
-        self.pile = msg["pile"]
+        if "pile" in msg.keys():
+            self.pile = msg["pile"]
         self.update_last_played_img(newC)
 
     # UI settings
