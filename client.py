@@ -7,7 +7,7 @@ import queue
 import logging
 import sys
 from logmanager import setup_logger
-from player import Player
+# from player import Player
 import gameanim
 from random import randint
 from tkinter.simpledialog import askstring
@@ -81,12 +81,14 @@ def start_game(sock: socket, conditions: argparse.Namespace):
         q = queue.Queue()
         all_points = [0] * len(message["other_left"])
         if conditions.sentient:
-            window = Player(root, q, message, sock, all_points)
-            root.withdraw()
+            log.critical("Currently not supported")
+            sys.exit(1)
+            # window = Player(root, q, message, sock, all_points)
+            # root.withdraw()
         else:
             window = gameanim.Game(root, q, message, sock, all_points)
             # window = Game(root, q, message, sock, all_points)
-        window.config_start_btns(message)
+        window.start_config(message)
         thread = Thread(target=window.receive)
         thread.start()
         window.checkPeriodically()
