@@ -25,6 +25,7 @@ direction_rev_img_location = "Images/directionrev.jpg.png"
 icon_img_location = "Images/unoimg.png"
 
 BACKGROUND_COLOR = "#D1FFCC"
+TURN_COLOR = "#FDFFD2"
 log = logging.getLogger(__name__)
 
 
@@ -186,11 +187,11 @@ class Game(Frame):
         self.setup_pile(msg)
         # Button for debugging
         self.debug = but(
-            text="Not my turn", fg="red", bg="white", borderless=1,
+            text="Skip turn", fg="red", bg="white", borderless=1,
             borderwidth=0, width=100,
             height=30, border=0,
             command=self.send_debug)
-        self.debug.place(x=self.screen_width - 110, y=self.screen_height - 45)
+        self.debug.place(x=self.screen_width - 120, y=self.screen_height - 55)
         self.hand_btns: dict[int, Button] = {}
         self.setup_hand()
         if msg["player"] == 1:
@@ -202,7 +203,8 @@ class Game(Frame):
                     width=12, height=1)
             else:
                 self.turn_need_taking = Label(
-                    text="", fg="Black", bg=BACKGROUND_COLOR, width=12, height=1)
+                    text="", fg="Black", bg=TURN_COLOR, width=12, height=1
+                )
         else:
             self.turn_need_taking = Label(
                 text="", fg="black", bg=BACKGROUND_COLOR, width=12, height=1)
@@ -211,8 +213,10 @@ class Game(Frame):
         self.setup_other_players(opponents, frames)
         if msg["player"] == 1:
             self.name_lbl.config(bg="green", fg="white")
+            self.childframes[self.game_state.identity].config(bg=TURN_COLOR)
         else:
             self.name_lbl.config(bg="red", fg="white")
+            self.childframes[self.game_state.identity].config(bg=BACKGROUND_COLOR)
         self.set_label_next(msg)
         self.show_enabled_modes()
 
@@ -795,6 +799,7 @@ class Game(Frame):
     # UI settings
     def enable_buttons_regular_turn(self, card: str, msg: dict[str, Any]):
         self.name_lbl.config(bg="green")
+        self.childframes[self.game_state.identity].config(bg=TURN_COLOR)
         if "plusfour" in card and "taken" not in msg and "wild" in msg:
             # Show "challenge +4" button
             self.handle_wild_button(validity=msg["wild"])
@@ -807,7 +812,7 @@ class Game(Frame):
             (self.game_state.modes.mult and not self.card_counter == 4 and not
                 self.card_counter == 2) or \
                 (self.game_state.modes.stack and self.can_stack() and "two" in card):
-            self.turn_need_taking.config(text="", bg=BACKGROUND_COLOR)
+            self.turn_need_taking.config(text="", bg=TURN_COLOR)
             for i in self.hand_btns:
                 self.hand_btns[i].config(state="normal")
             if self.game_state.modes.stack and self.can_stack() and "two" in card \
@@ -883,6 +888,7 @@ class Game(Frame):
     def enable_taking_for_final_plus(self, message: dict[str, Any]):
         self.turn_need_taking.config(text="Take cards!", bg="orange")
         self.name_lbl.config(bg="green")
+        self.childframes[self.game_state.identity].config(bg=TURN_COLOR)
         self.new_card.config(state="normal")
         if self.game_state.modes.stack and "counter" in message:
             self.stack_label.config(text="Stack\n cards to take:\n" + str(
@@ -1037,10 +1043,13 @@ class Game(Frame):
     def disable_buttons(self, sent_message: dict[str, Any]):
         self.new_card.config(state="disabled")
         self.uno_but["bg"] = "light sky blue"
-        if sent_message["stage"] == Stage.GO and "stop" in sent_message["played"] \
+        self.handle_challenge_button(player=None, destroy=True)
+        self.handle_wild_button(destroy=True)
+        go_or_debug = sent_message["stage"] == Stage.GO or sent_message["stage"] == Stage.DEBUG
+        if go_or_debug and "stop" in sent_message["played"] \
                 and "taken" not in sent_message:
             self.update_next_lbl(2)
-        elif sent_message["stage"] == Stage.GO:
+        elif go_or_debug:
             self.update_next_lbl(1)
 
         if sent_message["stage"] == Stage.ZEROCARDS:
@@ -1051,6 +1060,7 @@ class Game(Frame):
         for i in self.hand_btns:
             self.hand_btns[i].config(state="disabled")
         self.name_lbl.config(bg="red", fg="white")
+        self.childframes[self.game_state.identity].config(bg=BACKGROUND_COLOR)
         self.taken_label.config(text="")
 
     # Notify opponent that they forgot to say UNO; when clicking button
@@ -1205,6 +1215,8 @@ class Game(Frame):
                 bg="green" if other_label == a else "red",
                 fg="white"
             )
+            self.childframes[other_label].config(
+                bg=TURN_COLOR if other_label == a else BACKGROUND_COLOR)
 
     # UI settings
     def update_next_lbl(self, ind: int):
@@ -1218,6 +1230,7 @@ class Game(Frame):
         # bug keyerror: 0 and 1 below (mostly on stop. errors for the player who placed stop)
         # other labels does not have player 0. on stop the green is for player 0.
         self.other_names_lbls[a].config(bg="green")
+        self.childframes[a].config(bg=TURN_COLOR)
         # self.childframes[a].config(highlightbackground="green",highlightthickness=2)
 
     # Non-UI settings? If it's a queue thing?
@@ -1312,7 +1325,7 @@ def show_rules():
         "Rules",
         "No stacking, take one card only. You can click on cards when it's your turn. Press the"
         " UNO button BEFORE making the move, not after - otherwise you'll have to take 2 cards."
-        " The \"Not my turn\" button is used for bug reporting and to change your turn to someone "
+        " The \"Skip turn\" button is used for bug reporting and to change your turn to someone "
         "else.\n Would you like to visit Wiki for official rules?")
     if answer:
         webbrowser.open("https://www.ultraboardgames.com/uno/game-rules.php")
