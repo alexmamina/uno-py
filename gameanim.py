@@ -4,9 +4,8 @@ import math
 from PIL import ImageTk, Image
 from popup import InfoPop
 import webbrowser
-import logging
+from logging import Logger
 from typing import Optional
-from logmanager import setup_logger
 from picker import Picker
 from game_classes import Stage, Modes, GameState
 from typing import Any
@@ -26,7 +25,6 @@ icon_img_location = "Images/unoimg.png"
 
 BACKGROUND_COLOR = "#D1FFCC"
 TURN_COLOR = "#FDFFD2"
-log = logging.getLogger(__name__)
 
 
 class Game(Frame):
@@ -41,8 +39,9 @@ class Game(Frame):
         msg: dict[str, Any],
         sock: socket,
         all_points,
+        logger: Logger
     ):
-        setup_logger(log)
+        self.log = logger
         global message
         message = msg
         # Non-UI settings
@@ -534,8 +533,8 @@ class Game(Frame):
         # Add new card to the "hand", create new button, update number
         self.hand_cards[ind] = new
         self.all_nums_of_cards[self.game_state.identity] += 1
-        log.info(f"Card counter: {self.card_counter}")
-        log.info(f"Stack counter: {self.stack_counter}")
+        self.log.info(f"Card counter: {self.card_counter}")
+        self.log.info(f"Stack counter: {self.stack_counter}")
         # Is it possible to place a card right now?
         possible_move = self.possible_move()
 
@@ -608,7 +607,7 @@ class Game(Frame):
     def toggle_uno(self):
         self.toggle_uno_button_color()
         self.uno = not self.uno
-        log.info(f"UNO button clicked. Uno is {self.uno}")
+        self.log.info(f"UNO button clicked. Uno is {self.uno}")
 
     # UI settings
     def toggle_uno_button_color(self):
@@ -652,7 +651,7 @@ class Game(Frame):
             try:
                 msg = self.q.get(0)
                 # Played, pile, num_left, color, player, saiduno, taken
-                log.info("Processing message")
+                self.log.info("Processing message")
                 # Normal play stage
                 if msg["stage"] == Stage.GO:
                     self.process_regular_message(msg)
@@ -661,7 +660,7 @@ class Game(Frame):
                     self.enable_taking_for_challenge(msg["why"])
 
                 elif msg["stage"] == Stage.SHOWCHALLENGE:
-                    log.info("Another player tried to check you for illegal +4")
+                    self.log.info("Another player tried to check you for illegal +4")
                     self.show_temp_banner("Someone checked if +4 was illegal!", 5000)
 
                 # Another player has finished the game; you either take cards if last is a plus,
@@ -727,24 +726,24 @@ class Game(Frame):
                     self.process_design_update(msg)
 
                 elif msg["stage"] == Stage.INIT:
-                    log.info("New game!")
+                    self.log.info("New game!")
                     self.start_new(msg)
                 elif msg["stage"] == Stage.BYE:
-                    log.info("Received a BYE message, closing (another player decided to stop)")
+                    self.log.info("Received a BYE message, closing (someone exited?)")
                     self.quit_game = True
                     break
 
             except queue.Empty:
                 pass
         if self.quit_game:
-            log.info("Loop ended")
+            self.log.info("Loop ended")
             self.send_bye_and_exit()
 
     def process_regular_message(self, msg: dict[str, Any]):
         # Set the last played card and configure the pile + card counter
         self.set_last_played(msg)
         newC = msg["played"]
-        log.info(f"Played: {newC}")
+        self.log.info(f"Played: {newC}")
         if "plustwo" in newC and "taken" not in msg:
             self.card_counter = 2
             if self.game_state.modes.stack:
@@ -776,7 +775,7 @@ class Game(Frame):
 
         # Enable buttons for cards if your turn; make UNO show if necessary
         if int(msg["player"]) == 1:
-            log.info("Your turn, enabling buttons")
+            self.log.info("Your turn, enabling buttons")
             self.enable_buttons_regular_turn(newC, msg)
 
     # UI settings
@@ -847,7 +846,7 @@ class Game(Frame):
             bye: dict[str, Any] = {"stage": Stage.BYE}
             bye["padding"] = "a" * (685 - len(json.dumps(bye)))
             self.sock.send(json.dumps(bye).encode("utf-8"))
-            log.info("No new game, sending a BYE message")
+            self.log.info("No new game, sending a BYE message")
             # self.send_bye_and_exit()
             self.quit_game = True
         return ans == 1
@@ -912,7 +911,7 @@ class Game(Frame):
 
     # UI settings
     def update_other_nums_of_cards(self, message: dict[str, Any]):
-        log.info("Updating the number of remaining cards for other players")
+        self.log.info("Updating the number of remaining cards for other players")
         for other_label in self.other_cards_lbls.keys():
             crdtxt = " cards" if not message["other_left"][other_label] == 1 else " card"
             self.other_cards_lbls[other_label].config(
@@ -927,7 +926,7 @@ class Game(Frame):
     # UI settings
     # Another player either took a card, or placed a seven-zero, mostly
     def process_design_update(self, message: dict[str, Any]):
-        log.info("A player has taken or placed a card")
+        self.log.info("A player has taken or placed a card")
         who_updated = message["from"]
         crdtxt = " cards" if not message["num_cards"] == 1 else " card"
         self.other_cards_lbls[who_updated].config(
@@ -938,7 +937,7 @@ class Game(Frame):
         self.put_other_cards(who_updated, message["num_cards"])
 
         if message["type"] == 0:
-            log.info("A new card was placed, updating")
+            self.log.info("A new card was placed, updating")
             # img = ImageTk.PhotoImage(self.game_state.deck.get_card(message["played"]).card_pic)
             # self.last.config(image=img)
             # self.last["image"] = img
@@ -978,41 +977,41 @@ class Game(Frame):
     def receive(self):
         global message
         while not self.quit_game:
-            log.info("Waiting for a new message")
+            self.log.info("Waiting for a new message")
             try:
                 json_msg, _ = self.sock.recvfrom(700)
                 data = json_msg.decode("utf-8")
                 if len(data) < 700 and len(data) > 0:
-                    log.warning(
+                    self.log.warning(
                         f"The message is short: {json_msg}, length: {len(data)}"
                     )
                 message = json.loads(data)
                 message.pop("padding")
-                log.debug(message)
+                self.log.debug(message)
                 self.q.put(message)
             except JSONDecodeError as er:
                 if "Expecting value" in str(er):
                     self.quit_game = True
-                    log.info("Someone else's socket has been closed")
+                    self.log.info("Someone else's socket has been closed")
                 elif "Unterminated string" in str(er):
-                    log.error(
+                    self.log.error(
                         f"Message too long: {data}, length: {len(data)}. "
                         "If not, check your internet connection"
                     )
                 elif "Extra data" in str(er):
-                    log.error(f"Got a message and some extra bits? {data}")
+                    self.log.error(f"Got a message and some extra bits? {data}")
                 else:
-                    log.error(er)
+                    self.log.error(er)
                     raise
                 break
             except OSError as o:
                 if o.errno == 9:
-                    log.info("Tried to receive a message, but the socket has closed")
+                    self.log.info("Tried to receive a message, but the socket has closed")
                     break
                 else:
-                    log.error(o)
+                    self.log.error(o)
                     break
-        log.info("Stopping listening for messages")
+        self.log.info("Stopping listening for messages")
 
     def send_design_update(self, type: int, num: int, *args):
         # todo what are args
@@ -1037,7 +1036,7 @@ class Game(Frame):
         self.card_counter = 1 if not self.game_state.modes.mult else 500
 
         self.disable_buttons(data_to_send)
-        log.info("Not your turn anymore")
+        self.log.info("Not your turn anymore")
 
     # UI settings
     def disable_buttons(self, sent_message: dict[str, Any]):
@@ -1140,7 +1139,7 @@ class Game(Frame):
         self.sock.send(json.dumps(data_to_send).encode("utf-8"))
 
         self.disable_buttons(data_to_send)
-        log.info("Not your turn anymore")
+        self.log.info("Not your turn anymore")
 
     # Go through the hand and see if there are cards that could be played
     def possible_move(self) -> bool:
@@ -1253,7 +1252,7 @@ class Game(Frame):
         root.title("UNO - player " + str(message["whoami"]) + " - " + message["peeps"][message[
             "whoami"]])
         root.protocol("WM_DELETE_WINDOW", self.send_bye_and_exit)
-        new = Game(root, self.q, message, self.sock, self.game_state.all_points)
+        new = Game(root, self.q, message, self.sock, self.game_state.all_points, self.log)
         new.start_config(message)
         new.checkPeriodically()
         new.mainloop()
@@ -1304,7 +1303,7 @@ class Game(Frame):
             pass
         self.quit_game = True
 
-        log.info("I am closing")
+        self.log.info("I am closing")
         self.close_window()
 
     # UI settings
@@ -1312,9 +1311,9 @@ class Game(Frame):
         try:
             self.master.destroy()
         except TclError:
-            log.warning("The window seems to have been destroyed already")
+            self.log.warning("The window seems to have been destroyed already")
             pass
-        log.info("Bye")
+        self.log.info("Bye")
 
 
 # ######################################## SHOW FUNCTIONS #######################################

@@ -86,7 +86,7 @@ def start_game(sock: socket, conditions: argparse.Namespace):
             # window = Player(root, q, message, sock, all_points)
             # root.withdraw()
         else:
-            window = gameanim.Game(root, q, message, sock, all_points)
+            window = gameanim.Game(root, q, message, sock, all_points, log)
             # window = Game(root, q, message, sock, all_points)
         window.start_config(message)
         thread = Thread(target=window.receive)
