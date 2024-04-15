@@ -28,8 +28,6 @@ TURN_COLOR = "#FDFFD2"
 
 
 class Game(Frame):
-    global message
-    message = {}
 
     # Initialise a frame. Setup the pile, hand, last played card and all gui
     def __init__(
@@ -42,8 +40,7 @@ class Game(Frame):
         logger: Logger
     ):
         self.log = logger
-        global message
-        message = msg
+        self.message = msg
         # Non-UI settings
         super().__init__(master)
         self.pack()
@@ -512,7 +509,6 @@ class Game(Frame):
             return response if response else "0"
 
     def take_card(self):
-        global message
 
         # Take new card
         new = self.game_state.deck.get_card(self.pile.pop(0))
@@ -525,7 +521,7 @@ class Game(Frame):
         if self.stack_counter > 0 and "two" in self.last_played:  # or "four" in self.last_played
             self.stack_counter -= 1
 
-        if not ("stage" in message.keys() and message["stage"] == Stage.ZEROCARDS):
+        if not ("stage" in self.message.keys() and self.message["stage"] == Stage.ZEROCARDS):
             self.send_design_update(1, len(self.hand_cards) + 1)
         # Since hand is a dict, the keys aren't in order.
         # Get the largest and add 1 for the next
@@ -544,16 +540,17 @@ class Game(Frame):
         # Send the points from the cards if you had to take them at the end (last played was +,
         # but game is over)
         if self.card_counter <= 0 and \
-            self.stack_counter == 0 and "stage" in message.keys() and \
-                message["stage"] == Stage.ZEROCARDS:
+            self.stack_counter == 0 and "stage" in self.message.keys() and \
+                self.message["stage"] == Stage.ZEROCARDS:
             data_to_send = {"stage": Stage.CALC, "points": self.calculate_points()}
             self.sendInfo(data_to_send)
 
         # Send information about taken cards if can't go or had to take +2/4 due to challenge or
         # card
         if self.card_counter <= 0 and self.stack_counter == 0 and \
-            (possible_move is False or ("taken" not in message and "plus" in self.last_played) or
-                message["stage"] == Stage.CHALLENGE):
+            (possible_move is False or
+                ("taken" not in self.message and "plus" in self.last_played) or
+                self.message["stage"] == Stage.CHALLENGE):
             data_to_send = {
                 "played": self.last_played,
                 "pile": self.pile,
@@ -561,11 +558,11 @@ class Game(Frame):
                 "color": self.last_played[0:3],
                 "num_left": len(self.hand_cards)
             }
-            if message["stage"] != Stage.CHALLENGE:
+            if self.message["stage"] != Stage.CHALLENGE:
                 data_to_send["taken"] = True
             else:
                 data_to_send["stage"] = Stage.CHALLENGE_TAKEN
-                data_to_send["why"] = message["why"]
+                data_to_send["why"] = self.message["why"]
             self.sendInfo(data_to_send)
 
     # UI settings
@@ -975,7 +972,6 @@ class Game(Frame):
 
     # Put received message in queue for async processing
     def receive(self):
-        global message
         while not self.quit_game:
             self.log.info("Waiting for a new message")
             try:
@@ -985,10 +981,10 @@ class Game(Frame):
                     self.log.warning(
                         f"The message is short: {json_msg}, length: {len(data)}"
                     )
-                message = json.loads(data)
-                message.pop("padding")
-                self.log.debug(message)
-                self.q.put(message)
+                self.message = json.loads(data)
+                self.message.pop("padding")
+                self.log.debug(self.message)
+                self.q.put(self.message)
             except JSONDecodeError as er:
                 if "Expecting value" in str(er):
                     self.quit_game = True
@@ -1267,10 +1263,10 @@ class Game(Frame):
         elif "plus" in message["played"] and self.game_state.modes.stack and self.can_stack():
             self.stack_counter = 2
             self.card_counter = 2
-        self.config_start_buttons()
+        self.config_start_buttons(message)
 
     # UI settings
-    def config_start_buttons(self):
+    def config_start_buttons(self, message: dict[str, Any]):
         not_current = message["player"] == 0
         played_plus = "plus" in message["played"]
         stack_possible = self.game_state.modes.stack and self.can_stack()
