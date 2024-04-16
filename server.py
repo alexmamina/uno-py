@@ -23,7 +23,7 @@ def pretty_print_message(message: dict[str, Any]):
 class Server():
 
     def __init__(self):
-        setup_logger(log)
+        setup_logger(log, "server")
         self.sock: socket = socket(AF_INET, SOCK_STREAM)
         self.num_players: int
         self.modes = Modes()

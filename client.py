@@ -99,11 +99,12 @@ def start_game(sock: socket, conditions: argparse.Namespace):
 
 
 if __name__ == "__main__":
-    setup_logger(log)
     conditions = parser.parse_args()
 
     # Get the player's name and connection information
     host, port, name = get_player_info(conditions)
+
+    setup_logger(log, name.lower())
     log.info(f"Host: {host}, port: {port}, name: {name}")
 
     # Create the main window
