@@ -1,3 +1,8 @@
+cd
+cd Downloads/uno-py-master
+
+python3 update_checker.py
+
 ip=$(ifconfig en0 inet | grep inet | awk {'print $2'})
 echo "INPUT PORT NUMBER (or press ENTER if you'd like to use the default 44444)"
 
@@ -29,6 +34,4 @@ fi
 echo CONNECT TO:
 echo $ip $port
 
-cd
-cd Downloads/uno-py-master
 python3 server.py $ip $port $numplayers $modes
