@@ -30,5 +30,6 @@ if file_update < latest_commit:
         "wget https://github.com/alexmamina/uno-py/archive/refs/heads/master.zip " + \
         "-O uno-py-master.zip && unzip -o uno-py-master.zip && rm uno-py-master.zip"
     subprocess.call(download_command, shell=True)
+    print("Hello! I have been updated to (probably) the latest version")
 else:
     print("Seems up to date")
