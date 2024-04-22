@@ -18,6 +18,7 @@ import copy
 from tkmacosx import Button as but
 import json
 from json import JSONDecodeError
+from message_utils import recover
 
 direction_for_img_location = "Images/directionfor.jpg.png"
 direction_rev_img_location = "Images/directionrev.jpg.png"
@@ -983,30 +984,36 @@ class Game(Frame):
                     )
                 self.message = json.loads(data)
                 self.message.pop("padding")
-                self.log.debug(self.message)
-                self.q.put(self.message)
             except JSONDecodeError as er:
                 if "Expecting value" in str(er):
                     self.quit_game = True
                     self.log.info("Someone else's socket has been closed")
+                    break
                 elif "Unterminated string" in str(er):
                     self.log.error(
                         f"Message too long: {data}, length: {len(data)}. "
                         "If not, check your internet connection"
                     )
+                    self.log.warning("Trying to recover")
+                    self.message = recover(data)
                 elif "Extra data" in str(er):
                     self.log.error(f"Got a message and some extra bits? {data}")
+                    self.log.warning("Trying to recover")
+                    self.message = recover(data)
                 else:
                     self.log.error(er)
+                    self.quit_game = True
                     raise
-                break
+                # break
             except OSError as o:
                 if o.errno == 9:
                     self.log.info("Tried to receive a message, but the socket has closed")
                     break
                 else:
                     self.log.error(o)
-                    break
+                    self.quit_game = True
+            self.log.debug(self.message)
+            self.q.put(self.message)
         self.log.info("Stopping listening for messages")
 
     def send_design_update(self, type: int, num: int, *args):

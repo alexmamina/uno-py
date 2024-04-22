@@ -7,6 +7,7 @@ from typing import Any
 from random import shuffle
 from copy import deepcopy
 from card import Card
+from message_utils import recover
 from game_classes import Stage, Modes
 import json
 from json import JSONDecodeError
@@ -272,7 +273,14 @@ class Server():
                 # Send the request for points and syncronously receive the response
                 self.send_message(data, i)
                 pts, _ = self.socks[i].recvfrom(1000)
-                self.resulting_points += json.loads(pts.decode("utf-8"))["points"]
+                decoded_pts = pts.decode("utf-8")
+                log.debug(decoded_pts)
+                try:
+                    result = json.loads(decoded_pts)
+                except JSONDecodeError:
+                    log.warning("Trying to recover")
+                    result = recover(decoded_pts)
+                self.resulting_points += result["points"]
 
         self.all_players_points[self.current_player] += self.resulting_points
 
@@ -322,8 +330,14 @@ class Server():
         self.send_message(swapping_message, to_whom)
 
         response, _ = self.socks[to_whom].recvfrom(2000)
-        decoded_response = json.loads(response.decode("utf-8"))
-        decoded_response.pop("padding", "")
+        proper_response = response.decode("utf-8")
+        log.debug(proper_response)
+        try:
+            decoded_response = json.loads(proper_response)
+            decoded_response.pop("padding", "")
+        except JSONDecodeError:
+            log.warning("Trying to recover")
+            decoded_response = recover(proper_response)
         return decoded_response
 
     def swap_after_zero(self, message: dict[str, Any]):
@@ -487,7 +501,9 @@ class Server():
             except JSONDecodeError as e:
                 log.critical(f"Error decoding response from a player: {e}")
                 log.critical(json_msg)
-                break
+                log.warning("Trying to recover")
+                message = recover(dec_json)
+                # break
             if message["stage"] == Stage.GO or message["stage"] == Stage.DEBUG:
                 self.process_regular_message(message)
 
@@ -512,7 +528,7 @@ class Server():
                 log.info(f"New game! Total played: {self.total_games_played}")
                 self.list_of_players.sort()
                 self.init_deck()
-                self.modes = Modes.from_json(message.get("modes"))
+                self.modes = Modes.from_json(message.get("modes", {}))
                 self.send_initial_pile()
 
             elif message["stage"] == Stage.DESIGNUPD:
