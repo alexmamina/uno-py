@@ -12,6 +12,7 @@ import gameanim
 from random import randint
 from tkinter.simpledialog import askstring
 import argparse
+import utils
 
 parser = argparse.ArgumentParser(
     usage="No flags - play multiplayer. Add flags to play alone (temporarily deprecated)"
@@ -77,9 +78,11 @@ def start_game(sock: socket, conditions: argparse.Namespace):
         data = init.decode("utf-8")
         message = json.loads(data)
         log.debug(f"Received initial message: {message}")
-        root.title(f"UNO - player {str(message['whoami'])} - {message['peeps'][message['whoami']]}")
+        utils.title_window(root, message["whoami"], message["peeps"])
         q = queue.Queue()
-        all_points = [0] * len(message["other_left"])
+        all_points: dict[str, int] = {
+            p: number for p, number in zip(message["peeps"], [0] * len(message["other_left"]))
+        }
         if conditions.sentient:
             log.critical("Currently not supported")
             sys.exit(1)
