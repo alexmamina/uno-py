@@ -25,6 +25,8 @@ direction_for_img_location = "Images/directionfor.jpg.png"
 direction_rev_img_location = "Images/directionrev.jpg.png"
 icon_img_location = "Images/unoimg.png"
 
+STACK_LABEL_TEXT = "Stack\n cards to take:\n"
+
 BACKGROUND_COLOR = "#D1FFCC"
 TURN_COLOR = "#FDFFD2"
 
@@ -129,7 +131,7 @@ class Game(Frame):
         self.card_frame.place(x=0, y=0.6 * self.screen_height)
         self.childframes[self.game_state.identity] = self.card_frame
         self.stack_label = Label(
-            text="Stack\n cards to take:\n" + str(self.stack_counter),
+            text=f"{STACK_LABEL_TEXT}{self.stack_counter}",
             fg="black",
             bg="PeachPuff",
             width=10,
@@ -499,8 +501,7 @@ class Game(Frame):
         self.cards_left.config(text=self.all_nums_of_cards[self.game_state.identity])
         self.move_buttons()
         if "two" in card and self.game_state.modes.stack:
-            self.stack_label.config(text="Stack\n cards to take:\n" + str(
-                self.stack_counter + 2))
+            self.configure_stack_label(self.stack_counter + 2)
 
     # UI settings
     def pick_option(self, title: str, question: str, options: Optional[list[str]]) -> str:
@@ -569,9 +570,13 @@ class Game(Frame):
             self.sendInfo(data_to_send)
 
     # UI settings
+    def configure_stack_label(self, counter: int):
+        self.stack_label.config(text=f"{STACK_LABEL_TEXT}{counter}")
+
+    # UI settings
     def update_labels_buttons_card_taken(self, new_card: Card, index: int, move_is_possible: bool):
         if self.stack_counter >= 0 and "two" in self.last_played:  # or "four" in self.last_played
-            self.stack_label.config(text="Stack\n cards to take:\n" + str(self.stack_counter))
+            self.configure_stack_label(self.stack_counter)
         self.cards_left.config(text=self.all_nums_of_cards[self.game_state.identity])
 
         photo = ImageTk.PhotoImage(new_card.card_pic)
@@ -675,8 +680,7 @@ class Game(Frame):
                         self.card_counter = 2 if "two" in msg["played"] else 4
                         if self.game_state.modes.stack and "counter" in msg:
                             self.stack_counter = msg["counter"]
-                            self.stack_label.config(text="Stack\n cards to take:\n" + str(
-                                self.stack_counter))
+                            self.configure_stack_label(self.stack_counter)
 
                     else:
                         # No cards need to be taken, send current points
@@ -790,11 +794,10 @@ class Game(Frame):
         self.direction_l["image"] = self.revdir if self.is_reversed else self.fordir
         if "plustwo" in played_card and "taken" not in msg:
             if self.game_state.modes.stack:
-                self.stack_label.config(text="Stack\n cards to take:\n" + str(
-                    self.stack_counter))
+                self.configure_stack_label(self.stack_counter)
             self.taken_label.config(text="")
         elif "taken" in msg:
-            self.stack_label.config(text="Stack\n cards to take:\n0")
+            self.configure_stack_label(0)
             self.taken_label.config(text="Other player took cards!")
         else:
             self.taken_label.config(text="")
@@ -894,8 +897,7 @@ class Game(Frame):
         self.childframes[self.game_state.identity].config(bg=TURN_COLOR)
         self.new_card.config(state="normal")
         if self.game_state.modes.stack and "counter" in message:
-            self.stack_label.config(text="Stack\n cards to take:\n" + str(
-                self.stack_counter))
+            self.configure_stack_label(self.stack_counter)
 
     # UI settings
     def show_temp_banner(self, text: str, ttl: int):
@@ -915,12 +917,10 @@ class Game(Frame):
 
     # UI settings
     def update_other_nums_of_cards(self, message: dict[str, Any]):
-        self.log.info("Updating the number of remaining cards for other players")
+        self.log.info("Updating the number of remaining cards for others")
         for person, label in self.other_cards_lbls.items():
-            crdtxt = " cards" if not message["other_left"][person] == 1 else " card"
-            label.config(
-                text=str(message["other_left"][person]) + crdtxt
-            )
+            card_word = "cards" if not message["other_left"][person] == 1 else "card"
+            label.config(text=f"{message['other_left'][person]} {card_word}")
             o_cards = self.other_cards_imgs[person]
             for car in o_cards:
                 car.destroy()
@@ -932,9 +932,8 @@ class Game(Frame):
     def process_design_update(self, message: dict[str, Any]):
         self.log.info("A player has taken or placed a card")
         who_updated = message["from"]
-        crdtxt = " cards" if not message["num_cards"] == 1 else " card"
-        self.other_cards_lbls[who_updated].config(
-            text=str(message["num_cards"]) + crdtxt)
+        card_word = "cards" if not message["num_cards"] == 1 else "card"
+        self.other_cards_lbls[who_updated].config(text=f"{message['num_cards']} {card_word}")
         o_cards = self.other_cards_imgs[who_updated]
         for car in o_cards:
             car.destroy()
@@ -1131,7 +1130,7 @@ class Game(Frame):
         self.sendInfo(data)
         # Reset any effects of the last played card
         self.stack_counter = 0
-        self.stack_label.config(text="Stack\n cards to take:\n0")
+        self.configure_stack_label(0)
 
     # Send all the final information with 0 cards left to end/finalise the game
     def sendFinal(self, data_to_send: dict[str, Any]):
@@ -1188,9 +1187,9 @@ class Game(Frame):
         for j in self.hand_btns:
             self.hand_btns[j].config(state="disabled")
 
-        crdtxt = " card" if old_hand_size == 1 else " cards"
-        self.other_cards_lbls[player].config(text=str(old_hand_size) + crdtxt)
-        self.cards_left.config(text=str(new_hand_size))
+        card_word = "card" if old_hand_size == 1 else "cards"
+        self.other_cards_lbls[player].config(text=f"{old_hand_size} {card_word}")
+        self.cards_left.config(text=f"{new_hand_size}")
 
     # UI settings
     def set_label_next(self, msg: dict[str, Any]):
