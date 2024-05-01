@@ -77,6 +77,7 @@ def start_game(sock: socket, conditions: argparse.Namespace):
     try:
         data = init.decode("utf-8")
         message = json.loads(data)
+        message.pop("padding")
         log.debug(f"Received initial message: {message}")
         utils.title_window(root, message["whoami"], message["peeps"])
         q = queue.Queue()

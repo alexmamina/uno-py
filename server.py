@@ -197,6 +197,20 @@ class Server():
         encoded_msg = json.dumps(msg_copy).encode("utf-8")
         self.socks[destination_player].sendto(encoded_msg, self.addresses[destination_player])
 
+    def receive_message(self, from_player: str, buffer_size: int = 700) -> dict[str, Any]:
+        json_msg, _ = self.socks[from_player].recvfrom(buffer_size)
+        try:
+            dec_json = json_msg.decode("utf-8")
+            message = json.loads(dec_json)
+            message.pop("padding", "")
+            log.debug(message)
+        except JSONDecodeError as e:
+            log.critical(f"Error decoding response from a player: {e}")
+            log.critical(json_msg)
+            log.warning("Trying to recover")
+            message = recover(dec_json)
+        return message
+
     def process_received_challenge(self, message: dict[str, Any]):
         # From a current player to the previous player; need to send to previous player only
         self.fit_pile_to_size()
@@ -275,14 +289,7 @@ class Server():
 
                 # Send the request for points and syncronously receive the response
                 self.send_message(data, player)
-                pts, _ = self.socks[player].recvfrom(1000)
-                decoded_pts = pts.decode("utf-8")
-                log.debug(decoded_pts)
-                try:
-                    result = json.loads(decoded_pts)
-                except JSONDecodeError:
-                    log.warning("Trying to recover")
-                    result = recover(decoded_pts)
+                result = self.receive_message(player, 1000)
                 self.resulting_points += result["points"]
 
         self.all_players_points[self.current_player] += self.resulting_points
@@ -331,16 +338,7 @@ class Server():
         from_whom = swapping_message["from"]
         log.info(f"Player {from_whom} has {swapping_message['hand']} - sending to player {to_whom}")
         self.send_message(swapping_message, to_whom)
-
-        response, _ = self.socks[to_whom].recvfrom(2000)
-        proper_response = response.decode("utf-8")
-        log.debug(proper_response)
-        try:
-            decoded_response = json.loads(proper_response)
-            decoded_response.pop("padding", "")
-        except JSONDecodeError:
-            log.warning("Trying to recover")
-            decoded_response = recover(proper_response)
+        decoded_response = self.receive_message(to_whom, 2000)
         return decoded_response
 
     def swap_after_zero(self, message: dict[str, Any]):
@@ -474,18 +472,7 @@ class Server():
 
         while True:
             log.info(f"Waiting for player {self.current_player}")
-            json_msg, _ = self.socks[self.current_player].recvfrom(700)
-            try:
-                dec_json = json_msg.decode("utf-8")
-                message = json.loads(dec_json)
-                message.pop("padding", "")
-                pretty_print_message(message)
-            except JSONDecodeError as e:
-                log.critical(f"Error decoding response from a player: {e}")
-                log.critical(json_msg)
-                log.warning("Trying to recover")
-                message = recover(dec_json)
-                # break
+            message = self.receive_message(self.current_player)
             if message["stage"] == Stage.GO or message["stage"] == Stage.DEBUG:
                 self.process_regular_message(message)
 

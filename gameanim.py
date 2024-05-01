@@ -651,7 +651,8 @@ class Game(Frame):
             try:
                 msg = self.q.get(0)
                 # Played, pile, num_left, color, player, saiduno, taken
-                self.log.info("Processing message")
+                self.log.info("Processing message:")
+                self.log.debug(msg)
                 # Normal play stage
                 if msg["stage"] == Stage.GO:
                     self.process_regular_message(msg)
@@ -759,7 +760,8 @@ class Game(Frame):
             # todo refactor other_left.values() should be by person
         elif "said_uno" in msg.keys() and msg["said_uno"] and 1 in msg["other_left"].values():
             from_player: str = msg["from"]
-            # todo this says wrong player if uno after 7/0
+            # todo this says wrong player if uno after 7. after 0 no message on 2 bc the other
+            # player doesn't get a message update - only a numupdate
             if "0" in newC and "taken" not in msg and self.game_state.modes.sevenzero:
                 direction = -1 if self.is_reversed else 1
                 player_index = self.game_state.peeps.index(from_player)
@@ -1012,7 +1014,6 @@ class Game(Frame):
                 else:
                     self.log.error(o)
                     self.quit_game = True
-            self.log.debug(self.message)
             self.q.put(self.message)
         self.log.info("Stopping listening for messages")
 
