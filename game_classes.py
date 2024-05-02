@@ -1,7 +1,7 @@
 from enum import IntEnum
 from dataclasses import dataclass
 from deck import Deck
-from card import Card
+
 # Go - regular play, regular relay
 # Debug - change turn, regular play, print data
 # Challenge - only send packet to make player take two cards
@@ -97,18 +97,3 @@ class GameState():
     @property
     def index(self) -> int:
         return self.peeps.index(self.identity)
-
-
-@dataclass
-class TurnState():
-    stack_counter: int
-    can_stack: bool
-    possible_move: bool
-    can_put_plusfour: bool
-    all_nums_of_cards: list[int]
-    card_counter: int
-    is_reversed: bool
-    pile: list[str]
-    uno: bool
-    hand_cards: list[Card]
-    last_played: str
