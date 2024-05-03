@@ -1,6 +1,7 @@
 from game_classes import GameState
 import re
 from card import Card
+from typing import Any
 
 
 class TurnState():
@@ -12,6 +13,7 @@ class TurnState():
     uno: bool
     hand_cards: dict[int, Card]
     last_played: str
+    game_state: GameState
 
     def __init__(
         self,
@@ -30,7 +32,8 @@ class TurnState():
         self.is_reversed = is_reversed
         self.pile = pile
         self.uno = uno
-        self.hand_cards = self.deal_cards(game_state)
+        self.game_state = game_state
+        self.hand_cards = self.deal_cards()
         self.last_played = last_played
 
     @property
@@ -60,20 +63,20 @@ class TurnState():
         return False
 
     # Create a hand of 7 cards from pile from message. Return a dict as we want cards to have ids
-    def deal_cards(self, game_state: GameState) -> dict[int, Card]:
+    def deal_cards(self) -> dict[int, Card]:
         hand = {}
         for i in range(7):
             c = self.pile.pop(0)
             # Lookup the card name from pile to get card itself
-            card = game_state.deck.get_card(c)
+            card = self.game_state.deck.get_card(c)
             hand[i] = card
         return hand
 
     def get_hand_card_names(self) -> list[str]:
         return [card.name for card in self.hand_cards.values()]
 
-    def reset_card_counter(self, game_state: GameState):
-        self.card_counter = 1 if not game_state.modes.mult else 500
+    def reset_card_counter(self):
+        self.card_counter = 1 if not self.game_state.modes.mult else 500
 
     # Go through the hand and calculate points; regex is for finding numbers
     def calculate_points(self):
@@ -91,3 +94,49 @@ class TurnState():
                 else:
                     result += 50
         return result
+
+    def configure_counters_uno_on_start(self, last_played_card: str, player: str):
+        if not player:
+            self.uno = False
+        elif "plus" in last_played_card and \
+                (not self.can_stack or not self.game_state.modes.stack):
+            self.card_counter = 2
+            self.uno = False
+        elif "plus" in last_played_card and \
+                self.game_state.modes.stack and self.can_stack:
+            self.stack_counter = 2
+            self.card_counter = 2
+
+    # Save the new hand as the current one and update the numbers of cards per player after swap
+    def replace_cards_after_swap(self, new_hand: list[str], player: str) -> tuple[int, int]:
+        old_hand_size = len(self.hand_cards)
+        new_hand_size = len(new_hand)
+        self.hand_cards = {}
+        for i in range(len(new_hand)):
+            # Add new card
+            c = new_hand[i]
+            self.hand_cards[i] = self.game_state.deck.get_card(c)
+        self.all_nums_of_cards[self.game_state.identity] = new_hand_size
+        self.all_nums_of_cards[player] = old_hand_size
+        return old_hand_size, new_hand_size
+
+    def update_last_played(self, message: dict[str, Any]) -> str:
+        played_card = message["played"]
+        # if plus take cards else send points
+        if "four" in played_card:
+            played_card = message["color"][0:3] + "plusfour"
+            if "taken" not in message:
+                self.card_counter = 4
+            else:
+                self.reset_card_counter()
+        elif "bla" in played_card:
+            played_card = message["color"][0:3] + "black"
+        else:
+            self.reset_card_counter()
+        self.last_played = played_card
+        if "pile" in message.keys():
+            self.pile = message["pile"]
+        return played_card
+
+    def update_card_counter_for_challenge(self, num_to_take: int):
+        self.card_counter = num_to_take

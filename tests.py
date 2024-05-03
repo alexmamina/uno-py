@@ -73,15 +73,16 @@ class Tests(unittest.TestCase):
                 "yel3"
             ],
             "num_left": 7,
-            "other_left": [7],
+            "other_left": {x: 7 for x in ["default-925", "one"]},
             "color": "gre",
             "player": True,
-            "peeps": ["default-925"],
+            "peeps": ["default-925", "one"],
             "dir": False,
-            "whoami": 0,
+            "whoami": "one",
             "padding": "a",
         }
-        cls.game = Game(Tk(), None, m, socket(), None, Logger(__name__))
+        a: dict[str, int] = {p: 0 for p in m["peeps"]}
+        cls.game = Game(Tk(), None, m, socket(), a, Logger(__name__))
 
     @unittest.skip("modes too old")
     def test_pretty_modes(self):
@@ -140,46 +141,52 @@ class Tests(unittest.TestCase):
         self.assertEqual(actual_strings, self.game.game_state.modes.enabled_strings())
 
     def test_possible_move_color(self):
-        self.game.last_played = "gre0"
-        self.assertTrue(self.game.possible_move())
+        self.game.turn_state.last_played = "gre0"
+        self.assertTrue(self.game.turn_state.possible_move)
 
     def test_possible_move_number(self):
-        self.game.last_played = "blu5"
-        self.assertTrue(self.game.possible_move())
+        self.game.turn_state.last_played = "blu5"
+        self.assertTrue(self.game.turn_state.possible_move)
 
     def test_possible_move_black(self):
-        self.game.hand_cards[10] = self.game.game_state.deck.get_card("black")
-        self.assertTrue(self.game.possible_move())
-        self.game.hand_cards.pop(10)
+        self.game.turn_state.hand_cards[10] = self.game.game_state.deck.get_card("black")
+        self.assertTrue(self.game.turn_state.possible_move)
+        self.game.turn_state.hand_cards.pop(10)
 
     def test_no_possible_move(self):
-        self.game.last_played = "blu7"
-        self.assertFalse(self.game.possible_move())
+        self.game.turn_state.last_played = "blu7"
+        self.assertFalse(self.game.turn_state.possible_move)
 
     def test_can_plusfour(self):
-        self.game.last_played = "blu6"
-        self.game.hand_cards[10] = self.game.game_state.deck.get_card("blackplusfour")
-        self.assertTrue(self.game.can_put_plusfour())
-        self.game.hand_cards.pop(10)
+        self.game.turn_state.last_played = "blu6"
+        self.game.turn_state.hand_cards[10] = self.game.game_state.deck.get_card("blackplusfour")
+        self.assertTrue(self.game.turn_state.can_put_plusfour)
+        self.game.turn_state.hand_cards.pop(10)
 
     def test_cannot_plusfour_color(self):
-        self.game.last_played = "gre1"
-        self.game.hand_cards[10] = self.game.game_state.deck.get_card("blackplusfour")
-        self.assertFalse(self.game.can_put_plusfour())
-        self.game.hand_cards.pop(10)
+        self.game.turn_state.last_played = "gre1"
+        self.game.turn_state.hand_cards[10] = self.game.game_state.deck.get_card("blackplusfour")
+        self.assertFalse(self.game.turn_state.can_put_plusfour)
+        self.game.turn_state.hand_cards.pop(10)
 
     def test_can_plusfour_number_black(self):
-        self.game.last_played = "blu2"
-        self.game.hand_cards[10] = self.game.game_state.deck.get_card("blackplusfour")
-        self.game.hand_cards[11] = self.game.game_state.deck.get_card("black")
-        self.assertTrue(self.game.can_put_plusfour())
-        self.game.hand_cards.pop(10)
-        self.game.hand_cards.pop(11)
+        self.game.turn_state.last_played = "blu2"
+        self.game.turn_state.hand_cards[10] = self.game.game_state.deck.get_card("blackplusfour")
+        self.game.turn_state.hand_cards[11] = self.game.game_state.deck.get_card("black")
+        self.assertTrue(self.game.turn_state.can_put_plusfour)
+        self.game.turn_state.hand_cards.pop(10)
+        self.game.turn_state.hand_cards.pop(11)
+
+    def test_can_put_plustwo(self):
+        self.game.turn_state.last_played = "redplustwo"
+        self.game.turn_state.hand_cards[12] = self.game.game_state.deck.get_card("greplustwo")
+        self.assertTrue(self.game.turn_state.possible_move)
+        self.game.turn_state.hand_cards.pop(12)
 
     @unittest.skip("stashed")
     def test_config_start(self):
         # self.game.message["player"] = 0
-        self.game.last_played = "yelplustwo"
+        self.game.turn_state.last_played = "yelplustwo"
         # self.game.pile.append("yelplustwo")
         # self.game.game_state.modes = Modes()
         new_card_1 = True
@@ -195,25 +202,25 @@ class Tests(unittest.TestCase):
             for i in hand_btns_1:
                 hand_btns_1[i] = (False, "b")
         elif "plus" in self.game.message["played"] and (
-            not self.game.can_stack() or not self.game.game_state.modes.stack
+            not self.game.turn_state.can_stack or not self.game.game_state.modes.stack
         ):
             for i in hand_btns_1:
                 hand_btns_1[i] = (False, "b")
         elif (
             "plus" in self.game.message["played"] and
             self.game.game_state.modes.stack and
-            self.game.can_stack()
+            self.game.turn_state.can_stack
         ):
             for i in hand_btns_1:
                 if "two" not in hand_btns_1[i][1]:
                     hand_btns_1[i] = (False, "two")
-        elif self.game.possible_move():
+        elif self.game.turn_state.possible_move:
             new_card_1 = False
         not_current = not self.game.message["player"]
         played_plus = "plus" in self.game.message["played"]
-        no_stack = not self.game.can_stack() or not self.game.game_state.modes.stack
-        stack_possible = self.game.game_state.modes.stack and self.game.can_stack()
-        if not_current or self.game.possible_move():
+        no_stack = not self.game.turn_state.can_stack or not self.game.game_state.modes.stack
+        stack_possible = self.game.game_state.modes.stack and self.game.turn_state.can_stack
+        if not_current or self.game.turn_state.possible_move:
             new_card_2 = False
         if not_current or (no_stack and played_plus):
             for i in hand_btns_2:
