@@ -88,11 +88,15 @@ class Modes():
 
 @dataclass
 class GameState():
-    identity: int  # The number, same order in which a player connected
+    identity: str  # Current player's name
     peeps: list[str]  # Players' names
     deck: Deck  # The deck where cards are defined
-    all_points: list[int]  # All players' points throughout games
+    all_points: dict[str, int]  # All players' points throughout games
     modes: Modes  # Currently enabled modes
+
+    @property
+    def index(self) -> int:
+        return self.peeps.index(self.identity)
 
 
 @dataclass

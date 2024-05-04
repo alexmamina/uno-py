@@ -11,6 +11,7 @@ from message_utils import recover
 from game_classes import Stage, Modes
 import json
 from json import JSONDecodeError
+import utils
 
 log = logging.getLogger(__name__)
 
@@ -30,15 +31,13 @@ class Server():
         self.modes = Modes()
         self.local_address: tuple[str, int]  # (ip, port)
         self.peeps: list[str] = []  # Names of players
-        self.socks: list[socket] = []  # Socket information per player
-        self.addresses: list[tuple[str, int]] = []  # Each player's address
-        self.list_of_players = []  # Integer representations of players
-        self.current_player = 0
-        self.curr_list_index = 0
+        self.socks: dict[str, socket] = {}  # Socket information per player
+        self.addresses: dict[str, tuple[str, int]] = {}  # Each player's address
+        self.current_player = ""
         self.stack_counter = 0
         self.total_games_played = 0
         self.parse_server_arguments(sys.argv)
-        self.all_players_points = [0] * self.num_players
+        self.all_players_points: dict[str, int]
         self.sock.bind(self.local_address)
         self.sock.listen(128)
 
@@ -85,13 +84,15 @@ class Server():
             byte_name, _ = player_socket.recvfrom(200)
             name = byte_name.decode("utf-8")
             self.peeps.append(name)
-            self.socks.append(player_socket)
-            self.addresses.append(addr)
-            self.list_of_players.append(player_counter)
+            self.socks[name] = player_socket
+            self.addresses[name] = addr
             log.info(f"Connected player {player_counter} - {name}")
             player_counter += 1
             n = self.num_players - player_counter
             log.info(f"Waiting for {n} more players")
+        self.all_players_points = {
+            p: number for p, number in zip(self.peeps, [0] * self.num_players)
+        }
 
     def init_deck(self):
         # Deck initialisation
@@ -100,7 +101,9 @@ class Server():
         self.all_played = []
         self.is_reversed = False
         self.first_card = self.pop_first_card()
-        self.left_cards = [7] * self.num_players
+        self.left_cards: dict[str, int] = {
+            p: number for p, number in zip(self.peeps, [7] * self.num_players)
+        }
         self.resulting_points = 0
         self.previous_message = {}
 
@@ -122,14 +125,13 @@ class Server():
             self.pile.append(first_card)
             shuffle(self.pile)
             first_card = self.pile.pop(7 * self.num_players)
-
         return first_card
 
     def reverse_players(self):
-        self.list_of_players.reverse()
+        self.peeps.reverse()
         self.is_reversed = not self.is_reversed
 
-    def send_initial_pile(self, first_game: bool = False):  # refactor
+    def send_initial_pile(self, first_game: bool = False):
         # Skeleton of json to be sent
         data_to_send = {
             "stage": Stage.INIT,
@@ -140,56 +142,74 @@ class Server():
             "other_left": self.left_cards,
             # The card name is 3 chars of color + the number/other properties
             "color": self.first_card[0:3],
-            "player": 0
+            "player": False
         }
         self.previous_message = data_to_send
         # End of initialisation
 
         log.info(self.peeps)
-        data_to_send["peeps"] = self.peeps
+        data_to_send["peeps"] = deepcopy(self.peeps)
         if "reverse" in self.first_card:
             self.reverse_players()
+
+        if first_game:
+            self.current_player = self.peeps[0] if "stop" not in self.first_card else self.peeps[1]
+        else:
+            # On consequent games we start from the players after the winner, not player 0
+            # (either the next one, or the one after if a stop is played)
+            self.current_player = utils.get_next_player(
+                self.current_player, self.peeps, self.first_card
+            )
+        self.prev_player = utils.get_prev_player(self.current_player, self.peeps, self.first_card)
+
         data_to_send["dir"] = self.is_reversed
-        # Send the data: self.pile is first 7 + rest of self.pile common for all.
-        # Player 3 is current if reverse True
-        # Player 2 is current if stop True
-        # Else player 1 is current
-        for i in self.list_of_players:
+
+        for player in self.peeps:
+            player_index = self.peeps.index(player)
             data_to_send["pile"] = self.pile[0:7] + \
-                self.pile[7 * (self.num_players - i):7 * (self.num_players - i) + 20]
-            data_to_send["whoami"] = i
-            if (i == self.list_of_players[0] and "stop" not in self.first_card) or \
-                    (i == 1 and "stop" in self.first_card):
-                data_to_send["player"] = 1
-                self.current_player = i
-                self.curr_list_index = 1 if (i == 1 and "stop" in self.first_card) else 0
-                self.prev_player = self.list_of_players[self.num_players - 1]
-            else:
-                data_to_send["player"] = 0
-                # Only on the first game start from player 0 and consider stop
-                # refactor: why
-                if i == self.list_of_players[0] and "stop" in self.first_card and first_game:
-                    data_to_send["curr"] = (self.current_player + 1) % self.num_players
-                else:
-                    data_to_send["curr"] = self.current_player
-            self.send_message(data_to_send, i)
-            log.info(f"Sent initial cards to player {i}")
+                self.pile[
+                    7 * (self.num_players - player_index):7 * (self.num_players - player_index) + 20
+            ]
+            data_to_send["whoami"] = player
+
+            # todo replace player with is_current. or curr and player can be combined
+            data_to_send["player"] = player == self.current_player
+            if not data_to_send["player"]:
+                data_to_send["curr"] = self.current_player
+
+            self.send_message(data_to_send, player)
+            log.info(f"Sent initial cards to player {player}")
             pretty_print_message(data_to_send)
             self.pile = self.pile[7:]
 
     def send_to_all_players(self, message: dict[str, Any], skip_current: bool = False):
-        for i in range(self.num_players):
-            # Send a message if we don't skip any players, or we DO skip and we're looking at those
-            sending = (i != self.current_player and skip_current) or not skip_current
+        for player in self.peeps:
+            # Send a message if we don't skip any players,
+            # or we DO skip and we're not looking at the current player
+            sending = (player != self.current_player and skip_current) or not skip_current
             if sending:
-                self.send_message(message, i)
+                self.send_message(message, player)
 
-    def send_message(self, message: dict[str, Any], destination_player: int):
+    def send_message(self, message: dict[str, Any], destination_player: str):
         msg_copy = deepcopy(message)
         msg_copy.pop("padding", "")
         msg_copy["padding"] = "a" * (685 - len(json.dumps(msg_copy)))
         encoded_msg = json.dumps(msg_copy).encode("utf-8")
         self.socks[destination_player].sendto(encoded_msg, self.addresses[destination_player])
+
+    def receive_message(self, from_player: str, buffer_size: int = 700) -> dict[str, Any]:
+        json_msg, _ = self.socks[from_player].recvfrom(buffer_size)
+        try:
+            dec_json = json_msg.decode("utf-8")
+            message = json.loads(dec_json)
+            message.pop("padding", "")
+            log.debug(message)
+        except JSONDecodeError as e:
+            log.critical(f"Error decoding response from a player: {e}")
+            log.critical(json_msg)
+            log.warning("Trying to recover")
+            message = recover(dec_json)
+        return message
 
     def process_received_challenge(self, message: dict[str, Any]):
         # From a current player to the previous player; need to send to previous player only
@@ -225,7 +245,7 @@ class Server():
             "played": message["played"],
             "other_left": self.left_cards,
             "stage": Stage.GO,
-            "player": 1,
+            "player": True,
             "color": message["color"]
         }
 
@@ -234,14 +254,12 @@ class Server():
         data["dir"] = self.is_reversed
         data["counter"] = self.stack_counter
 
-        for i in range(self.num_players):
-            if i != self.prev_player:
-                if i == self.current_player:
-                    data["player"] = 1
-                else:
-                    data["player"] = 0
+        for player in self.peeps:
+            if player != self.prev_player:
+                data["player"] = player == self.current_player
+                if not data["player"]:
                     data["curr"] = self.current_player
-                self.send_message(data, i)
+                self.send_message(data, player)
 
     def process_and_show_points(self, message: dict[str, Any]):
         taking_cards = "plus" in message["played"]
@@ -251,7 +269,7 @@ class Server():
             "pile": self.pile[0:20],
             "played": message["played"],
             "stage": Stage.ZEROCARDS,
-            "player": 1,
+            "player": True,
             "color": message["color"],
             "to_take": taking_cards
         }
@@ -261,25 +279,17 @@ class Server():
             self.stack_counter = message["counter"]
         # Either: next takes cards, then all send. Or: all send
 
-        for i in range(self.num_players):
-            if i != self.current_player:  # refactor what is this players thing
-                if not ((i == self.list_of_players[
-                    (self.curr_list_index + 1) % self.num_players]
-                ) and taking_cards):
-                    data["to_take"] = False
-                else:
-                    data["to_take"] = True
+        # We only care about the next player if they have to take cards. They'll always be +1 so no
+        # need to specify a played card
+        next_player = utils.get_next_player(self.current_player, self.peeps, "")
+        for player in self.peeps:
+            if player != self.current_player:
+                # Only the next player needs to take cards
+                data["to_take"] = taking_cards and player == next_player
 
                 # Send the request for points and syncronously receive the response
-                self.send_message(data, i)
-                pts, _ = self.socks[i].recvfrom(1000)
-                decoded_pts = pts.decode("utf-8")
-                log.debug(decoded_pts)
-                try:
-                    result = json.loads(decoded_pts)
-                except JSONDecodeError:
-                    log.warning("Trying to recover")
-                    result = recover(decoded_pts)
+                self.send_message(data, player)
+                result = self.receive_message(player, 1000)
                 self.resulting_points += result["points"]
 
         self.all_players_points[self.current_player] += self.resulting_points
@@ -322,102 +332,73 @@ class Server():
         self.left_cards[self.current_player] = len(other_hand)
 
     def swap_hands(
-            self, swapping_message: dict[str, Any], to_whom: int
+            self, swapping_message: dict[str, Any], to_whom: str
     ) -> dict[str, Any]:
         # Add padding to message
         from_whom = swapping_message["from"]
         log.info(f"Player {from_whom} has {swapping_message['hand']} - sending to player {to_whom}")
         self.send_message(swapping_message, to_whom)
-
-        response, _ = self.socks[to_whom].recvfrom(2000)
-        proper_response = response.decode("utf-8")
-        log.debug(proper_response)
-        try:
-            decoded_response = json.loads(proper_response)
-            decoded_response.pop("padding", "")
-        except JSONDecodeError:
-            log.warning("Trying to recover")
-            decoded_response = recover(proper_response)
+        decoded_response = self.receive_message(to_whom, 2000)
         return decoded_response
 
     def swap_after_zero(self, message: dict[str, Any]):
         hand = message["hand"]
-        # Get the indices of current and next players
-        i = self.list_of_players.index(self.current_player)
-        next = (i + 1) % self.num_players
+        # Go through the indices of players and swap cards
+        i = self.peeps.index(self.current_player)
         swap = {
             "stage": Stage.ZERO,
             "hand": hand,
-            "from": self.list_of_players[i]
+            "from": self.current_player
         }
-        self.left_cards[self.list_of_players[next]] = len(hand)
-        response = self.swap_hands(swap, to_whom=self.list_of_players[next])
+        next_player = utils.get_next_player(self.current_player, self.peeps, "zero")
+        self.left_cards[next_player] = len(hand)
+        response = self.swap_hands(swap, to_whom=next_player)
         hand = response["hand"]
         i = (i + 1) % self.num_players
-        next = (i + 1) % self.num_players
-        while not (i == self.list_of_players.index(self.current_player)):
+        next_player = utils.get_next_player(next_player, self.peeps, "zero")
+        while not (i == self.peeps.index(self.current_player)):
             swap = {
                 "stage": Stage.ZERO,
                 "hand": hand,
-                "from": self.list_of_players[i]
+                "from": self.peeps[i]
             }
-            self.left_cards[self.list_of_players[next]] = len(hand)
-            response = self.swap_hands(swap, to_whom=self.list_of_players[next])
+            self.left_cards[next_player] = len(hand)
+            response = self.swap_hands(swap, to_whom=next_player)
             log.debug(response)
             # bug response has no hand for a third player when 4 play. could not reproduce tho
             hand = response["hand"]
             i = (i + 1) % self.num_players
-            next = (i + 1) % self.num_players
+            next_player = utils.get_next_player(next_player, self.peeps, "zero")
 
     def relay_and_change_turns(self, card: str, message: dict[str, Any]):
         # If the last played card is stop
-        if "stop" in card and "taken" not in message:
-            # Current+2 is 1, rest are 0 (as skip in between)
-
-            for i in range(self.num_players):
-                if i == self.list_of_players[(self.curr_list_index + 2) % self.num_players]:
-                    message["player"] = 1
-                else:
-                    message["player"] = 0
-                    message["curr"] = self.list_of_players[
-                        ((self.curr_list_index + 2) % self.num_players)
-                    ]
-                # todo this throws keyerror when stop played first on reload
+        if "stop" in card and "taken" not in message:  # todo this could probably be combined
+            next_player = utils.get_next_player(self.current_player, self.peeps, card)
+            for player in self.peeps:
+                message["player"] = player == next_player
+                if not message["player"]:
+                    message["curr"] = next_player
                 message["num_left"] = self.previous_message["num_left"]
-
-                log.info("Stop was placed")
-                self.send_message(message, i)
-            self.prev_player = self.current_player
-            self.current_player = self.list_of_players[
-                ((self.curr_list_index + 2) % self.num_players)
-            ]
-            self.curr_list_index = (self.curr_list_index + 2) % self.num_players
+                self.send_message(message, player)
+                log.info(f"Message about a stop card forwarded to player {player}")
 
         # Not stop, so just relay info
         else:
-            for i in range(self.num_players):
-                if i != self.current_player:
-                    if i == self.list_of_players[
-                        (self.curr_list_index + 1) % self.num_players
-                    ]:
-                        message["player"] = 1
-                    else:
-                        message["player"] = 0
-                        message["curr"] = self.list_of_players[
-                            ((self.curr_list_index + 1) % self.num_players)
-                        ]
-                    self.send_message(message, i)
-                    log.info(f"Regular message sent to player {i}")
+            # The next player is +1. Either on a refular turn, or on a stop + taken combination
+            next_player = utils.get_next_player(self.current_player, self.peeps, "")
+            for player in self.peeps:
+                if player != self.current_player:
+                    message["player"] = player == next_player
+                    if not message["player"]:
+                        message["curr"] = next_player
+                    self.send_message(message, player)
+                    log.info(f"Regular message forwarded to player {player}")
                 else:
                     left = {"stage": Stage.NUMUPDATE, "other_left": self.left_cards}
-                    self.send_message(left, i)
-                    log.info(f"Number update sent to the current player {i}")
-
-            self.prev_player = self.current_player
-            self.current_player = self.list_of_players[
-                (self.curr_list_index + 1) % self.num_players
-            ]
-            self.curr_list_index = (self.curr_list_index + 1) % self.num_players
+                    self.send_message(left, player)
+                    log.info(f"Number update sent to current player {player}")
+        self.prev_player = self.current_player
+        self.current_player = next_player
 
     def process_regular_message(self, message: dict[str, Any]):  # refactor
         card = message["played"]
@@ -430,7 +411,7 @@ class Server():
             "played": message["played"],
             "other_left": self.left_cards,
             "stage": Stage.GO,
-            "player": 1,
+            "player": True,
             "color": message["color"]
         }
         if "plusfour" in card and "taken" not in message:
@@ -468,7 +449,6 @@ class Server():
 
         if "reverse" in card and "taken" not in message:
             self.reverse_players()
-            self.curr_list_index = self.num_players - 1 - self.curr_list_index
         data["dir"] = self.is_reversed
 
         if message["num_left"] == 1 and "said_uno" not in message.keys():
@@ -492,18 +472,7 @@ class Server():
 
         while True:
             log.info(f"Waiting for player {self.current_player}")
-            json_msg, _ = self.socks[self.current_player].recvfrom(700)
-            try:
-                dec_json = json_msg.decode("utf-8")
-                message = json.loads(dec_json)
-                message.pop("padding", "")
-                pretty_print_message(message)
-            except JSONDecodeError as e:
-                log.critical(f"Error decoding response from a player: {e}")
-                log.critical(json_msg)
-                log.warning("Trying to recover")
-                message = recover(dec_json)
-                # break
+            message = self.receive_message(self.current_player)
             if message["stage"] == Stage.GO or message["stage"] == Stage.DEBUG:
                 self.process_regular_message(message)
 
@@ -526,7 +495,9 @@ class Server():
             elif message["stage"] == Stage.INIT:
                 self.total_games_played += 1
                 log.info(f"New game! Total played: {self.total_games_played}")
-                self.list_of_players.sort()
+                # Restore the player list to its original form
+                if self.is_reversed:
+                    self.reverse_players()
                 self.init_deck()
                 self.modes = Modes.from_json(message.get("modes", {}))
                 self.send_initial_pile()
@@ -548,8 +519,8 @@ class Server():
                 break
 
     def exit(self):
-        for i in range(self.num_players):
-            self.socks[i].close()
+        for player in self.peeps:
+            self.socks[player].close()
         self.sock.close()
 
 
@@ -559,7 +530,7 @@ if __name__ == "__main__":
     server.connect_clients()
 
     server.init_deck()
-    server.send_initial_pile()
+    server.send_initial_pile(first_game=True)
 
     server.process_messages_forever()
 

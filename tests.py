@@ -4,6 +4,7 @@ from game_classes import Modes
 from deck import Deck
 from socket import socket
 from gameanim import Game
+from logging import Logger
 
 
 def get_modes(mode_string: str) -> Modes:
@@ -74,13 +75,13 @@ class Tests(unittest.TestCase):
             "num_left": 7,
             "other_left": [7],
             "color": "gre",
-            "player": 1,
+            "player": True,
             "peeps": ["default-925"],
             "dir": False,
             "whoami": 0,
             "padding": "a",
         }
-        cls.game = Game(Tk(), None, m, socket(), None)
+        cls.game = Game(Tk(), None, m, socket(), None, Logger(__name__))
 
     @unittest.skip("modes too old")
     def test_pretty_modes(self):
@@ -136,7 +137,7 @@ class Tests(unittest.TestCase):
 
     def test_game_modes(self):
         actual_strings = ["Stacking", "Taking multiple cards"]
-        self.assertEqual(actual_strings, self.game.modes.enabled_strings())
+        self.assertEqual(actual_strings, self.game.game_state.modes.enabled_strings())
 
     def test_possible_move_color(self):
         self.game.last_played = "gre0"
@@ -147,7 +148,7 @@ class Tests(unittest.TestCase):
         self.assertTrue(self.game.possible_move())
 
     def test_possible_move_black(self):
-        self.game.hand_cards[10] = self.game.new_deck.get_card("black")
+        self.game.hand_cards[10] = self.game.game_state.deck.get_card("black")
         self.assertTrue(self.game.possible_move())
         self.game.hand_cards.pop(10)
 
@@ -157,20 +158,20 @@ class Tests(unittest.TestCase):
 
     def test_can_plusfour(self):
         self.game.last_played = "blu6"
-        self.game.hand_cards[10] = self.game.new_deck.get_card("blackplusfour")
+        self.game.hand_cards[10] = self.game.game_state.deck.get_card("blackplusfour")
         self.assertTrue(self.game.can_put_plusfour())
         self.game.hand_cards.pop(10)
 
     def test_cannot_plusfour_color(self):
         self.game.last_played = "gre1"
-        self.game.hand_cards[10] = self.game.new_deck.get_card("blackplusfour")
+        self.game.hand_cards[10] = self.game.game_state.deck.get_card("blackplusfour")
         self.assertFalse(self.game.can_put_plusfour())
         self.game.hand_cards.pop(10)
 
     def test_can_plusfour_number_black(self):
         self.game.last_played = "blu2"
-        self.game.hand_cards[10] = self.game.new_deck.get_card("blackplusfour")
-        self.game.hand_cards[11] = self.game.new_deck.get_card("black")
+        self.game.hand_cards[10] = self.game.game_state.deck.get_card("blackplusfour")
+        self.game.hand_cards[11] = self.game.game_state.deck.get_card("black")
         self.assertTrue(self.game.can_put_plusfour())
         self.game.hand_cards.pop(10)
         self.game.hand_cards.pop(11)
@@ -180,7 +181,7 @@ class Tests(unittest.TestCase):
         # self.game.message["player"] = 0
         self.game.last_played = "yelplustwo"
         # self.game.pile.append("yelplustwo")
-        # self.game.modes = Modes()
+        # self.game.game_state.modes = Modes()
         new_card_1 = True
         hand_btns_1: dict[int, tuple[bool, str]]
         hand_btns_2: dict[int, tuple[bool, str]]
@@ -189,18 +190,18 @@ class Tests(unittest.TestCase):
         new_card_2 = True
         hand_btns_2 = {i: (True, "a") for i in range(7)}
         hand_btns_2[3] = (True, "two")
-        if self.game.message["player"] == 0:
+        if not self.game.message["player"]:
             new_card_1 = False
             for i in hand_btns_1:
                 hand_btns_1[i] = (False, "b")
         elif "plus" in self.game.message["played"] and (
-            not self.game.can_stack() or not self.game.modes.stack
+            not self.game.can_stack() or not self.game.game_state.modes.stack
         ):
             for i in hand_btns_1:
                 hand_btns_1[i] = (False, "b")
         elif (
             "plus" in self.game.message["played"] and
-            self.game.modes.stack and
+            self.game.game_state.modes.stack and
             self.game.can_stack()
         ):
             for i in hand_btns_1:
@@ -208,10 +209,10 @@ class Tests(unittest.TestCase):
                     hand_btns_1[i] = (False, "two")
         elif self.game.possible_move():
             new_card_1 = False
-        not_current = self.game.message["player"] == 0
+        not_current = not self.game.message["player"]
         played_plus = "plus" in self.game.message["played"]
-        no_stack = not self.game.can_stack() or not self.game.modes.stack
-        stack_possible = self.game.modes.stack and self.game.can_stack()
+        no_stack = not self.game.can_stack() or not self.game.game_state.modes.stack
+        stack_possible = self.game.game_state.modes.stack and self.game.can_stack()
         if not_current or self.game.possible_move():
             new_card_2 = False
         if not_current or (no_stack and played_plus):
@@ -260,7 +261,7 @@ class Tests(unittest.TestCase):
             #         data_to_send["curr"] = (self.current_player + 1) % self.num_players
             #     else:
             #         data_to_send["curr"] = self.current_player
-            data_to_send_1["player"] = 1 if i == self.current_player else 0
+            data_to_send_1["player"] = i == self.current_player
             data_to_send_1["curr"] = self.current_player
             self.pile = self.pile[7:]
 
@@ -273,12 +274,12 @@ class Tests(unittest.TestCase):
             data_to_send_2["whoami"] = i
             if (i == self.list_of_players[0] and "stop" not in self.first_card) or \
                     (i == 1 and "stop" in self.first_card):
-                data_to_send_2["player"] = 1
+                data_to_send_2["player"] = True
                 self.current_player = i
                 self.curr_list_index = 1 if (i == 1 and "stop" in self.first_card) else 0
                 self.prev_player = self.list_of_players[self.num_players - 1]
             else:
-                data_to_send_2["player"] = 0
+                data_to_send_2["player"] = False
                 # Only on the first game start from player 0 and consider stop
                 # refactor: why
                 if i == self.list_of_players[0] and "stop" in self.first_card and first_game:
@@ -297,6 +298,7 @@ class Tests(unittest.TestCase):
         curr_list_index = list_of_players.index(current_player)
         prev_player = list_of_players[(curr_list_index - 1) % len(list_of_players)]
         return current_player, curr_list_index, prev_player
+
 
 if __name__ == "__main__":
     unittest.main()
