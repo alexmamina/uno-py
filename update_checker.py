@@ -27,8 +27,8 @@ print(f"Latest update to the project was: {latest_commit} UTC")
 if file_update < latest_commit:
     print("There's an update likely available! Trying...")
     download_command = "cd && cd Downloads && " + \
-        "wget https://github.com/alexmamina/uno-py/archive/refs/heads/master.zip " + \
-        "-O uno-py-master.zip && unzip -o uno-py-master.zip && rm uno-py-master.zip"
+        "curl https://github.com/alexmamina/uno-py/archive/refs/heads/master.zip -L " + \
+        "--output uno-py-master.zip && unzip -o uno-py-master.zip && rm uno-py-master.zip"
     subprocess.call(download_command, shell=True)
     print("Hello! I have been updated to (probably) the latest version")
 else:
