@@ -44,7 +44,6 @@ class Game(Frame):
         logger: Logger
     ):
         self.log = logger
-        self.message = msg
         super().__init__(master)
         self.pack()
         self.game_state = GameState(
@@ -72,7 +71,8 @@ class Game(Frame):
             pile=msg["pile"],
             uno=False,
             last_played=msg["played"],
-            game_state=self.game_state
+            game_state=self.game_state,
+            stage=msg["stage"]
         )
 
         self.init_ui_elements(msg, other_players)
@@ -516,7 +516,7 @@ class Game(Frame):
             # or "four" in self.turn_state.last_played
             self.turn_state.stack_counter -= 1
 
-        if not ("stage" in self.message.keys() and self.message["stage"] == Stage.ZEROCARDS):
+        if not (self.turn_state.stage == Stage.ZEROCARDS):
             self.send_design_update(1, len(self.turn_state.hand_cards) + 1)
         # Since hand is a dict, the keys aren't in order.
         # Get the largest and add 1 for the next
@@ -536,8 +536,7 @@ class Game(Frame):
         # Send the points from the cards if you had to take them at the end (last played was +,
         # but game is over)
         if self.turn_state.card_counter <= 0 and \
-            self.turn_state.stack_counter == 0 and "stage" in self.message.keys() and \
-                self.message["stage"] == Stage.ZEROCARDS:
+                self.turn_state.stack_counter == 0 and self.turn_state.stage == Stage.ZEROCARDS:
             data_to_send = {"stage": Stage.CALC, "points": self.turn_state.calculate_points()}
             self.sendInfo(data_to_send)
 
@@ -545,8 +544,9 @@ class Game(Frame):
         # card
         if self.turn_state.card_counter <= 0 and self.turn_state.stack_counter == 0 and \
             (possible_move is False or
-                ("taken" not in self.message and "plus" in self.turn_state.last_played) or
-                self.message["stage"] == Stage.CHALLENGE):
+                (not self.turn_state.cards_taken_previously and
+                    "plus" in self.turn_state.last_played) or
+                self.turn_state.stage == Stage.CHALLENGE):
             data_to_send = {
                 "played": self.turn_state.last_played,
                 "pile": self.turn_state.pile,
@@ -554,11 +554,11 @@ class Game(Frame):
                 "color": self.turn_state.last_played[0:3],
                 "num_left": len(self.turn_state.hand_cards)
             }
-            if self.message["stage"] != Stage.CHALLENGE:
+            if self.turn_state.stage != Stage.CHALLENGE:
                 data_to_send["taken"] = True
             else:
                 data_to_send["stage"] = Stage.CHALLENGE_TAKEN
-                data_to_send["why"] = self.message["why"]
+                data_to_send["why"] = self.turn_state.why_challenge_in_progress
             self.sendInfo(data_to_send)
 
     # UI settings
@@ -635,6 +635,10 @@ class Game(Frame):
                 # Played, pile, num_left, color, player, saiduno, taken
                 self.log.info("Processing message:")
                 self.log.debug(msg)
+                # todo probably update all turnstate elements in one go
+                self.turn_state.stage = msg["stage"]
+                self.turn_state.cards_taken_previously = msg.get("taken", False)
+                self.turn_state.why_challenge_in_progress = msg.get("why", 0)
                 # Normal play stage
                 if msg["stage"] == Stage.GO:
                     self.process_regular_message(msg)
@@ -949,8 +953,8 @@ class Game(Frame):
                     self.log.warning(
                         f"The message is short: {json_msg}, length: {len(data)}"
                     )
-                self.message = json.loads(data)
-                self.message.pop("padding")
+                message = json.loads(data)
+                message.pop("padding")
             except JSONDecodeError as er:
                 if "Expecting value" in str(er):
                     self.quit_game = True
@@ -962,11 +966,11 @@ class Game(Frame):
                         "If not, check your internet connection"
                     )
                     self.log.warning("Trying to recover")
-                    self.message = recover(data)
+                    message = recover(data)
                 elif "Extra data" in str(er):
                     self.log.error(f"Got a message and some extra bits? {data}")
                     self.log.warning("Trying to recover")
-                    self.message = recover(data)
+                    message = recover(data)
                 else:
                     self.log.error(er)
                     self.quit_game = True
@@ -979,7 +983,7 @@ class Game(Frame):
                 else:
                     self.log.error(o)
                     self.quit_game = True
-            self.q.put(self.message)
+            self.q.put(message)
         self.log.info("Stopping listening for messages")
 
     def send_design_update(self, type: int, num: int, *args):

@@ -1,7 +1,8 @@
 from game_classes import GameState
 import re
 from card import Card
-from typing import Any
+from typing import Any, Optional
+from game_classes import Stage
 
 
 class TurnState():
@@ -14,6 +15,9 @@ class TurnState():
     hand_cards: dict[int, Card]
     last_played: str
     game_state: GameState
+    cards_taken_previously: bool
+    stage: Stage
+    why_challenge_in_progress: Optional[int]
 
     def __init__(
         self,
@@ -24,7 +28,8 @@ class TurnState():
         pile: list[str],
         uno: bool,
         last_played: str,
-        game_state: GameState
+        game_state: GameState,
+        stage: Stage
     ):
         self.stack_counter = stack_counter
         self.all_nums_of_cards = all_nums_of_cards
@@ -35,6 +40,8 @@ class TurnState():
         self.game_state = game_state
         self.hand_cards = self.deal_cards()
         self.last_played = last_played
+        self.cards_taken_previously = False
+        self.stage = stage
 
     @property
     # Go through the hand and see if there are cards that could be played
