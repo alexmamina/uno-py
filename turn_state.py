@@ -138,5 +138,11 @@ class TurnState():
             self.pile = message["pile"]
         return played_card
 
-    def update_card_counter_for_challenge(self, num_to_take: int):
+    def update_card_counter(self, num_to_take: int):
         self.card_counter = num_to_take
+
+    def update_stack_counter(self, num_to_take: int):
+        self.stack_counter = num_to_take
+
+    def set_uno(self, uno_enabled: bool = True):
+        self.uno = uno_enabled

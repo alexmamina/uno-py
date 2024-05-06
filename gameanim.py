@@ -459,7 +459,7 @@ class Game(Frame):
         # If placed plustwo in the mode, send the counter
         elif "two" in card and self.game_state.modes.stack:
             data_to_send["counter"] = self.turn_state.stack_counter + 2
-            self.turn_state.stack_counter = 0
+            self.turn_state.update_stack_counter(0)
         if "7" in card and self.game_state.modes.sevenzero and len(self.turn_state.hand_cards) > 0:
             self.send_design_update(0, len(self.turn_state.hand_cards), card)
             players = [x for x in self.game_state.peeps if not x == self.game_state.identity]
@@ -605,7 +605,7 @@ class Game(Frame):
     # Change the button color and enable/disable the parameter
     def toggle_uno(self):
         self.toggle_uno_button_color()
-        self.turn_state.uno = not self.turn_state.uno
+        self.turn_state.set_uno(not self.turn_state.uno)
         self.log.info(f"UNO button clicked. Uno is {self.turn_state.uno}")
 
     # UI settings
@@ -654,11 +654,11 @@ class Game(Frame):
                         # Enable taking cards
                         self.enable_taking_for_final_plus(msg)
 
-                        self.turn_state.update_card_counter_for_challenge(
+                        self.turn_state.update_card_counter(
                             2 if "two" in msg["played"] else 4
                         )
                         if self.game_state.modes.stack and "counter" in msg:
-                            self.turn_state.stack_counter = msg["counter"]
+                            self.turn_state.update_stack_counter(msg["counter"])
                             self.configure_stack_label(self.turn_state.stack_counter)
 
                     else:
@@ -730,11 +730,11 @@ class Game(Frame):
         newC = msg["played"]
         self.log.info(f"Played: {newC}")
         if "plustwo" in newC and "taken" not in msg:
-            self.turn_state.update_card_counter_for_challenge(2)
+            self.turn_state.update_card_counter(2)
             if self.game_state.modes.stack:
-                self.turn_state.stack_counter = msg["counter"]
+                self.turn_state.update_stack_counter(msg["counter"])
         elif "taken" in msg:
-            self.turn_state.stack_counter = 0
+            self.turn_state.update_stack_counter(0)
         self.update_labels_new_turn(newC, msg)
         self.update_other_nums_of_cards(msg)
 
@@ -847,7 +847,7 @@ class Game(Frame):
     def enable_taking_for_challenge(self, reason: str):
         self.new_card.config(state="normal")
         if reason == 1:
-            self.turn_state.update_card_counter_for_challenge(2)
+            self.turn_state.update_card_counter(2)
             self.show_information(
                 "UNO not said!",
                 "You forgot to click UNO, so take 2 cards!",
@@ -855,7 +855,7 @@ class Game(Frame):
             )
             self.turn_need_taking.config(text="Take 2 cards!", bg="orange")
         else:
-            self.turn_state.update_card_counter_for_challenge(4)
+            self.turn_state.update_card_counter(4)
             self.show_information(
                 "Illegal +4!",
                 "You can't put +4 when you have other cards, so take 4!",
@@ -1001,7 +1001,7 @@ class Game(Frame):
     def sendInfo(self, data_to_send: dict[str, Any]):
         data_to_send["padding"] = "a" * (685 - len(json.dumps(data_to_send)))
         self.sock.send(json.dumps(data_to_send).encode("utf-8"))
-        self.turn_state.uno = False
+        self.turn_state.set_uno(False)
         self.turn_state.reset_card_counter()
 
         self.disable_buttons(data_to_send)
@@ -1058,7 +1058,7 @@ class Game(Frame):
         if not is_valid:
             self.sendInfo(data)
         else:
-            self.turn_state.card_counter = 6
+            self.turn_state.update_card_counter(6)
             data = {"stage": Stage.SHOWCHALLENGE, "from": self.game_state.identity}
             data["padding"] = "a" * (685 - len(json.dumps(data)))
             self.sock.send(json.dumps(data).encode("utf-8"))
@@ -1084,25 +1084,26 @@ class Game(Frame):
     # out and changes turns
     def send_debug(self):
         self.log.warning("Skip turn was clicked - skipping")
+        # todo get data information from the turn state as a method
         data = {
             "stage": Stage.DEBUG,
             "played": self.turn_state.last_played,
             "pile": self.turn_state.pile,
-            "hand": [self.turn_state.hand_cards[x].name for x in self.turn_state.hand_cards],
+            "hand": self.turn_state.get_hand_card_names(),
             "num_left": len(self.turn_state.hand_cards),
             "color": self.turn_state.last_played,
             "taken": True
         }
         self.sendInfo(data)
         # Reset any effects of the last played card
-        self.turn_state.stack_counter = 0
+        self.turn_state.update_stack_counter(0)
         self.configure_stack_label(0)
 
     # Send all the final information with 0 cards left to end/finalise the game
     def sendFinal(self, data_to_send: dict[str, Any]):
         print("END")
         data_to_send["stage"] = Stage.ZEROCARDS
-        self.turn_state.uno = False
+        self.turn_state.set_uno(False)
         self.turn_state.reset_card_counter()
         data_to_send["padding"] = "a" * (685 - len(json.dumps(data_to_send)))
         self.sock.send(json.dumps(data_to_send).encode("utf-8"))
