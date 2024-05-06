@@ -452,7 +452,7 @@ class Game(Frame):
             "pile": self.turn_state.pile,
             "stage": Stage.GO,
             "color": special_card,
-            "num_left": len(self.turn_state.hand_cards)
+            "num_left": self.turn_state.num_cards_left
         }
         if "plusfour" in card:
             data_to_send["wild"] = self.turn_state.can_put_plusfour
@@ -460,8 +460,8 @@ class Game(Frame):
         elif "two" in card and self.game_state.modes.stack:
             data_to_send["counter"] = self.turn_state.stack_counter + 2
             self.turn_state.update_stack_counter(0)
-        if "7" in card and self.game_state.modes.sevenzero and len(self.turn_state.hand_cards) > 0:
-            self.send_design_update(0, len(self.turn_state.hand_cards), card)
+        if "7" in card and self.game_state.modes.sevenzero and self.turn_state.num_cards_left > 0:
+            self.send_design_update(0, self.turn_state.num_cards_left, card)
             players = [x for x in self.game_state.peeps if not x == self.game_state.identity]
             swap_with = self.pick_option(
                 "Swap",
@@ -470,16 +470,16 @@ class Game(Frame):
             data_to_send["swapwith"] = swap_with
             data_to_send["hand"] = self.turn_state.get_hand_card_names()
 
-        if "0" in card and self.game_state.modes.sevenzero and len(self.turn_state.hand_cards) > 0:
+        if "0" in card and self.game_state.modes.sevenzero and self.turn_state.num_cards_left > 0:
             data_to_send["hand"] = self.turn_state.get_hand_card_names()
 
         if self.turn_state.uno:
             data_to_send["said_uno"] = True
         # Send all the information either in progress of the game, or to end it
-        if len(self.turn_state.hand_cards) > 0:
-            self.sendInfo(data_to_send)
+        if self.turn_state.num_cards_left > 0:
+            self.send_info(data_to_send)
         else:
-            self.sendFinal(data_to_send)
+            self.send_final(data_to_send)
         self.turn_state.last_played = special_card
 
         self.update_last_played_img(special_card)
@@ -517,7 +517,7 @@ class Game(Frame):
             self.turn_state.stack_counter -= 1
 
         if not (self.turn_state.stage == Stage.ZEROCARDS):
-            self.send_design_update(1, len(self.turn_state.hand_cards) + 1)
+            self.send_design_update(1, self.turn_state.num_cards_left + 1)
         # Since hand is a dict, the keys aren't in order.
         # Get the largest and add 1 for the next
         ind = max(list(self.turn_state.hand_cards.keys())) + 1
@@ -538,7 +538,7 @@ class Game(Frame):
         if self.turn_state.card_counter <= 0 and \
                 self.turn_state.stack_counter == 0 and self.turn_state.stage == Stage.ZEROCARDS:
             data_to_send = {"stage": Stage.CALC, "points": self.turn_state.calculate_points()}
-            self.sendInfo(data_to_send)
+            self.send_info(data_to_send)
 
         # Send information about taken cards if can't go or had to take +2/4 due to challenge or
         # card
@@ -552,14 +552,14 @@ class Game(Frame):
                 "pile": self.turn_state.pile,
                 "stage": Stage.GO,
                 "color": self.turn_state.last_played[0:3],
-                "num_left": len(self.turn_state.hand_cards)
+                "num_left": self.turn_state.num_cards_left
             }
             if self.turn_state.stage != Stage.CHALLENGE:
                 data_to_send["taken"] = True
             else:
                 data_to_send["stage"] = Stage.CHALLENGE_TAKEN
                 data_to_send["why"] = self.turn_state.why_challenge_in_progress
-            self.sendInfo(data_to_send)
+            self.send_info(data_to_send)
 
     # UI settings
     def configure_stack_label(self, counter: int):
@@ -731,15 +731,15 @@ class Game(Frame):
         # todo some of this could be turn_state methods
         # Set the last played card and configure the pile + card counter
         self.set_last_played(msg)
-        newC = msg["played"]
-        self.log.info(f"Played: {newC}")
-        if "plustwo" in newC and "taken" not in msg:
+        newly_played = msg["played"]
+        self.log.info(f"Played: {newly_played}")
+        if "plustwo" in newly_played and "taken" not in msg:
             self.turn_state.update_card_counter(2)
             if self.game_state.modes.stack:
                 self.turn_state.update_stack_counter(msg["counter"])
         elif "taken" in msg:
             self.turn_state.update_stack_counter(0)
-        self.update_labels_new_turn(newC, msg)
+        self.update_labels_new_turn(newly_played, msg)
         self.update_other_nums_of_cards(msg)
 
         # Check if other player said UNO; place the challenge button if not said
@@ -750,7 +750,7 @@ class Game(Frame):
             from_player: str = msg["from"]
             # todo this says wrong player if uno after 7. after 0 no message on 2 bc the other
             # player doesn't get a message update - only a numupdate
-            if "0" in newC and "taken" not in msg and self.game_state.modes.sevenzero:
+            if "0" in newly_played and "taken" not in msg and self.game_state.modes.sevenzero:
                 direction = -1 if self.turn_state.is_reversed else 1
                 player_index = self.game_state.peeps.index(from_player)
                 from_player = self.game_state.peeps[
@@ -768,7 +768,7 @@ class Game(Frame):
         # Enable buttons for cards if your turn; make UNO show if necessary
         if msg["player"]:
             self.log.info("Your turn, enabling buttons")
-            self.enable_buttons_regular_turn(newC, msg)
+            self.enable_buttons_regular_turn(newly_played, msg)
 
     # UI settings
     def update_labels_new_turn(self, played_card: str, msg: dict[str, Any]):
@@ -1002,7 +1002,7 @@ class Game(Frame):
         self.log.info("Design update sent")
 
     # Disable all buttons when sending information and when it's not your turn anymore
-    def sendInfo(self, data_to_send: dict[str, Any]):
+    def send_info(self, data_to_send: dict[str, Any]):
         data_to_send["padding"] = "a" * (685 - len(json.dumps(data_to_send)))
         self.sock.send(json.dumps(data_to_send).encode("utf-8"))
         self.turn_state.set_uno(False)
@@ -1033,11 +1033,11 @@ class Game(Frame):
         self.taken_label.config(text="")
 
     # Notify opponent that they forgot to say UNO; when clicking button
-    def challengeUno(self):
+    def challenge_uno(self):
         data = {"stage": Stage.CHALLENGE, "why": 1}
         if self.game_state.modes.stack and self.turn_state.stack_counter > 0:
             data["counter"] = self.turn_state.stack_counter
-        self.sendInfo(data)
+        self.send_info(data)
         self.handle_challenge_button(player=None, destroy=True)
 
     # UI settings
@@ -1048,7 +1048,7 @@ class Game(Frame):
         else:
             self.challenge = but(
                 text="UNO not said!", bg="red", fg="white",
-                width=150, height=30, command=self.challengeUno,
+                width=150, height=30, command=self.challenge_uno,
                 border=0)
             if player:
                 self.challenge.place(
@@ -1060,7 +1060,7 @@ class Game(Frame):
         data = {"stage": Stage.CHALLENGE, "why": 4}
         # If true that can't put +4, so it was illegal, send it
         if not is_valid:
-            self.sendInfo(data)
+            self.send_info(data)
         else:
             self.turn_state.update_card_counter(6)
             data = {"stage": Stage.SHOWCHALLENGE, "from": self.game_state.identity}
@@ -1094,17 +1094,17 @@ class Game(Frame):
             "played": self.turn_state.last_played,
             "pile": self.turn_state.pile,
             "hand": self.turn_state.get_hand_card_names(),
-            "num_left": len(self.turn_state.hand_cards),
+            "num_left": self.turn_state.num_cards_left,
             "color": self.turn_state.last_played,
             "taken": True
         }
-        self.sendInfo(data)
+        self.send_info(data)
         # Reset any effects of the last played card
         self.turn_state.update_stack_counter(0)
         self.configure_stack_label(0)
 
     # Send all the final information with 0 cards left to end/finalise the game
-    def sendFinal(self, data_to_send: dict[str, Any]):
+    def send_final(self, data_to_send: dict[str, Any]):
         print("END")
         data_to_send["stage"] = Stage.ZEROCARDS
         self.turn_state.set_uno(False)
@@ -1157,10 +1157,10 @@ class Game(Frame):
             self.childframes[next_player].config(bg=TURN_COLOR)
 
     # UI settings
-    def checkPeriodically(self):
+    def check_periodically(self):
         self.incoming()
         if not self.quit_game:
-            self.after(100, self.checkPeriodically)
+            self.after(100, self.check_periodically)
 
     # UI settings
     def start_new(self, message: dict[str, Any]):
@@ -1177,7 +1177,7 @@ class Game(Frame):
         root.protocol("WM_DELETE_WINDOW", self.send_bye_and_exit)
         new = Game(root, self.q, message, self.sock, self.game_state.all_points, self.log)
         new.start_config(message)
-        new.checkPeriodically()
+        new.check_periodically()
         new.mainloop()
 
     def start_config(self, message: dict[str, Any]):

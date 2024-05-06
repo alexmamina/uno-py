@@ -69,6 +69,10 @@ class TurnState():
                 return True
         return False
 
+    @property
+    def num_cards_left(self) -> int:
+        return len(self.hand_cards)
+
     # Create a hand of 7 cards from pile from message. Return a dict as we want cards to have ids
     def deal_cards(self) -> dict[int, Card]:
         hand = {}

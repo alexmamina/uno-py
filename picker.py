@@ -16,36 +16,36 @@ class Picker(Toplevel):
         self.options = options
         self.result = "_"
         self.attributes("-topmost", "true")
-        self.createWidgets(title)
+        self.create_widgets(title)
         self.grab_set()
         # wait.window ensures that calling function waits for the window to
         # close before the result is returned.
         self.wait_window()
 
-    def createWidgets(self, title: str):
-        frmQuestion = Frame(self)
-        Label(frmQuestion, text=self.question).grid()
-        frmQuestion.grid(row=1)
-        frmButtons = Frame(self)
-        frmButtons.grid(row=2)
+    def create_widgets(self, title: str):
+        frm_question = Frame(self)
+        Label(frm_question, text=self.question).grid()
+        frm_question.grid(row=1)
+        frm_buttons = Frame(self)
+        frm_buttons.grid(row=2)
         column = 0
         for option in self.options:
             if "color" in title:
                 btn = but(
-                    frmButtons,
+                    frm_buttons,
                     text=option,
-                    command=lambda x=option: self.setOption(x),
+                    command=lambda x=option: self.set_option(x),
                     bg=option,
                     borderless=1
                 )
 
             else:
-                btn = Button(frmButtons, text=option, command=lambda x=option: self.setOption(x))
+                btn = Button(frm_buttons, text=option, command=lambda x=option: self.set_option(x))
             btn.grid(column=column, row=0)
             column += 1
 
-    def setOption(self, optionSelected: str):
-        self.result = optionSelected
+    def set_option(self, option_selected: str):
+        self.result = option_selected
         self.destroy()
 
     def cancel(self):

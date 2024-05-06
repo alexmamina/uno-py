@@ -95,7 +95,7 @@ def start_game(sock: socket, conditions: argparse.Namespace):
         window.start_config(message)
         thread = Thread(target=window.receive)
         thread.start()
-        window.checkPeriodically()
+        window.check_periodically()
         window.mainloop()
     except JSONDecodeError as e:
         log.critical(f"Error decoding the response from the server: {e}")

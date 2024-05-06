@@ -22,10 +22,7 @@ class InfoPop(Toplevel):
         # self.wait_window()
 
     def create_widgets(self):
-        # frmL = Frame(self)
-        # Label(frmL, text=self.text, font=("TkDefaultFont", 20), bg="Ivory").pack(side=TOP)
         Label(self, text=self.text, font=("TkDefaultFont", 20), bg="Ivory").pack(side=TOP)
-        # frmButton = Frame(self)
         btn = but(
             self,
             text="OK",
