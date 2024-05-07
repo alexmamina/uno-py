@@ -35,7 +35,7 @@ def get_player_info(conditions: argparse.Namespace) -> tuple[str, int, str]:
             address = askstring(
                 "Address",
                 "Paste the \"CONNECT TO\" information you see on the server: \n"
-                "(ipaddress, then space, then port number withuot quotes - e.g. 'X.X.X.X 1234'):"
+                "(ipaddress, then space, then port number, without quotes - e.g. 'X.X.X.X 1234'):"
             )
             name = askstring("Name", "What's your name?")
         else:
