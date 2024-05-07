@@ -34,7 +34,8 @@ def get_player_info(conditions: argparse.Namespace) -> tuple[str, int, str]:
         if not conditions.human:
             address = askstring(
                 "Address",
-                "Paste the \"CONNECT TO\" information you see on the server:"
+                "Paste the \"CONNECT TO\" information you see on the server: \n"
+                "(ipaddress, then space, then port number withuot quotes - e.g. 'X.X.X.X 1234'):"
             )
             name = askstring("Name", "What's your name?")
         else:
