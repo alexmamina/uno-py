@@ -15,7 +15,7 @@ from socket import socket
 import queue
 from deck import Deck
 import copy
-from tkmacosx import Button as but
+from tkmacosx import Button as ColorfulButton
 import json
 from json import JSONDecodeError
 from message_utils import recover
@@ -82,8 +82,8 @@ class Game(Frame):
         icon = ImageTk.PhotoImage(Image.open(icon_img_location))
         self.master.tk.call('wm', 'iconphoto', self.master, icon)
         self.last: Button
-        self.challenge = but()
-        self.valid_wild = but()
+        self.challenge = ColorfulButton()
+        self.valid_wild = ColorfulButton()
         self.screen_width = self.master.winfo_screenwidth()
         self.screen_height = self.master.winfo_screenheight() - 100
         self.animated = False
@@ -174,7 +174,7 @@ class Game(Frame):
 
         self.cards_left = Label(text="7", fg="black", bg="pale green", width=2, height=1)
         self.cards_left.place(x=0.15 * self.screen_width + 1, y=0.6 * self.screen_height + 1)
-        self.uno_but = but(
+        self.uno_but = ColorfulButton(
             text="UNO",
             fg="black",
             bg="light sky blue",
@@ -188,7 +188,7 @@ class Game(Frame):
         self.setup_menu()
         self.setup_pile(msg["played"])
         # Button for debugging
-        self.debug = but(
+        self.debug = ColorfulButton(
             text="Skip turn", fg="red", bg="white", borderless=1,
             borderwidth=0, width=100,
             height=30, border=0,
@@ -1040,7 +1040,7 @@ class Game(Frame):
             if self.challenge:
                 self.challenge.destroy()
         else:
-            self.challenge = but(
+            self.challenge = ColorfulButton(
                 text="UNO not said!", bg="red", fg="white",
                 width=150, height=30, command=self.challenge_uno,
                 border=0)
@@ -1068,7 +1068,7 @@ class Game(Frame):
             if self.valid_wild:
                 self.valid_wild.destroy()
         else:
-            self.valid_wild = but(
+            self.valid_wild = ColorfulButton(
                 text="Illegal +4?", bg="HotPink", fg="black",
                 width=150, height=30, borderless=1, border=0,
                 command=lambda valid=validity: self.challenge_plus(valid))
