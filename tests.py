@@ -82,6 +82,7 @@ class Tests(unittest.TestCase):
             "padding": "a",
         }
         a: dict[str, int] = {p: 0 for p in m["peeps"]}
+        cls.m = m
         cls.game = Game(Tk(), None, m, socket(), a, Logger(__name__))
 
     @unittest.skip("modes too old")
@@ -197,17 +198,17 @@ class Tests(unittest.TestCase):
         new_card_2 = True
         hand_btns_2 = {i: (True, "a") for i in range(7)}
         hand_btns_2[3] = (True, "two")
-        if not self.game.message["player"]:
+        if not Tests.m["player"]:
             new_card_1 = False
             for i in hand_btns_1:
                 hand_btns_1[i] = (False, "b")
-        elif "plus" in self.game.message["played"] and (
+        elif "plus" in self.game.turn_state.last_played and (
             not self.game.turn_state.can_stack or not self.game.game_state.modes.stack
         ):
             for i in hand_btns_1:
                 hand_btns_1[i] = (False, "b")
         elif (
-            "plus" in self.game.message["played"] and
+            "plus" in self.game.turn_state.last_played and
             self.game.game_state.modes.stack and
             self.game.turn_state.can_stack
         ):
@@ -216,8 +217,8 @@ class Tests(unittest.TestCase):
                     hand_btns_1[i] = (False, "two")
         elif self.game.turn_state.possible_move:
             new_card_1 = False
-        not_current = not self.game.message["player"]
-        played_plus = "plus" in self.game.message["played"]
+        not_current = not Tests.m["player"]
+        played_plus = "plus" in self.game.turn_state.last_played
         no_stack = not self.game.turn_state.can_stack or not self.game.game_state.modes.stack
         stack_possible = self.game.game_state.modes.stack and self.game.turn_state.can_stack
         if not_current or self.game.turn_state.possible_move:
@@ -263,7 +264,6 @@ class Tests(unittest.TestCase):
             # else:
             #     data_to_send["player"] = 0
             #     # Only on the first game start from player 0 and consider stop
-            #     # refactor: why
             #     if i == self.list_of_players[0] and "stop" in self.first_card and first_game:
             #         data_to_send["curr"] = (self.current_player + 1) % self.num_players
             #     else:
@@ -288,7 +288,6 @@ class Tests(unittest.TestCase):
             else:
                 data_to_send_2["player"] = False
                 # Only on the first game start from player 0 and consider stop
-                # refactor: why
                 if i == self.list_of_players[0] and "stop" in self.first_card and first_game:
                     data_to_send_2["curr"] = (self.current_player + 1) % self.num_players
                 else:

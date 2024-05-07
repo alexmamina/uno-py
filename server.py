@@ -364,7 +364,6 @@ class Server():
             }
             self.left_cards[next_player] = len(hand)
             response = self.swap_hands(swap, to_whom=next_player)
-            # bug response has no hand for a third player when 4 play. could not reproduce tho
             hand = response["hand"]
             i = (i + 1) % self.num_players
             next_player = utils.get_next_player(next_player, self.peeps, "zero")
