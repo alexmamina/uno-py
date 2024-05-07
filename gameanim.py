@@ -668,8 +668,7 @@ class Game(Frame):
                     else:
                         # No cards need to be taken, send current points
                         points = {"stage": Stage.CALC, "points": self.turn_state.calculate_points()}
-                        points["padding"] = "a" * (685 - len(json.dumps(points)))
-                        self.sock.send(json.dumps(points).encode("utf-8"))
+                        self.send_message(points)
 
                 # Get points from the opponent and show them
                 elif msg["stage"] == Stage.CALC:
@@ -700,10 +699,8 @@ class Game(Frame):
                     }
                     what = "7" if msg["stage"] == Stage.SEVEN else "0"
 
-                    hand["padding"] = "a" * (685 - len(json.dumps(hand)))
-                    m = json.dumps(hand)
                     if "end" not in msg:
-                        self.sock.send(m.encode("utf-8"))
+                        self.send_message(hand)
 
                     self.inform_about_sevenzero(msg, what)
 
@@ -831,13 +828,11 @@ class Game(Frame):
                 "3. Take many cards at once", options=[])
             modes = Modes.from_string(modes_response)
             init = {"stage": Stage.INIT, "modes": modes.to_json()}
-            init["padding"] = "a" * (685 - len(json.dumps(init)))
-            self.sock.send(json.dumps(init).encode("utf-8"))
+            self.send_message(init)
         else:
             # Don't want the new game
             bye: dict[str, Any] = {"stage": Stage.BYE}
-            bye["padding"] = "a" * (685 - len(json.dumps(bye)))
-            self.sock.send(json.dumps(bye).encode("utf-8"))
+            self.send_message(bye)
             self.log.info("No new game, sending a BYE message")
             # self.send_bye_and_exit()
             self.quit_game = True
@@ -997,14 +992,13 @@ class Game(Frame):
         }
         if type == 0:
             data["played"] = args[0]
-        data["padding"] = "a" * (685 - len(json.dumps(data)))
-        self.sock.send(json.dumps(data).encode("utf-8"))
+
+        self.send_message(data)
         self.log.info("Design update sent")
 
     # Disable all buttons when sending information and when it's not your turn anymore
     def send_info(self, data_to_send: dict[str, Any]):
-        data_to_send["padding"] = "a" * (685 - len(json.dumps(data_to_send)))
-        self.sock.send(json.dumps(data_to_send).encode("utf-8"))
+        self.send_message(data_to_send)
         self.turn_state.set_uno(False)
         self.turn_state.reset_card_counter()
 
@@ -1064,8 +1058,7 @@ class Game(Frame):
         else:
             self.turn_state.update_card_counter(6)
             data = {"stage": Stage.SHOWCHALLENGE, "from": self.game_state.identity}
-            data["padding"] = "a" * (685 - len(json.dumps(data)))
-            self.sock.send(json.dumps(data).encode("utf-8"))
+            self.send_message(data)
             messagebox.showinfo("Legal move", "The player was honest, so take 6 cards!")
         self.handle_wild_button(destroy=True)
 
@@ -1109,8 +1102,7 @@ class Game(Frame):
         data_to_send["stage"] = Stage.ZEROCARDS
         self.turn_state.set_uno(False)
         self.turn_state.reset_card_counter()
-        data_to_send["padding"] = "a" * (685 - len(json.dumps(data_to_send)))
-        self.sock.send(json.dumps(data_to_send).encode("utf-8"))
+        self.send_message(data_to_send)
 
         self.disable_buttons(data_to_send)
         self.log.info("Not your turn anymore")
@@ -1211,8 +1203,7 @@ class Game(Frame):
     def send_bye_and_exit(self):
         try:
             bye: dict[str, Any] = {"stage": Stage.BYE}
-            bye["padding"] = "a" * (685 - len(json.dumps(bye)))
-            self.sock.send(json.dumps(bye).encode("utf-8"))
+            self.send_message(bye)
             self.sock.close()
         except OSError:
             pass
@@ -1220,6 +1211,10 @@ class Game(Frame):
 
         self.log.info("I am closing")
         self.close_window()
+
+    def send_message(self, message: dict[str, Any]):
+        message["padding"] = "a" * (685 - len(json.dumps(message)))
+        self.sock.send(json.dumps(message).encode("utf-8"))
 
     # UI settings
     def close_window(self):
