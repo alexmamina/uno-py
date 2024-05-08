@@ -535,18 +535,13 @@ class Game(Frame):
 
         # Send the points from the cards if you had to take them at the end (last played was +,
         # but game is over)
-        if self.turn_state.card_counter <= 0 and \
-                self.turn_state.stack_counter == 0 and self.turn_state.stage == Stage.ZEROCARDS:
+        if self.turn_state.can_send_points_after_taking():
             data_to_send = {"stage": Stage.CALC, "points": self.turn_state.calculate_points()}
             self.send_info(data_to_send)
 
         # Send information about taken cards if can't go or had to take +2/4 due to challenge or
         # card
-        if self.turn_state.card_counter <= 0 and self.turn_state.stack_counter == 0 and \
-            (possible_move is False or
-                (not self.turn_state.cards_taken_previously and
-                    "plus" in self.turn_state.last_played) or
-                self.turn_state.stage == Stage.CHALLENGE):
+        if self.turn_state.can_send_card_taken_update():
             data_to_send = {
                 "played": self.turn_state.last_played,
                 "pile": self.turn_state.pile,

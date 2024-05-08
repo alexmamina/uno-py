@@ -18,6 +18,7 @@ class TurnState():
     cards_taken_previously: bool
     stage: Stage
     why_challenge_in_progress: Optional[int]
+    current_player: str
 
     def __init__(
         self,
@@ -72,6 +73,10 @@ class TurnState():
     @property
     def num_cards_left(self) -> int:
         return len(self.hand_cards)
+
+    @property
+    def is_current(self) -> bool:
+        return self.current_player == self.game_state.identity
 
     # Create a hand of 7 cards from pile from message. Return a dict as we want cards to have ids
     def deal_cards(self) -> dict[int, Card]:
@@ -157,3 +162,12 @@ class TurnState():
 
     def set_uno(self, uno_enabled: bool = True):
         self.uno = uno_enabled
+
+    def can_send_points_after_taking(self) -> bool:
+        return self.card_counter <= 0 and self.stack_counter == 0 and self.stage == Stage.ZEROCARDS
+
+    def can_send_card_taken_update(self) -> bool:
+        empty_counters = self.card_counter <= 0 and self.stack_counter == 0
+        new_plus = not self.cards_taken_previously and "plus" in self.last_played
+        return empty_counters and \
+            (not self.possible_move or new_plus or self.stage == Stage.CHALLENGE)
