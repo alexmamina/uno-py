@@ -1,6 +1,6 @@
 from game_classes import GameState
 import re
-from card import Card
+from card import Card, CardType
 from typing import Any, Optional
 from game_classes import Stage
 
@@ -82,10 +82,7 @@ class TurnState():
     def deal_cards(self) -> dict[int, Card]:
         hand = {}
         for i in range(7):
-            c = self.pile.pop(0)
-            # Lookup the card name from pile to get card itself
-            card = self.game_state.deck.get_card(c)
-            hand[i] = card
+            hand[i] = Card(self.pile.pop(0))
         return hand
 
     def get_hand_card_names(self) -> list[str]:
@@ -131,28 +128,28 @@ class TurnState():
         for i in range(len(new_hand)):
             # Add new card
             c = new_hand[i]
-            self.hand_cards[i] = self.game_state.deck.get_card(c)
+            self.hand_cards[i] = Card(c)
         self.all_nums_of_cards[self.game_state.identity] = new_hand_size
         self.all_nums_of_cards[player] = old_hand_size
         return old_hand_size, new_hand_size
 
     def update_last_played(self, message: dict[str, Any]) -> str:
-        played_card = message["played"]
+        played_card = Card(message["played"])
         # if plus take cards else send points
-        if "four" in played_card:
-            played_card = message["color"][0:3] + "plusfour"
+        if played_card.card_type == CardType.BLACK and played_card.is_plus():
+            played_card = Card(message["color"][0:3] + "plusfour")
             if "taken" not in message:
                 self.card_counter = 4
             else:
                 self.reset_card_counter()
-        elif "bla" in played_card:
-            played_card = message["color"][0:3] + "black"
+        elif played_card.card_type == CardType.BLACK:
+            played_card = Card(message["color"][0:3] + "black")
         else:
             self.reset_card_counter()
-        self.last_played = played_card
+        self.last_played = played_card.name
         if "pile" in message.keys():
             self.pile = message["pile"]
-        return played_card
+        return played_card.name
 
     def update_card_counter(self, num_to_take: int):
         self.card_counter = num_to_take
