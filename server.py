@@ -140,8 +140,6 @@ class Server():
             "pile": self.pile[0:7],
             "num_left": 7,
             "other_left": self.left_cards,
-            # The card name is 3 chars of color + the number/other properties
-            "color": self.first_card[0:3],
             "player": False
         }
         self.previous_message = data_to_send
@@ -246,7 +244,6 @@ class Server():
             "other_left": self.left_cards,
             "stage": Stage.GO,
             "player": True,
-            "color": message["color"]
         }
 
         if "why" in message and message["why"] == 4:
@@ -270,7 +267,6 @@ class Server():
             "played": message["played"],
             "stage": Stage.ZEROCARDS,
             "player": True,
-            "color": message["color"],
             "to_take": taking_cards
         }
         # If stacking is enabled, someone may need to take many cards first
@@ -404,7 +400,7 @@ class Server():
         card = Card(str_card)
         # card_type = Card(str_card).card_type
 
-        log.info(f"Player {self.current_player} played {str_card}")
+        log.info(f"Player {self.current_player} played {str_card} (type {card.card_type})")
 
         data = {
             "pile": self.pile,
@@ -413,7 +409,6 @@ class Server():
             "other_left": self.left_cards,
             "stage": Stage.GO,
             "player": True,
-            "color": message["color"]
         }
         if card.type_is(CardType.PLUSFOUR) and "taken" not in message:
             data["wild"] = message["wild"]

@@ -137,13 +137,10 @@ class TurnState():
         played_card = Card(message["played"])
         # if plus take cards else send points
         if played_card.type_is(CardType.PLUSFOUR):
-            played_card = Card(message["color"][0:3] + "plusfour")
             if "taken" not in message:
                 self.card_counter = 4
             else:
                 self.reset_card_counter()
-        elif played_card.type_is(CardType.BLACK):
-            played_card = Card(message["color"][0:3] + "black")
         else:
             self.reset_card_counter()
         self.last_played = played_card.name

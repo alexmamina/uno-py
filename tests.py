@@ -75,7 +75,6 @@ class Tests(unittest.TestCase):
             ],
             "num_left": 7,
             "other_left": {x: 7 for x in ["default-925", "one"]},
-            "color": "gre",
             "player": True,
             "peeps": ["default-925", "one"],
             "dir": False,
@@ -118,7 +117,10 @@ class Tests(unittest.TestCase):
 
     def test_card_type(self):
         import random
-        cards = ["red5", "blureverse", "greplustwo", "yelstop", "black", "blackplusfour"]
+        cards = [
+            "red5", "blureverse", "greplustwo",
+            "yelstop", "black", "blackplusfour", "yelblack",
+            "bluplusfour", "greblack", "yelplusfour"]
         for _ in range(200):
             for type in [CardType.BLACK,
                          CardType.PLUSFOUR, CardType.PLUSTWO, CardType.REVERSE,

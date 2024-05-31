@@ -450,10 +450,9 @@ class Game(Frame):
         self.update_labels_buttons_card_placed(special_card, ind)
 
         data_to_send = {
-            "played": card,
+            "played": special_card,
             "pile": self.turn_state.pile,
             "stage": Stage.GO,
-            "color": special_card,
             "num_left": self.turn_state.num_cards_left
         }
         if proper_card.type_is(CardType.PLUSFOUR):
@@ -552,7 +551,6 @@ class Game(Frame):
                 "played": self.turn_state.last_played,
                 "pile": self.turn_state.pile,
                 "stage": Stage.GO,
-                "color": self.turn_state.last_played[0:3],
                 "num_left": self.turn_state.num_cards_left
             }
             if self.turn_state.stage != Stage.CHALLENGE:
@@ -1092,7 +1090,6 @@ class Game(Frame):
             "pile": self.turn_state.pile,
             "hand": self.turn_state.get_hand_card_names(),
             "num_left": self.turn_state.num_cards_left,
-            "color": self.turn_state.last_played,
             "taken": True
         }
         self.send_info(data)
