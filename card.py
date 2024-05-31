@@ -63,8 +63,9 @@ class Card:
     def is_plus(self) -> bool:
         return CardType.PLUS in self.name
 
-    # todo check if better than ==
     def type_is(self, type: str) -> bool:
+        if type == CardType.PLUSFOUR:
+            return self.card_type == CardType.BLACK and self.is_plus()
         return self.card_type == type
 
     @classmethod

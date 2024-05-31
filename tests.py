@@ -29,7 +29,7 @@ class FakeGame:
 
 def possible_move(self) -> bool:
     for hand_card in self.hand_cards.values():
-        is_black = Card(hand_card.name) == CardType.BLACK
+        is_black = hand_card.type_is(CardType.BLACK)
         same_color = self.last_played[0:3] in hand_card.name
         same_symbol = self.last_played[3:] in hand_card.name
         if is_black or same_color or same_symbol:
@@ -49,7 +49,7 @@ def can_put_plusfour(self) -> bool:
 # Non-UI settings
 def can_stack(self) -> bool:
     for hand_card in self.hand_cards.values():
-        if Card(hand_card.name).card_type == CardType.PLUSTWO:
+        if hand_card.type_is(CardType.PLUSTWO):
             return True
     return False
 
@@ -118,7 +118,7 @@ class Tests(unittest.TestCase):
 
     def test_card_type(self):
         import random
-        cards = ["red5", "blureverse", "greplustwo", "yelstop", "black"]
+        cards = ["red5", "blureverse", "greplustwo", "yelstop", "black", "blackplusfour"]
         for _ in range(200):
             for type in [CardType.BLACK,
                          CardType.PLUSFOUR, CardType.PLUSTWO, CardType.REVERSE,
@@ -127,20 +127,8 @@ class Tests(unittest.TestCase):
                 with self.subTest(params=type, msg=f"{type} - {card}"):
 
                     self.assertEqual(
-                        Card(card).card_type == type, type in card
+                        Card(card).type_is(type), type in card
                     )
-
-    def test_black_plus(self):
-        card = "blackplusfour"
-        for type in [CardType.BLACK,
-                     CardType.PLUSFOUR, CardType.PLUSTWO, CardType.REVERSE,
-                     CardType.STOP]:
-            with self.subTest(params=type, msg=f"{type} - {card}"):
-                self.assertEqual(
-                    Card(card).card_type == type,
-                    (type in card and
-                        not type == CardType.PLUSFOUR and not type == CardType.PLUSTWO)
-                )
 
     @unittest.skip("too general test")
     def test_mode_class(self):
@@ -292,17 +280,17 @@ class Tests(unittest.TestCase):
                 self.pile[7 * (self.num_players - i):7 * (self.num_players - i) + 20]
             data_to_send_2["whoami"] = i
             if (i == self.list_of_players[0] and "stop" not in self.first_card) or \
-                    (i == 1 and Card(self.first_card).card_type == CardType.STOP):
+                    (i == 1 and Card(self.first_card).type_is(CardType.STOP)):
                 data_to_send_2["player"] = True
                 self.current_player = i
                 self.curr_list_index = \
-                    1 if (i == 1 and Card(self.first_card).card_type == CardType.STOP) else 0
+                    1 if (i == 1 and Card(self.first_card).type_is(CardType.STOP)) else 0
                 self.prev_player = self.list_of_players[self.num_players - 1]
             else:
                 data_to_send_2["player"] = False
                 # Only on the first game start from player 0 and consider stop
                 if i == self.list_of_players[0] and \
-                        Card(self.first_card).card_type == CardType.STOP and first_game:
+                        Card(self.first_card).type_is(CardType.STOP) and first_game:
                     data_to_send_2["curr"] = (self.current_player + 1) % self.num_players
                 else:
                     data_to_send_2["curr"] = self.current_player
@@ -313,7 +301,7 @@ class Tests(unittest.TestCase):
     def get_player_order(self, list_of_players: list[int], first_card: str) -> tuple[int, int, int]:
         # list of players. either reversed or not. either normal card, or stop. on normal, first
         # is current, last is prev. on stop second is current, first is prev
-        first_stop = Card(first_card).card_type == CardType.STOP
+        first_stop = Card(first_card).type_is(CardType.STOP)
         current_player = list_of_players[1] if first_stop else list_of_players[0]
         curr_list_index = list_of_players.index(current_player)
         prev_player = list_of_players[(curr_list_index - 1) % len(list_of_players)]

@@ -28,7 +28,7 @@ class Deck:
                 if new_card.card_type != CardType.ZERO:
                     # Non-zero cards appear twice
                     self.deck.append(new_card)
-                if new_card.card_type == CardType.BLACK:
+                if new_card.type_is(CardType.BLACK):
                     # Black cards appear 4 times, so add 2 more
                     self.deck.append(new_card)
                     self.deck.append(new_card)

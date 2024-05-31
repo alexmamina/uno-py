@@ -197,7 +197,7 @@ class Game(Frame):
         self.hand_btns: dict[int, Button] = {}
         self.setup_hand()
         if msg["player"]:
-            if Card(msg["played"]).card_type == CardType.PLUSTWO and \
+            if Card(msg["played"]).type_is(CardType.PLUSTWO) and \
                     (not self.turn_state.can_stack or not self.game_state.modes.stack):
                 self.turn_need_taking = Label(
                     text="Take cards",
@@ -403,7 +403,7 @@ class Game(Frame):
         # Same color (0:3), same symbol (3:), black
         same_color = card[0:3] == old_card[0:3]
         same_symbol = card[3:] == old_card[3:]
-        is_black = Card(card).card_type == CardType.BLACK
+        is_black = Card(card).type_is(CardType.BLACK)
         if same_color or same_symbol or is_black:
             # You can't have the "Illegal +4" when placing a card, as you never place it, so don't
             # handle it
@@ -424,11 +424,10 @@ class Game(Frame):
     # Set new card on pile, send information, update hand - after animation or straight away
     def complete_placement(self, card: str, ind: int):
         proper_card = Card(card)
-        card_type = proper_card.card_type
-        if card_type == CardType.REVERSE:
+        if proper_card.type_is(CardType.REVERSE):
             self.turn_state.is_reversed = not self.turn_state.is_reversed
         # Changes the black card to black with a color to show which one to play next
-        if card_type == CardType.BLACK:
+        if proper_card.type_is(CardType.BLACK):
             new_color = self.pick_option(
                 "New color",
                 "Which one?",
@@ -457,13 +456,13 @@ class Game(Frame):
             "color": special_card,
             "num_left": self.turn_state.num_cards_left
         }
-        if card_type == CardType.BLACK and Card(card).is_plus():
+        if proper_card.type_is(CardType.PLUSFOUR):
             data_to_send["wild"] = self.turn_state.can_put_plusfour
         # If placed plustwo in the mode, send the counter
-        elif card_type == CardType.PLUSTWO and self.game_state.modes.stack:
+        elif proper_card.type_is(CardType.PLUSTWO) and self.game_state.modes.stack:
             data_to_send["counter"] = self.turn_state.stack_counter + 2
             self.turn_state.update_stack_counter(0)
-        if card_type == CardType.SEVEN and self.game_state.modes.sevenzero and \
+        if proper_card.type_is(CardType.SEVEN) and self.game_state.modes.sevenzero and \
                 self.turn_state.num_cards_left > 0:
             self.send_design_update(0, self.turn_state.num_cards_left, card)
             players = [x for x in self.game_state.peeps if not x == self.game_state.identity]
@@ -474,7 +473,7 @@ class Game(Frame):
             data_to_send["swapwith"] = swap_with
             data_to_send["hand"] = self.turn_state.get_hand_card_names()
 
-        if card_type == CardType.ZERO and self.game_state.modes.sevenzero and \
+        if proper_card.type_is(CardType.ZERO) and self.game_state.modes.sevenzero and \
                 self.turn_state.num_cards_left > 0:
             data_to_send["hand"] = self.turn_state.get_hand_card_names()
 
@@ -490,14 +489,14 @@ class Game(Frame):
         self.update_last_played_img(special_card)
 
     # UI settings
-    def update_labels_buttons_card_placed(self, card: str, ind: int):
-        card_type = Card(card).card_type
-        if card_type == CardType.REVERSE:
+    def update_labels_buttons_card_placed(self, placed_card: str, ind: int):
+        card = Card(placed_card)
+        if card.type_is(CardType.REVERSE):
             self.direction_l["image"] = self.revdir if self.turn_state.is_reversed else self.fordir
         self.hand_btns.pop(ind)
         self.cards_left.config(text=self.turn_state.all_nums_of_cards[self.game_state.identity])
         self.move_buttons()
-        if card_type == CardType.PLUSTWO and self.game_state.modes.stack:
+        if card.type_is(CardType.PLUSTWO) and self.game_state.modes.stack:
             self.configure_stack_label(self.turn_state.stack_counter + 2)
 
     # UI settings
@@ -519,7 +518,7 @@ class Game(Frame):
         self.turn_state.card_counter -= 1
 
         if self.turn_state.stack_counter > 0 and \
-                Card(self.turn_state.last_played).card_type == CardType.PLUSTWO:
+                Card(self.turn_state.last_played).type_is(CardType.PLUSTWO):
             # Card.card_is(self.turn_state.last_played, CardType.PLUSFOUR)
             self.turn_state.stack_counter -= 1
 
@@ -570,7 +569,7 @@ class Game(Frame):
     # UI settings
     def update_labels_buttons_card_taken(self, new_card: Card, index: int, move_is_possible: bool):
         if self.turn_state.stack_counter >= 0 and \
-                Card(self.turn_state.last_played).card_type == CardType.PLUSTWO:
+                Card(self.turn_state.last_played).type_is(CardType.PLUSTWO):
             # or Card.card_is(self.turn_state.last_played, CardType.PLUSFOUR)
             self.configure_stack_label(self.turn_state.stack_counter)
         self.cards_left.config(text=self.turn_state.all_nums_of_cards[self.game_state.identity])
@@ -662,7 +661,7 @@ class Game(Frame):
                         self.enable_taking_for_final_plus(msg)
 
                         self.turn_state.update_card_counter(
-                            2 if Card(msg["played"]).card_type == CardType.PLUSTWO else 4
+                            2 if Card(msg["played"]).type_is(CardType.PLUSTWO) else 4
                         )
                         if self.game_state.modes.stack and "counter" in msg:
                             self.turn_state.update_stack_counter(msg["counter"])
@@ -733,7 +732,7 @@ class Game(Frame):
         self.set_last_played(msg)
         newly_played = msg["played"]
         self.log.info(f"Played: {newly_played}")
-        if Card(newly_played).card_type == CardType.PLUSTWO and "taken" not in msg:
+        if Card(newly_played).type_is(CardType.PLUSTWO) and "taken" not in msg:
             self.turn_state.update_card_counter(2)
             if self.game_state.modes.stack:
                 self.turn_state.update_stack_counter(msg["counter"])
@@ -750,7 +749,7 @@ class Game(Frame):
             from_player: str = msg["from"]
             # todo this says wrong player if uno after 7. after 0 no message on 2 bc the other
             # player doesn't get a message update - only a numupdate
-            if Card(newly_played).card_type == CardType.ZERO and "taken" not in msg and \
+            if Card(newly_played).type_is(CardType.ZERO) and "taken" not in msg and \
                     self.game_state.modes.sevenzero:
                 direction = -1 if self.turn_state.is_reversed else 1
                 player_index = self.game_state.peeps.index(from_player)
@@ -777,7 +776,7 @@ class Game(Frame):
         self.turn_state.is_reversed = msg["dir"]
         self.direction_l.config(image=self.revdir if self.turn_state.is_reversed else self.fordir)
         self.direction_l["image"] = self.revdir if self.turn_state.is_reversed else self.fordir
-        if Card(played_card).card_type == CardType.PLUSTWO and "taken" not in msg:
+        if Card(played_card).type_is(CardType.PLUSTWO) and "taken" not in msg:
             if self.game_state.modes.stack:
                 self.configure_stack_label(self.turn_state.stack_counter)
             self.taken_label.config(text="")
@@ -791,7 +790,7 @@ class Game(Frame):
     def enable_buttons_regular_turn(self, card: str, msg: dict[str, Any]):
         self.name_lbl.config(bg="green")
         self.childframes[self.game_state.identity].config(bg=TURN_COLOR)
-        if Card(card).card_type == CardType.BLACK and Card(card).is_plus() and \
+        if Card(card).type_is(CardType.PLUSFOUR) and \
                 "taken" not in msg and "wild" in msg:
             # Show "challenge +4" button
             self.handle_wild_button(validity=msg["wild"])
@@ -805,16 +804,16 @@ class Game(Frame):
             (self.game_state.modes.mult and not self.turn_state.card_counter == 4 and not
                 self.turn_state.card_counter == 2) or \
                 (self.game_state.modes.stack and self.turn_state.can_stack and
-                    Card(card).card_type == CardType.PLUSTWO):
+                    Card(card).type_is(CardType.PLUSTWO)):
             self.turn_need_taking.config(text="", bg=TURN_COLOR)
             for i in self.hand_btns:
                 self.hand_btns[i].config(state="normal")
             if self.game_state.modes.stack and self.turn_state.can_stack and \
-                    Card(card).card_type == CardType.PLUSTWO and "taken" not in msg and \
+                    Card(card).type_is(CardType.PLUSTWO) and "taken" not in msg and \
                     self.turn_state.stack_counter > 0:
                 for i in self.hand_btns:
                     # Go through cards on buttons and enable only +2s
-                    if not Card(self.hand_btns[i]["text"]).card_type == CardType.PLUSTWO:
+                    if not Card(self.hand_btns[i]["text"]).type_is(CardType.PLUSTWO):
                         self.hand_btns[i].config(state="disabled")
         else:
             self.turn_need_taking.config(text="Take cards!", bg="orange")
@@ -1141,7 +1140,7 @@ class Game(Frame):
 
     # UI settings
     def update_next_lbl(self, sent_message: dict[str, Any]):
-        skip_player: bool = Card(sent_message["played"]).card_type == CardType.STOP and \
+        skip_player: bool = Card(sent_message["played"]).type_is(CardType.STOP) and \
             "taken" not in sent_message
         difference = 2 if skip_player else 1
         # Take all players and move them up by 1/2 when turn finished

@@ -121,7 +121,7 @@ class Server():
         first_card: Card = Card(self.pile.pop(7 * self.num_players))
 
         # Black cards will not be played first. If popped, reshuffle and get a new one
-        while first_card.card_type == CardType.BLACK:
+        while first_card.type_is(CardType.BLACK):
             self.pile.append(first_card.name)
             shuffle(self.pile)
             first_card = Card(self.pile.pop(7 * self.num_players))
@@ -149,7 +149,7 @@ class Server():
 
         log.info(self.peeps)
         data_to_send["peeps"] = deepcopy(self.peeps)
-        if Card(self.first_card).card_type == CardType.REVERSE:
+        if Card(self.first_card).type_is(CardType.REVERSE):
             self.reverse_players()
 
         if first_game:
@@ -370,7 +370,7 @@ class Server():
 
     def relay_and_change_turns(self, card: str, message: dict[str, Any]):
         # If the last played card is stop
-        if Card(card).card_type == CardType.STOP and "taken" not in message:
+        if Card(card).type_is(CardType.STOP) and "taken" not in message:
             # todo this could probably be combined
             next_player = utils.get_next_player(self.current_player, self.peeps, card)
             for player in self.peeps:
@@ -400,10 +400,11 @@ class Server():
         self.current_player = next_player
 
     def process_regular_message(self, message: dict[str, Any]):  # refactor
-        card = message["played"]
-        card_type = Card(card).card_type
+        str_card = message["played"]
+        card = Card(str_card)
+        # card_type = Card(str_card).card_type
 
-        log.info(f"Player {self.current_player} played {card}")
+        log.info(f"Player {self.current_player} played {str_card}")
 
         data = {
             "pile": self.pile,
@@ -414,10 +415,10 @@ class Server():
             "player": True,
             "color": message["color"]
         }
-        if card_type == CardType.BLACK and Card(card).is_plus() and "taken" not in message:
+        if card.type_is(CardType.PLUSFOUR) and "taken" not in message:
             data["wild"] = message["wild"]
         if "taken" not in message:
-            self.all_played.append(card)
+            self.all_played.append(str_card)
             # Compare the pile on the server with the client's one to see if the player took cards
             if not (self.pile[0:5] == message["pile"][0:5]):
                 self.pile.pop(0)
@@ -433,12 +434,12 @@ class Server():
         data["pile"] = self.pile[:20]
         self.left_cards[self.current_player] = message["num_left"]
 
-        if card_type == CardType.SEVEN and self.modes.sevenzero and "taken" not in message:
+        if card.type_is(CardType.SEVEN) and self.modes.sevenzero and "taken" not in message:
             # A seven was placed right now, not that it was placed before but someone else took
             # cards afterwards
             self.swap_after_seven(message)
 
-        if card_type == CardType.ZERO and self.modes.sevenzero and "taken" not in message:
+        if card.type_is(CardType.ZERO) and self.modes.sevenzero and "taken" not in message:
             self.swap_after_zero(message)
 
         data["other_left"] = self.left_cards
@@ -447,7 +448,7 @@ class Server():
             data["counter"] = message["counter"]
             self.stack_counter = message["counter"]
 
-        if card_type == CardType.REVERSE and "taken" not in message:
+        if card.type_is(CardType.REVERSE) and "taken" not in message:
             self.reverse_players()
         data["dir"] = self.is_reversed
 
@@ -457,7 +458,7 @@ class Server():
             data["said_uno"] = True
             data["from"] = self.current_player
 
-        self.relay_and_change_turns(card, data)
+        self.relay_and_change_turns(str_card, data)
 
         if "stop" not in message["played"]:
             self.previous_message = message
