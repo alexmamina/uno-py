@@ -140,7 +140,6 @@ class Server():
             "pile": self.pile[0:7],
             "num_left": 7,
             "other_left": self.left_cards,
-            "player": False
         }
         self.previous_message = data_to_send
         # End of initialisation
@@ -151,7 +150,11 @@ class Server():
             self.reverse_players()
 
         if first_game:
-            self.current_player = self.peeps[0] if "stop" not in self.first_card else self.peeps[1]
+            self.current_player = (
+                self.peeps[0]
+                if not Card(self.first_card).type_is(CardType.STOP)
+                else self.peeps[1]
+            )
         else:
             # On consequent games we start from the players after the winner, not player 0
             # (either the next one, or the one after if a stop is played)
@@ -169,11 +172,7 @@ class Server():
                     7 * (self.num_players - player_index):7 * (self.num_players - player_index) + 20
             ]
             data_to_send["whoami"] = player
-
-            # todo replace player with is_current. or curr and player can be combined
-            data_to_send["player"] = player == self.current_player
-            if not data_to_send["player"]:
-                data_to_send["curr"] = self.current_player
+            data_to_send["player"] = self.current_player
 
             self.send_message(data_to_send, player)
             log.info(f"Sent initial cards to player {player}")
@@ -193,6 +192,10 @@ class Server():
         msg_copy.pop("padding", "")
         msg_copy["padding"] = "a" * (685 - len(json.dumps(msg_copy)))
         encoded_msg = json.dumps(msg_copy).encode("utf-8")
+        # todo remove for message class
+        # with open("servermsgs.txt", "a") as f:
+        #     f.write(f"{list(msg_copy.keys())}stage: {msg_copy['stage']}")
+        #     f.write("\n")
         self.socks[destination_player].sendto(encoded_msg, self.addresses[destination_player])
 
     def receive_message(self, from_player: str, buffer_size: int = 700) -> dict[str, Any]:
@@ -243,19 +246,16 @@ class Server():
             "played": message["played"],
             "other_left": self.left_cards,
             "stage": Stage.GO,
-            "player": True,
         }
 
         if "why" in message and message["why"] == 4:
             data["taken"] = True
         data["dir"] = self.is_reversed
         data["counter"] = self.stack_counter
+        data["player"] = self.current_player
 
         for player in self.peeps:
             if player != self.prev_player:
-                data["player"] = player == self.current_player
-                if not data["player"]:
-                    data["curr"] = self.current_player
                 self.send_message(data, player)
 
     def process_and_show_points(self, message: dict[str, Any]):
@@ -266,7 +266,6 @@ class Server():
             "pile": self.pile[0:20],
             "played": message["played"],
             "stage": Stage.ZEROCARDS,
-            "player": True,
             "to_take": taking_cards
         }
         # If stacking is enabled, someone may need to take many cards first
@@ -277,10 +276,11 @@ class Server():
 
         # We only care about the next player if they have to take cards. They'll always be +1 so no
         # need to specify a played card
-        next_player = utils.get_next_player(self.current_player, self.peeps, "")
+        next_player = utils.get_next_player(self.current_player, self.peeps, message["played"])
         for player in self.peeps:
             if player != self.current_player:
                 # Only the next player needs to take cards
+                data["player"] = next_player
                 data["to_take"] = taking_cards and player == next_player
 
                 # Send the request for points and syncronously receive the response
@@ -346,12 +346,12 @@ class Server():
             "hand": hand,
             "from": self.current_player
         }
-        next_player = utils.get_next_player(self.current_player, self.peeps, "zero")
+        next_player = utils.get_next_player(self.current_player, self.peeps)
         self.left_cards[next_player] = len(hand)
         response = self.swap_hands(swap, to_whom=next_player)
         hand = response["hand"]
         i = (i + 1) % self.num_players
-        next_player = utils.get_next_player(next_player, self.peeps, "zero")
+        next_player = utils.get_next_player(next_player, self.peeps)
         while not (i == self.peeps.index(self.current_player)):
             swap = {
                 "stage": Stage.ZERO,
@@ -362,7 +362,7 @@ class Server():
             response = self.swap_hands(swap, to_whom=next_player)
             hand = response["hand"]
             i = (i + 1) % self.num_players
-            next_player = utils.get_next_player(next_player, self.peeps, "zero")
+            next_player = utils.get_next_player(next_player, self.peeps)
 
     def relay_and_change_turns(self, card: str, message: dict[str, Any]):
         # If the last played card is stop
@@ -370,9 +370,7 @@ class Server():
             # todo this could probably be combined
             next_player = utils.get_next_player(self.current_player, self.peeps, card)
             for player in self.peeps:
-                message["player"] = player == next_player
-                if not message["player"]:
-                    message["curr"] = next_player
+                message["player"] = next_player
                 message["num_left"] = self.previous_message["num_left"]
                 self.send_message(message, player)
                 log.info(f"Message about a stop card forwarded to player {player}")
@@ -380,12 +378,10 @@ class Server():
         # Not stop, so just relay info
         else:
             # The next player is +1. Either on a refular turn, or on a stop + taken combination
-            next_player = utils.get_next_player(self.current_player, self.peeps, "")
+            next_player = utils.get_next_player(self.current_player, self.peeps, card)
             for player in self.peeps:
                 if player != self.current_player:
-                    message["player"] = player == next_player
-                    if not message["player"]:
-                        message["curr"] = next_player
+                    message["player"] = next_player
                     self.send_message(message, player)
                     log.info(f"Regular message forwarded to player {player}")
                 else:
@@ -408,7 +404,6 @@ class Server():
             "played": message["played"],
             "other_left": self.left_cards,
             "stage": Stage.GO,
-            "player": True,
         }
         if card.type_is(CardType.PLUSFOUR) and "taken" not in message:
             data["wild"] = message["wild"]
@@ -455,7 +450,7 @@ class Server():
 
         self.relay_and_change_turns(str_card, data)
 
-        if "stop" not in message["played"]:
+        if not Card(message["played"]).type_is(CardType.STOP):
             self.previous_message = message
 
     def process_messages_forever(self):

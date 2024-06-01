@@ -48,7 +48,7 @@ class TurnState():
     # Go through the hand and see if there are cards that could be played
     def possible_move(self) -> bool:
         for hand_card in self.hand_cards.values():
-            is_black = "bla" in hand_card.name
+            is_black = hand_card.type_is(CardType.BLACK)
             same_color = self.last_played[0:3] in hand_card.name
             same_symbol = self.last_played[3:] in hand_card.name
             if is_black or same_color or same_symbol:
@@ -66,7 +66,7 @@ class TurnState():
     @property
     def can_stack(self) -> bool:
         for hand_card in self.hand_cards.values():
-            if "two" in hand_card.name:
+            if hand_card.type_is(CardType.PLUSTWO):
                 return True
         return False
 
@@ -102,20 +102,23 @@ class TurnState():
                 result += point
             else:
                 # non-numbers
-                if ("two" in c or "reverse" in c or "stop" in c):
+                if (card.type_is(CardType.PLUSTWO) or
+                    card.type_is(CardType.STOP) or
+                        card.type_is(CardType.REVERSE)):
                     result += 20
                 else:
                     result += 50
         return result
 
     def configure_counters_uno_on_start(self, last_played_card: str, player: str):
-        if not player:
+        last_played_plus = Card(last_played_card).is_plus()
+        if not player == self.game_state.identity:
             self.uno = False
-        elif "plus" in last_played_card and \
+        elif last_played_plus and \
                 (not self.can_stack or not self.game_state.modes.stack):
             self.card_counter = 2
             self.uno = False
-        elif "plus" in last_played_card and \
+        elif last_played_plus and \
                 self.game_state.modes.stack and self.can_stack:
             self.stack_counter = 2
             self.card_counter = 2
@@ -162,6 +165,6 @@ class TurnState():
 
     def can_send_card_taken_update(self) -> bool:
         empty_counters = self.card_counter <= 0 and self.stack_counter == 0
-        new_plus = not self.cards_taken_previously and "plus" in self.last_played
+        new_plus = not self.cards_taken_previously and Card(self.last_played).is_plus()
         return empty_counters and \
             (not self.possible_move or new_plus or self.stage == Stage.CHALLENGE)

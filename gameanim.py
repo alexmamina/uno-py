@@ -64,7 +64,7 @@ class Game(Frame):
         self.log.info(f"I am {self.game_state.identity}, playing against {other_players}")
 
         self.turn_state = TurnState(
-            stack_counter=0 if "two" not in msg["played"] else 2,
+            stack_counter=0 if not Card(msg["played"]).type_is(CardType.PLUSTWO) else 2,
             all_nums_of_cards=msg["other_left"],
             card_counter=1 if not self.game_state.modes.mult else 500,
             is_reversed=msg["dir"],
@@ -196,7 +196,7 @@ class Game(Frame):
         self.debug.place(x=self.screen_width - 120, y=self.screen_height - 55)
         self.hand_btns: dict[int, Button] = {}
         self.setup_hand()
-        if msg["player"]:
+        if msg["player"] == self.game_state.identity:
             if Card(msg["played"]).type_is(CardType.PLUSTWO) and \
                     (not self.turn_state.can_stack or not self.game_state.modes.stack):
                 self.turn_need_taking = Label(
@@ -214,7 +214,7 @@ class Game(Frame):
         self.turn_need_taking.place(x=0.18 * self.screen_width, y=0.6 * self.screen_height + 1)
 
         self.setup_other_players(opponents, frames)
-        if msg["player"]:
+        if msg["player"] == self.game_state.identity:
             self.name_lbl.config(bg="green", fg="white")
             self.childframes[self.game_state.identity].config(bg=TURN_COLOR)
         else:
@@ -407,7 +407,7 @@ class Game(Frame):
         if same_color or same_symbol or is_black:
             # You can't have the "Illegal +4" when placing a card, as you never place it, so don't
             # handle it
-            self.handle_challenge_button(player=None, destroy=True)
+            self.handle_challenge_button(destroy=True)
             # If animation is turned on, move, else place on pile straight away
             if self.animated:
                 dest_x = self.last.winfo_x()
@@ -511,7 +511,7 @@ class Game(Frame):
         # Take new card
         new = Card(self.turn_state.pile.pop(0))
         # Remove the "uno not placed" button as was ignored
-        self.handle_challenge_button(player=None, destroy=True)
+        self.handle_challenge_button(destroy=True)
         self.handle_wild_button(destroy=True)
         # Decrease number of cards that need to be taken
         self.turn_state.card_counter -= 1
@@ -764,7 +764,7 @@ class Game(Frame):
         self.turn_state.all_nums_of_cards = msg["other_left"]
 
         # Enable buttons for cards if your turn; make UNO show if necessary
-        if msg["player"]:
+        if msg["player"] == self.game_state.identity:
             self.log.info("Your turn, enabling buttons")
             self.enable_buttons_regular_turn(newly_played, msg)
 
@@ -1011,7 +1011,7 @@ class Game(Frame):
     def disable_buttons(self, sent_message: dict[str, Any]):
         self.new_card.config(state="disabled")
         self.uno_but["bg"] = "light sky blue"
-        self.handle_challenge_button(player=None, destroy=True)
+        self.handle_challenge_button(destroy=True)
         self.handle_wild_button(destroy=True)
         go_or_debug = sent_message["stage"] == Stage.GO or sent_message["stage"] == Stage.DEBUG
         if go_or_debug:
@@ -1034,10 +1034,10 @@ class Game(Frame):
         if self.game_state.modes.stack and self.turn_state.stack_counter > 0:
             data["counter"] = self.turn_state.stack_counter
         self.send_info(data)
-        self.handle_challenge_button(player=None, destroy=True)
+        self.handle_challenge_button(destroy=True)
 
     # UI settings
-    def handle_challenge_button(self, player: Optional[bool], destroy: bool = False):
+    def handle_challenge_button(self, player: Optional[bool] = None, destroy: bool = False):
         if destroy:
             if self.challenge:
                 self.challenge.destroy()
@@ -1046,7 +1046,7 @@ class Game(Frame):
                 text="UNO not said!", bg="red", fg="white",
                 width=150, height=30, command=self.challenge_uno,
                 border=0)
-            if player:
+            if player and player == self.game_state.identity:
                 self.challenge.place(
                     x=0.24 * self.screen_width,
                     y=0.49 * self.screen_height)
@@ -1125,7 +1125,7 @@ class Game(Frame):
 
     # UI settings
     def set_label_next(self, msg: dict[str, Any]):
-        current_player = self.game_state.identity if msg["player"] else msg["curr"]
+        current_player = msg["player"]
 
         for player, label in self.other_names_lbls.items():
             label.config(
@@ -1180,11 +1180,11 @@ class Game(Frame):
 
     # UI settings
     def config_start_buttons(self, message: dict[str, Any]):
-        not_current = not message["player"]
+        current = message["player"] == self.game_state.identity
         played_plus = Card(message["played"]).is_plus()
         stack_possible = self.game_state.modes.stack and self.turn_state.can_stack
         no_stack = not stack_possible
-        if not_current:
+        if not current:
             self.new_card.config(state="disabled")
             for i in self.hand_btns:
                 self.hand_btns[i].config(state="disabled")
@@ -1193,7 +1193,7 @@ class Game(Frame):
                 self.hand_btns[i].config(state="disabled")
         elif played_plus and stack_possible:
             for i in self.hand_btns:
-                if "two" not in self.hand_btns[i]["text"]:
+                if not Card(self.hand_btns[i]["text"]).type_is(CardType.PLUSTWO):
                     self.hand_btns[i].config(state="disabled")
         elif self.turn_state.possible_move:
             self.new_card.config(state="disabled")
@@ -1216,6 +1216,10 @@ class Game(Frame):
 
     def send_message(self, message: dict[str, Any]):
         message["padding"] = "a" * (685 - len(json.dumps(message)))
+        # todo remove for message class
+        # with open("gamemsgs.txt", "a") as f:
+        #     f.write(f"{list(message.keys())}stage: {message['stage']}")
+        #     f.write("\n")
         self.sock.send(json.dumps(message).encode("utf-8"))
 
     # UI settings

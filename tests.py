@@ -75,7 +75,7 @@ class Tests(unittest.TestCase):
             ],
             "num_left": 7,
             "other_left": {x: 7 for x in ["default-925", "one"]},
-            "player": True,
+            "player": "default-925",
             "peeps": ["default-925", "one"],
             "dir": False,
             "whoami": "one",
@@ -214,7 +214,7 @@ class Tests(unittest.TestCase):
         new_card_2 = True
         hand_btns_2 = {i: (True, "a") for i in range(7)}
         hand_btns_2[3] = (True, "two")
-        if not Tests.m["player"]:
+        if Tests.m["player"] != self.game.game_state.identity:
             new_card_1 = False
             for i in hand_btns_1:
                 hand_btns_1[i] = (False, "b")
@@ -229,11 +229,11 @@ class Tests(unittest.TestCase):
             self.game.turn_state.can_stack
         ):
             for i in hand_btns_1:
-                if "two" not in hand_btns_1[i][1]:
+                if not Card(hand_btns_1[i][1]).type_is(CardType.PLUSTWO):
                     hand_btns_1[i] = (False, "two")
         elif self.game.turn_state.possible_move:
             new_card_1 = False
-        not_current = not Tests.m["player"]
+        not_current = Tests.m["player"] != self.game.game_state.identity
         played_plus = Card(self.game.turn_state.last_played).is_plus()
         no_stack = not self.game.turn_state.can_stack or not self.game.game_state.modes.stack
         stack_possible = self.game.game_state.modes.stack and self.game.turn_state.can_stack
@@ -244,7 +244,7 @@ class Tests(unittest.TestCase):
                 hand_btns_2[i] = (False, "b")
         if stack_possible and played_plus:
             for i in hand_btns_2:
-                if "two" not in hand_btns_2[i][1]:
+                if not Card(hand_btns_2[i][1]).type_is(CardType.PLUSTWO):
                     hand_btns_2[i] = (False, "two")
         self.assertEqual(new_card_1, new_card_2)
         self.assertEqual(hand_btns_1, hand_btns_2)
@@ -270,8 +270,7 @@ class Tests(unittest.TestCase):
             data_to_send_1["pile"] = self.pile[0:7] + \
                 self.pile[7 * (self.num_players - i):7 * (self.num_players - i) + 20]
             data_to_send_1["whoami"] = i
-            data_to_send_1["player"] = i == self.current_player
-            data_to_send_1["curr"] = self.current_player
+            data_to_send_1["player"] = self.current_player
             self.pile = self.pile[7:]
 
         self.pile = ["blu5"] * 50
@@ -281,21 +280,21 @@ class Tests(unittest.TestCase):
             data_to_send_2["pile"] = self.pile[0:7] + \
                 self.pile[7 * (self.num_players - i):7 * (self.num_players - i) + 20]
             data_to_send_2["whoami"] = i
-            if (i == self.list_of_players[0] and "stop" not in self.first_card) or \
+            if (i == self.list_of_players[0] and
+                not Card(self.first_card).type_is(CardType.STOP)) or \
                     (i == 1 and Card(self.first_card).type_is(CardType.STOP)):
-                data_to_send_2["player"] = True
+                data_to_send_2["player"] = i
                 self.current_player = i
                 self.curr_list_index = \
                     1 if (i == 1 and Card(self.first_card).type_is(CardType.STOP)) else 0
                 self.prev_player = self.list_of_players[self.num_players - 1]
             else:
-                data_to_send_2["player"] = False
                 # Only on the first game start from player 0 and consider stop
                 if i == self.list_of_players[0] and \
                         Card(self.first_card).type_is(CardType.STOP) and first_game:
-                    data_to_send_2["curr"] = (self.current_player + 1) % self.num_players
+                    data_to_send_2["player"] = (self.current_player + 1) % self.num_players
                 else:
-                    data_to_send_2["curr"] = self.current_player
+                    data_to_send_2["player"] = self.current_player
 
             self.pile = self.pile[7:]
         self.assertEqual(data_to_send_1, data_to_send_2)
