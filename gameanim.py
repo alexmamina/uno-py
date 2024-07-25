@@ -1,4 +1,4 @@
-from tkinter import Frame, Label, Menu, Button, messagebox, Tk, TclError
+from tkinter import Frame, Label, Menu, messagebox, Tk, TclError
 from tkinter import simpledialog
 import math
 from PIL import ImageTk, Image
@@ -20,6 +20,7 @@ import json
 from json import JSONDecodeError
 from message_utils import recover
 import utils
+from ui_elements import HandCardButton, PileButton, TakeCardButton
 
 direction_for_img_location = "Images/directionfor.jpg.png"
 direction_rev_img_location = "Images/directionrev.jpg.png"
@@ -81,7 +82,7 @@ class Game(Frame):
     def init_ui_elements(self, msg: dict[str, Any], opponents: list[str]):
         icon = ImageTk.PhotoImage(Image.open(icon_img_location))
         self.master.tk.call('wm', 'iconphoto', self.master, icon)
-        self.last: Button
+        self.last: PileButton
         self.challenge = ColorfulButton()
         self.valid_wild = ColorfulButton()
         self.screen_width = self.master.winfo_screenwidth()
@@ -184,7 +185,6 @@ class Game(Frame):
             borderwidth=0,
             command=self.toggle_uno)
         self.uno_but.place(x=0.26 * self.screen_width, y=0.35 * self.screen_height)
-        # self.new_card = None
         self.setup_menu()
         self.setup_pile(msg["played"])
         # Button for debugging
@@ -194,7 +194,7 @@ class Game(Frame):
             height=30, border=0,
             command=self.send_debug)
         self.debug.place(x=self.screen_width - 120, y=self.screen_height - 55)
-        self.hand_btns: dict[int, Button] = {}
+        self.hand_btns: dict[int, HandCardButton] = {}
         self.setup_hand()
         if msg["player"] == self.game_state.identity:
             if Card(msg["played"]).type_is(CardType.PLUSTWO) and \
@@ -259,19 +259,11 @@ class Game(Frame):
     # Add the pile and last played buttons
     # UI settings
     def setup_pile(self, last_played_card: str):
-        photo = ImageTk.PhotoImage(self.game_state.deck.backofcard)
         # Button to take a card (so a pile)
-        self.new_card = Button(image=photo, width=117, height=183, border=0, command=self.take_card)
-        # self.new_card.image = photo
-        self.new_card.__setattr__("image", photo)
+        self.new_card = TakeCardButton(image=self.game_state.deck.backofcard, method=self.take_card)
         self.new_card.place(x=0.44 * self.screen_width, y=0.32 * self.screen_height)
-        # Last played card from the message
-        photo2 = ImageTk.PhotoImage(Card(last_played_card).card_pic)
-        # Last is a disabled button with the last played card shown
-        self.last = Button(
-            text=last_played_card, image=photo2, width=117, height=183, border=0, state="disabled")
-        # self.last.image = photo2
-        self.last.__setattr__("image", photo2)
+        # Last is a disabled button with the last played card (from the message) shown
+        self.last = PileButton(Card(last_played_card))
         self.last.place(x=0.56 * self.screen_width, y=0.32 * self.screen_height)
 
     # UI settings
@@ -281,21 +273,17 @@ class Game(Frame):
         if len(self.hand_btns) > 0:
             for i in self.hand_btns:
                 self.hand_btns[i].destroy()
-        self.hand_btns: dict[int, Button] = {}
+        self.hand_btns: dict[int, HandCardButton] = {}
         dealt_cards = self.turn_state.hand_cards
         n = len(dealt_cards)
         for i in range(n):
-            # Create a button for each card in dealt cards, add a command
-            photo = ImageTk.PhotoImage(dealt_cards[i].card_pic)
-            b = Button(
-                text=dealt_cards[i].name,
-                image=photo,
-                width=117,
-                height=183,
-                border=0,
-                bg=BACKGROUND_COLOR)
-            b["command"] = lambda ind=i, binst=b: self.place_card(ind, binst)
-            b.__setattr__("image", photo)
+            # Create a button for each card in dealt cards
+            b = HandCardButton(
+                index=i,
+                card=dealt_cards[i],
+                method=self.place_card,
+                backgound_color=BACKGROUND_COLOR,
+            )
             self.hand_btns[i] = b
             coords = self.get_card_placement(n, i)
             b.place(x=coords[1], y=coords[2])
@@ -397,7 +385,7 @@ class Game(Frame):
 
     # #################################### EVENTS ##################################
     # UI settings (if not UI, just call complete_placement)
-    def place_card(self, ind: int, binst):
+    def place_card(self, ind: int, binst: HandCardButton):
         card = self.turn_state.hand_cards[ind].name
         old_card = self.turn_state.last_played
         # Same color (0:3), same symbol (3:), black
@@ -410,13 +398,11 @@ class Game(Frame):
             self.handle_challenge_button(destroy=True)
             # If animation is turned on, move, else place on pile straight away
             if self.animated:
-                dest_x = self.last.winfo_x()
-                dest_y = self.last.winfo_y()
-                orig_x = binst.winfo_x()
-                orig_y = binst.winfo_y()
+                dest_x, dest_y = self.last.coords()
+                orig_x, orig_y = binst.coords()
                 dx = dest_x - orig_x
                 dy = dest_y - orig_y
-                self.move(orig_x, orig_y, dx, dy, 0, binst, self.last["image"], ind)
+                self.move(orig_x, orig_y, dx, dy, 0, binst, self.last.get_image(), ind)
             else:
                 binst.destroy()
                 self.complete_placement(card, ind)
@@ -572,25 +558,19 @@ class Game(Frame):
             self.configure_stack_label(self.turn_state.stack_counter)
         self.cards_left.config(text=self.turn_state.all_nums_of_cards[self.game_state.identity])
 
-        photo = ImageTk.PhotoImage(new_card.card_pic)
-        b = Button(
-            text=new_card.name,
-            image=photo,
-            width=117,
-            height=183,
-            border=0,
-            bg=BACKGROUND_COLOR,
-            state="disabled"
+        b = HandCardButton(
+            index=index,
+            card=new_card,
+            method=self.place_card,
+            backgound_color=BACKGROUND_COLOR,
         )
-        b["command"] = lambda ind=index, binst=b: self.place_card(ind, binst)
-        b.__setattr__("image", photo)
         self.hand_btns[index] = b
         if move_is_possible and \
             (self.turn_state.card_counter == 0 or
                 (self.game_state.modes.mult and self.turn_state.card_counter > 6)) and \
                 self.turn_state.stack_counter == 0:
-            self.new_card.config(state="disabled")
-            b.config(state="normal")
+            self.new_card.set_enabled(False)
+            b.set_enabled(True)
         self.move_buttons()
 
     def move_buttons(self):
@@ -796,7 +776,7 @@ class Game(Frame):
         if not self.turn_state.possible_move or \
             (self.turn_state.card_counter == 2 or
                 self.turn_state.card_counter == 4):
-            self.new_card.config(state="normal")
+            self.new_card.set_enabled(True)
         # Say your turn if either mode is normal, or take forever and not plus
         if (self.turn_state.card_counter < 2 and not self.game_state.modes.mult) or \
             (self.game_state.modes.mult and not self.turn_state.card_counter == 4 and not
@@ -805,14 +785,14 @@ class Game(Frame):
                     Card(card).type_is(CardType.PLUSTWO)):
             self.turn_need_taking.config(text="", bg=TURN_COLOR)
             for i in self.hand_btns:
-                self.hand_btns[i].config(state="normal")
+                self.hand_btns[i].set_enabled(True)
             if self.game_state.modes.stack and self.turn_state.can_stack and \
                     Card(card).type_is(CardType.PLUSTWO) and "taken" not in msg and \
                     self.turn_state.stack_counter > 0:
                 for i in self.hand_btns:
                     # Go through cards on buttons and enable only +2s
-                    if not Card(self.hand_btns[i]["text"]).type_is(CardType.PLUSTWO):
-                        self.hand_btns[i].config(state="disabled")
+                    if not self.hand_btns[i].card.type_is(CardType.PLUSTWO):
+                        self.hand_btns[i].set_enabled(False)
         else:
             self.turn_need_taking.config(text="Take cards!", bg="orange")
 
@@ -849,7 +829,7 @@ class Game(Frame):
 
     # UI settings
     def enable_taking_for_challenge(self, reason: str):
-        self.new_card.config(state="normal")
+        self.new_card.set_enabled(True)
         if reason == 1:
             self.turn_state.update_card_counter(2)
             self.show_information(
@@ -880,7 +860,7 @@ class Game(Frame):
         self.turn_need_taking.config(text="Take cards!", bg="orange")
         self.name_lbl.config(bg="green")
         self.childframes[self.game_state.identity].config(bg=TURN_COLOR)
-        self.new_card.config(state="normal")
+        self.new_card.set_enabled(True)
         if self.game_state.modes.stack and "counter" in message:
             self.configure_stack_label(self.turn_state.stack_counter)
 
@@ -934,10 +914,8 @@ class Game(Frame):
 
     # UI settings
     def update_last_played_img(self, card_name: str):
-        img = ImageTk.PhotoImage(Card(card_name).card_pic)
-        self.last.config(image=img, text=card_name)
-        self.last["image"] = img
-        self.last.__setattr__("image", img)
+        proper_card = Card(card_name)
+        self.last.update_card(proper_card)
 
     # Put received message in queue for async processing
     def receive(self):
@@ -1009,7 +987,7 @@ class Game(Frame):
 
     # UI settings
     def disable_buttons(self, sent_message: dict[str, Any]):
-        self.new_card.config(state="disabled")
+        self.new_card.set_enabled(False)
         self.uno_but["bg"] = "light sky blue"
         self.handle_challenge_button(destroy=True)
         self.handle_wild_button(destroy=True)
@@ -1023,7 +1001,7 @@ class Game(Frame):
             self.turn_need_taking.config(text="", bg=BACKGROUND_COLOR)
 
         for i in self.hand_btns:
-            self.hand_btns[i].config(state="disabled")
+            self.hand_btns[i].set_enabled(False)
         self.name_lbl.config(bg="red", fg="white")
         self.childframes[self.game_state.identity].config(bg=BACKGROUND_COLOR)
         self.taken_label.config(text="")
@@ -1117,7 +1095,7 @@ class Game(Frame):
     def sevenzero_update_buttons(self, player: str, old_hand_size: int, new_hand_size: int):
         self.setup_hand()
         for j in self.hand_btns:
-            self.hand_btns[j].config(state="disabled")
+            self.hand_btns[j].set_enabled(False)
 
         card_word = "card" if old_hand_size == 1 else "cards"
         self.other_cards_lbls[player].config(text=f"{old_hand_size} {card_word}")
@@ -1185,18 +1163,18 @@ class Game(Frame):
         stack_possible = self.game_state.modes.stack and self.turn_state.can_stack
         no_stack = not stack_possible
         if not current:
-            self.new_card.config(state="disabled")
+            self.new_card.set_enabled(False)
             for i in self.hand_btns:
-                self.hand_btns[i].config(state="disabled")
+                self.hand_btns[i].set_enabled(False)
         elif played_plus and no_stack:
             for i in self.hand_btns:
-                self.hand_btns[i].config(state="disabled")
+                self.hand_btns[i].set_enabled(False)
         elif played_plus and stack_possible:
             for i in self.hand_btns:
-                if not Card(self.hand_btns[i]["text"]).type_is(CardType.PLUSTWO):
-                    self.hand_btns[i].config(state="disabled")
+                if not self.hand_btns[i].card.type_is(CardType.PLUSTWO):
+                    self.hand_btns[i].set_enabled(False)
         elif self.turn_state.possible_move:
-            self.new_card.config(state="disabled")
+            self.new_card.set_enabled(False)
 
     # UI settings
     def set_anim(self):
