@@ -21,6 +21,8 @@ parser.add_argument("--sentient", action="store_true",
                     help="add this flag to start a robot's side client")
 parser.add_argument("--human", type=str,
                     help="use this flag followed by your name to start a game against a robot")
+parser.add_argument("--localhost", action="store_true",
+                    help="use this flag to skip some init-game pop ups for faster testing")
 
 log = logging.getLogger(__name__)
 
@@ -31,15 +33,18 @@ def get_player_info(conditions: argparse.Namespace) -> tuple[str, int, str]:
         small_window = Tk()
         small_window.withdraw()
         address = None
-        if not conditions.human:
-            address = askstring(
-                "Address",
-                "Paste the \"CONNECT TO\" information you see on the server: \n"
-                "(ipaddress, then space, then port number, without quotes - e.g. 'X.X.X.X 1234'):"
-            )
-            name = askstring("Name", "What's your name?")
+        if not conditions.localhost:
+            if not conditions.human:
+                address = askstring(
+                    "Address",
+                    "Paste the \"CONNECT TO\" information you see on the server: \n"
+                    "(ipaddress, then space, then port number, without quotes - e.g. 'X.X.X.X 1234'):"
+                )
+                name = askstring("Name", "What's your name?")
+            else:
+                name = conditions.human
         else:
-            name = conditions.human
+            name = f"default-{randint(0, 1000)}"
         small_window.destroy()
         if address:
             host, port = address.split()
@@ -91,7 +96,7 @@ def start_game(sock: socket, conditions: argparse.Namespace):
             # window = Player(root, q, message, sock, all_points)
             # root.withdraw()
         else:
-            window = gameanim.Game(root, q, message, sock, all_points, log)
+            window = gameanim.Game(root, q, message, sock, all_points, log, conditions.localhost)
             # window = Game(root, q, message, sock, all_points)
         window.start_config(message)
         thread = Thread(target=window.receive)

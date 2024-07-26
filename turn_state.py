@@ -91,6 +91,25 @@ class TurnState():
     def reset_card_counter(self):
         self.card_counter = 1 if not self.game_state.modes.mult else 500
 
+    def sort_cards(self) -> list[int]:
+        # Sort in place
+        cards = self.hand_cards
+        # Sort in this order of colors
+        area_colors = [CardType.RED, CardType.YELLOW, CardType.GREEN, CardType.BLUE, CardType.BLACK]
+        resulting_cards = {}
+        ctr = 0
+        sorted_indices = []
+        for area_color in area_colors:
+            only_cols = {index: card for (index, card) in cards.items() if area_color in card.name}
+            sorted_color_list = sorted(only_cols.items(), key=lambda card: card[1].name)
+            # Convert sorted_color_list to dict with new indices from a list of sorted colors
+            only_cols_final = {ctr + i: v for (i, (_, v)) in enumerate(sorted_color_list)}
+            sorted_indices += [k for (k, _) in sorted_color_list]
+            resulting_cards.update(only_cols_final)
+            ctr += len(sorted_color_list)
+        self.hand_cards = resulting_cards
+        return sorted_indices
+
     # Go through the hand and calculate points; regex is for finding numbers
     def calculate_points(self):
         result = 0

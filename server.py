@@ -375,10 +375,10 @@ class Server():
                 self.send_message(message, player)
                 log.info(f"Message about a stop card forwarded to player {player}")
 
-        # Not stop, so just relay info
+        # Not stop or a card was taken, so just relay info
         else:
             # The next player is +1. Either on a refular turn, or on a stop + taken combination
-            next_player = utils.get_next_player(self.current_player, self.peeps, card)
+            next_player = utils.get_next_player(self.current_player, self.peeps)
             for player in self.peeps:
                 if player != self.current_player:
                     message["player"] = next_player

@@ -42,7 +42,8 @@ class Game(Frame):
         msg: dict[str, Any],
         sock: socket,
         all_points,
-        logger: Logger
+        logger: Logger,
+        localhost: bool = False
     ):
         self.log = logger
         super().__init__(master)
@@ -76,10 +77,10 @@ class Game(Frame):
             stage=msg["stage"]
         )
 
-        self.init_ui_elements(msg, other_players)
+        self.init_ui_elements(msg, other_players, localhost)
 
     # UI settings
-    def init_ui_elements(self, msg: dict[str, Any], opponents: list[str]):
+    def init_ui_elements(self, msg: dict[str, Any], opponents: list[str], localhost: bool = False):
         icon = ImageTk.PhotoImage(Image.open(icon_img_location))
         self.master.tk.call('wm', 'iconphoto', self.master, icon)
         self.last: PileButton
@@ -194,6 +195,12 @@ class Game(Frame):
             height=30, border=0,
             command=self.send_debug)
         self.debug.place(x=self.screen_width - 120, y=self.screen_height - 55)
+        self.sort_btns = ColorfulButton(
+            text="Sort cards", fg="black", bg="white", borderless=1,
+            borderwidth=0, width=200,
+            height=40, border=0,
+            command=self.sort_hand_buttons)
+        self.sort_btns.place(x=int(self.screen_width / 2) - 100, y=self.screen_height - 75)
         self.hand_btns: dict[int, HandCardButton] = {}
         self.setup_hand()
         if msg["player"] == self.game_state.identity:
@@ -221,7 +228,8 @@ class Game(Frame):
             self.name_lbl.config(bg="red", fg="white")
             self.childframes[self.game_state.identity].config(bg=BACKGROUND_COLOR)
         self.set_label_next(msg)
-        self.show_enabled_modes()
+        if not localhost:
+            self.show_enabled_modes()
 
     # UI settings
     def show_enabled_modes(self):
@@ -282,7 +290,7 @@ class Game(Frame):
                 index=i,
                 card=dealt_cards[i],
                 method=self.place_card,
-                backgound_color=BACKGROUND_COLOR,
+                bg=BACKGROUND_COLOR,
             )
             self.hand_btns[i] = b
             coords = self.get_card_placement(n, i)
@@ -558,12 +566,7 @@ class Game(Frame):
             self.configure_stack_label(self.turn_state.stack_counter)
         self.cards_left.config(text=self.turn_state.all_nums_of_cards[self.game_state.identity])
 
-        b = HandCardButton(
-            index=index,
-            card=new_card,
-            method=self.place_card,
-            backgound_color=BACKGROUND_COLOR,
-        )
+        b = HandCardButton(index=index, card=new_card, method=self.place_card, bg=BACKGROUND_COLOR)
         self.hand_btns[index] = b
         if move_is_possible and \
             (self.turn_state.card_counter == 0 or
@@ -579,8 +582,26 @@ class Game(Frame):
             # Move all buttons
             b = self.hand_btns[i]
             coords = self.get_card_placement(len(self.hand_btns), ctr)
+            card = Card(b["text"])
+            b.destroy()
+            # Recreate the button for a new reference to the object
+            b = HandCardButton(index=i, card=card, method=self.place_card, bg=BACKGROUND_COLOR)
             b.place(x=coords[1], y=coords[2])
+            self.hand_btns[i] = b
             ctr += 1
+
+    def sort_hand_buttons(self) -> None:
+        # Sort hand cards and retrieve the sorted indices
+        self.log.debug(self.turn_state.hand_cards)
+
+        card_indices = self.turn_state.sort_cards()
+        self.log.debug(self.turn_state.hand_cards)
+        old_buttons = copy.copy(self.hand_btns)
+        # Get buttons from the sorted indices, but move indices to start from 0 again for an
+        # increasing list
+        self.hand_btns = {i: old_buttons[k] for (i, k) in enumerate(card_indices)}
+
+        self.move_buttons()
 
     # Change the button color and enable/disable the parameter
     def toggle_uno(self):
@@ -1137,7 +1158,7 @@ class Game(Frame):
     # UI settings
     def start_new(self, message: dict[str, Any]):
 
-        print("Destroying old game...")
+        self.log.info("Destroying old game...")
         self.master.destroy()
 
         root = Tk()

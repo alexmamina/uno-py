@@ -18,6 +18,12 @@ class CardType:
     SEVEN = "7"
     ZERO = "0"
 
+    # Not types
+    RED = "red"
+    YELLOW = "yel"
+    BLUE = "blu"
+    GREEN = "gre"
+
     ALL = [BLACK, PLUSTWO, PLUSFOUR, REVERSE, STOP, SEVEN, ZERO]
 
     @classmethod
@@ -57,6 +63,9 @@ class Card:
 
     def __repr__(self) -> str:
         return self.name
+
+    def __eq__(self, value: "Card") -> bool:
+        return self.name == value.name
 
     # We have a plustwo or a plusfour, both of which are also plus.
     # Black is assigned first as a type, so this is an additional check

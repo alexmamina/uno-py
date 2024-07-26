@@ -22,7 +22,7 @@ class HandCardButton(CardButton):
         card: Card,
         index: int,
         method: Callable,
-        backgound_color: str = "",
+        bg: str = "",
         enabled: bool = True
     ):
         image = ImageTk.PhotoImage(card.card_pic)
@@ -32,7 +32,7 @@ class HandCardButton(CardButton):
             width=DEFAULT_WIDTH,
             height=DEFAULT_HEIGHT,
             border=0,
-            bg=backgound_color,
+            bg=bg,
         )
         self.card = card
         self.set_command(method, index)

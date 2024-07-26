@@ -6,6 +6,7 @@ from socket import socket
 from gameanim import Game
 from logging import Logger
 from card import Card, CardType
+from utils import get_next_player, get_prev_player
 
 
 def get_modes(mode_string: str) -> Modes:
@@ -131,6 +132,21 @@ class Tests(unittest.TestCase):
                     self.assertEqual(
                         Card(card).type_is(type), type in card
                     )
+
+    def test_sort_cards(self):
+        cards = [
+            "red5", "red4", "blureverse", "greplustwo",
+            "yelstop", "black", "blackplusfour", "black",
+            "blustop", "gre0", "yel6", "yelreverse"]
+        self.game.turn_state.hand_cards = {i: Card(card) for i, card in enumerate(cards)}
+        indices = self.game.turn_state.sort_cards()
+        solution = {0: Card("red4"), 1: Card("red5"), 2: Card("yel6"), 3: Card("yelreverse"),
+                    4: Card("yelstop"), 5: Card("gre0"), 6: Card("greplustwo"),
+                    7: Card("blureverse"), 8: Card("blustop"), 9: Card("black"), 10: Card("black"),
+                    11: Card("blackplusfour")}
+        sol_indices = [1, 0, 10, 11, 4, 9, 3, 2, 8, 5, 7, 6]
+        self.assertEqual(self.game.turn_state.hand_cards, solution)
+        self.assertEqual(indices, sol_indices)
 
     @unittest.skip("too general test")
     def test_mode_class(self):
@@ -307,6 +323,69 @@ class Tests(unittest.TestCase):
         curr_list_index = list_of_players.index(current_player)
         prev_player = list_of_players[(curr_list_index - 1) % len(list_of_players)]
         return current_player, curr_list_index, prev_player
+
+    def test_next_player_forward_4(self):
+        played_cards = ["redstop", "bluplustwo", "blu5"]
+        solution = {
+            "0": ["2", "1", "1"],
+            "1": ["3", "2", "2"],
+            "2": ["0", "3", "3"],
+            "3": ["1", "0", "0"]
+        }
+        # for num_players in range(2, 5):
+        players = [str(x) for x in range(4)]
+        for current_player in players:
+            for card in played_cards:
+                with self.subTest(f"{current_player} played {card}"):
+                    next = get_next_player(current_player, players, card)
+                    proper_next = solution[current_player][played_cards.index(card)]
+                    self.assertEqual(next, proper_next)
+
+    def test_next_player_forward_2(self):
+        played_cards = ["redstop", "bluplustwo", "blu5"]
+        solution = {
+            "0": ["0", "1", "1"],
+            "1": ["1", "0", "0"],
+        }
+        # for num_players in range(2, 5):
+        players = [str(x) for x in range(2)]
+        for current_player in players:
+            for card in played_cards:
+                with self.subTest(f"{current_player} played {card}"):
+                    next = get_next_player(current_player, players, card)
+                    proper_next = solution[current_player][played_cards.index(card)]
+                    self.assertEqual(next, proper_next)
+
+    def test_prev_player_forward_2(self):
+        played_cards = ["redstop", "bluplustwo", "blu5"]
+        solution = {
+            "0": ["0", "1", "1"],
+            "1": ["1", "0", "0"],
+        }
+        players = [str(x) for x in range(2)]
+        for current_player in players:
+            for card in played_cards:
+                with self.subTest(f"{current_player} has to follow up {card}"):
+                    next = get_prev_player(current_player, players, card)
+                    proper_next = solution[current_player][played_cards.index(card)]
+                    self.assertEqual(next, proper_next)
+
+    def test_prev_player_forward_4(self):
+        played_cards = ["redstop", "bluplustwo", "blu5"]
+        solution = {
+            "0": ["2", "3", "3"],
+            "1": ["3", "0", "0"],
+            "2": ["0", "1", "1"],
+            "3": ["1", "2", "2"]
+        }
+        # for num_players in range(2, 5):
+        players = [str(x) for x in range(4)]
+        for current_player in players:
+            for card in played_cards:
+                with self.subTest(f"{current_player} has to follow up {card}"):
+                    next = get_prev_player(current_player, players, card)
+                    proper_next = solution[current_player][played_cards.index(card)]
+                    self.assertEqual(next, proper_next)
 
 
 if __name__ == "__main__":
