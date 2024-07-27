@@ -566,7 +566,13 @@ class Game(Frame):
             self.configure_stack_label(self.turn_state.stack_counter)
         self.cards_left.config(text=self.turn_state.all_nums_of_cards[self.game_state.identity])
 
-        b = HandCardButton(index=index, card=new_card, method=self.place_card, bg=BACKGROUND_COLOR)
+        b = HandCardButton(
+            index=index,
+            card=new_card,
+            method=self.place_card,
+            bg=BACKGROUND_COLOR,
+            enabled=False,
+        )
         self.hand_btns[index] = b
         if move_is_possible and \
             (self.turn_state.card_counter == 0 or
@@ -583,9 +589,16 @@ class Game(Frame):
             b = self.hand_btns[i]
             coords = self.get_card_placement(len(self.hand_btns), ctr)
             card = Card(b["text"])
+            enabled = b["state"] == "normal" or b["state"] == "active"
             b.destroy()
             # Recreate the button for a new reference to the object
-            b = HandCardButton(index=i, card=card, method=self.place_card, bg=BACKGROUND_COLOR)
+            b = HandCardButton(
+                index=i,
+                card=card,
+                method=self.place_card,
+                bg=BACKGROUND_COLOR,
+                enabled=enabled,
+            )
             b.place(x=coords[1], y=coords[2])
             self.hand_btns[i] = b
             ctr += 1
