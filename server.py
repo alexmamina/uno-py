@@ -153,7 +153,8 @@ class Server():
             self.current_player = (
                 self.peeps[0]
                 if not Card(self.first_card).type_is(CardType.STOP)
-                else self.peeps[1]
+                # 1 in every case except for testing 1 player
+                else self.peeps[1 % len(self.peeps)]
             )
         else:
             # On consequent games we start from the players after the winner, not player 0

@@ -149,8 +149,8 @@ class Game(Frame):
 
         self.direction_l = Label(
             image=self.revdir if self.turn_state.is_reversed else self.fordir,
-            width=95,
-            height=95,
+            width=93,
+            height=93,
             border=0
         )
         self.direction_l["image"] = self.revdir if self.turn_state.is_reversed else self.fordir
