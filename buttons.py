@@ -2,6 +2,7 @@ from tkinter import Button, Frame
 from PIL import ImageTk, Image
 from typing import Callable
 from card import Card
+from tkmacosx import Button as ColorButton
 
 DEFAULT_WIDTH = 117
 DEFAULT_HEIGHT = 183
@@ -24,7 +25,7 @@ class HandCardButton(CardButton):
         method: Callable,
         parent_frame: Frame,
         bg: str = "",
-        enabled: bool = True
+        enabled: bool = True,
     ):
         image = ImageTk.PhotoImage(card.card_pic)
         super().__init__(
@@ -58,7 +59,7 @@ class PileButton(CardButton):
             width=DEFAULT_WIDTH,
             height=DEFAULT_HEIGHT,
             border=0,
-            state="disabled"
+            state="disabled",
         )
         # Need an extra command as otherwise there's no image
         self.__setattr__("image", image)
@@ -89,3 +90,32 @@ class TakeCardButton(CardButton):
 
     def set_command(self, method: Callable):
         self["command"] = method
+
+
+class ColorfulButton(ColorButton):
+    def __init__(
+        self,
+        **kwargs
+        # parent_frame: Frame,
+        # text: str,
+        # fg: str,
+        # bg: str,
+        # width: int,
+        # height: int,
+        # command: Callable,
+    ):
+        if len(kwargs) == 0:
+            super().__init__()
+        else:
+            super().__init__(
+                master=kwargs["parent_frame"],
+                text=kwargs["text"],
+                fg=kwargs["fg"],
+                bg=kwargs["bg"],
+                width=kwargs["width"],
+                height=kwargs["height"],
+                borderless=1,
+                borderwidth=0,
+                border=0,
+                command=kwargs["command"],
+            )

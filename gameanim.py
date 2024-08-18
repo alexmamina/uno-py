@@ -15,12 +15,11 @@ from socket import socket
 import queue
 from deck import Deck
 import copy
-from tkmacosx import Button as ColorfulButton
 import json
 from json import JSONDecodeError
 from message_utils import recover
 import utils
-from ui_elements import HandCardButton, PileButton, TakeCardButton
+from buttons import HandCardButton, PileButton, TakeCardButton, ColorfulButton
 
 direction_for_img_location = "Images/directionfor.jpg.png"
 direction_rev_img_location = "Images/directionrev.jpg.png"
@@ -119,7 +118,6 @@ class Game(Frame):
             self.show_enabled_modes()
 
     def set_up_central_frame(self, msg: dict[str, Any]) -> Frame:
-        # self.last: PileButton
         self.challenge = ColorfulButton()
         self.valid_wild = ColorfulButton()
         frame_width = 0.6 * self.screen_width
@@ -168,14 +166,12 @@ class Game(Frame):
         self.taken_label.place(x=1, y=1)
 
         self.uno_but = ColorfulButton(
-            master=frame,
+            parent_frame=frame,
             text="UNO",
             fg="black",
             bg="light sky blue",
             width=100,
             height=80,
-            borderless=1,
-            borderwidth=0,
             command=self.toggle_uno)
         self.uno_but.place(x=0.1 * frame_width, y=0.16 * frame_height)
         self.setup_pile(msg["played"], frame)
@@ -213,17 +209,17 @@ class Game(Frame):
 
         # Button for debugging
         debug = ColorfulButton(
-            master=self.card_frame,
-            text="Skip turn", fg="red", bg="white", borderless=1,
-            borderwidth=0, width=100,
-            height=30, border=0,
+            parent_frame=self.card_frame,
+            text="Skip turn", fg="red", bg="white",
+            width=100,
+            height=30,
             command=self.send_debug)
         debug.place(x=frame_width - 120, y=frame_height - 55)
         self.sort_btns = ColorfulButton(
-            master=self.card_frame,
-            text="Sort cards", fg="black", bg="white", borderless=1,
-            borderwidth=0, width=200,
-            height=40, border=0,
+            parent_frame=self.card_frame,
+            text="Sort cards", fg="black", bg="white",
+            width=200,
+            height=40,
             command=self.sort_hand_buttons)
         self.sort_btns.place(x=int(frame_width / 2) - 100, y=frame_height - 75)
 
@@ -1097,10 +1093,9 @@ class Game(Frame):
                 self.challenge.destroy()
         else:
             self.challenge = ColorfulButton(
-                master=self.central_frame,
+                parent_frame=self.central_frame,
                 text="UNO not said!", bg="red", fg="white",
-                width=150, height=30, command=self.challenge_uno,
-                border=0, borderless=1)
+                width=150, height=30, command=self.challenge_uno)
             if player and player == self.game_state.identity:
                 frame_width = self.central_frame["width"]
                 frame_height = self.central_frame["height"]
@@ -1126,9 +1121,9 @@ class Game(Frame):
                 self.valid_wild.destroy()
         else:
             self.valid_wild = ColorfulButton(
-                master=self.central_frame,
+                parent_frame=self.central_frame,
                 text="Illegal +4?", bg="HotPink", fg="black",
-                width=150, height=30, borderless=1, border=0,
+                width=150, height=30,
                 command=lambda valid=validity: self.challenge_plus(valid))
             frame_width = self.central_frame["width"]
             frame_height = self.central_frame["height"]
