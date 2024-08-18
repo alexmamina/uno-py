@@ -1,10 +1,10 @@
-from tkinter import Toplevel, Frame, Label, Button
-from tkmacosx import Button as but
+from tkinter import Toplevel, Frame, Label, Button, Tk
+from tkmacosx import Button as ColorfulButton
 
 
 class Picker(Toplevel):
-    def __init__(self, parent, title: str, question: str, options: list[str]):
-        Toplevel.__init__(self, parent)
+    def __init__(self, parent: Tk, title: str, question: str, options: list[str]):
+        Toplevel.__init__(self, master=parent)
         self.title(title)
         x = parent.winfo_rootx()
         y = parent.winfo_rooty()
@@ -31,7 +31,7 @@ class Picker(Toplevel):
         column = 0
         for option in self.options:
             if "color" in title:
-                btn = but(
+                btn = ColorfulButton(
                     frm_buttons,
                     text=option,
                     command=lambda x=option: self.set_option(x),

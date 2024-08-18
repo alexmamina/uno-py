@@ -1,4 +1,4 @@
-from tkinter import Button
+from tkinter import Button, Frame
 from PIL import ImageTk, Image
 from typing import Callable
 from card import Card
@@ -22,16 +22,20 @@ class HandCardButton(CardButton):
         card: Card,
         index: int,
         method: Callable,
+        parent_frame: Frame,
         bg: str = "",
         enabled: bool = True
     ):
         image = ImageTk.PhotoImage(card.card_pic)
         super().__init__(
+            master=parent_frame,
             text=card.name,
             image=image,
             width=DEFAULT_WIDTH,
             height=DEFAULT_HEIGHT,
             border=0,
+            # pady=0,
+            # padx=0,
             bg=bg,
         )
         self.card = card
@@ -45,9 +49,10 @@ class HandCardButton(CardButton):
 
 
 class PileButton(CardButton):
-    def __init__(self, card: Card):
+    def __init__(self, card: Card, parent_frame: Frame):
         image = ImageTk.PhotoImage(card.card_pic)
         super().__init__(
+            master=parent_frame,
             text=card.name,
             image=image,
             width=DEFAULT_WIDTH,
@@ -69,9 +74,10 @@ class PileButton(CardButton):
 
 
 class TakeCardButton(CardButton):
-    def __init__(self, image: Image.Image, method: Callable):
+    def __init__(self, image: Image.Image, method: Callable, parent_frame: Frame):
         photo_image = ImageTk.PhotoImage(image)
         super().__init__(
+            parent_frame,
             image=photo_image,
             width=DEFAULT_WIDTH,
             height=DEFAULT_HEIGHT,

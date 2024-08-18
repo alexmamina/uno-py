@@ -111,7 +111,7 @@ class TurnState():
         return sorted_indices
 
     # Go through the hand and calculate points; regex is for finding numbers
-    def calculate_points(self):
+    def calculate_points(self) -> int:
         result = 0
         for card in self.hand_cards.values():
             c = card.name

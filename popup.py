@@ -1,5 +1,5 @@
 from tkinter import Toplevel, Label, TOP, BOTTOM
-from tkmacosx import Button as but
+from tkmacosx import Button as ColorfulButton
 
 
 class InfoPop(Toplevel):
@@ -23,7 +23,7 @@ class InfoPop(Toplevel):
 
     def create_widgets(self):
         Label(self, text=self.text, font=("TkDefaultFont", 20), bg="Ivory").pack(side=TOP)
-        btn = but(
+        btn = ColorfulButton(
             self,
             text="OK",
             width=180,

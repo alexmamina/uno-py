@@ -68,14 +68,14 @@ class Modes():
         }
 
     @classmethod
-    def from_json(cls, json_modes: dict[str, bool]):
+    def from_json(cls, json_modes: dict[str, bool]) -> "Modes":
         return Modes(
             sevenzero=json_modes[cls.SEVENZERO_STRING],
             stack=json_modes[cls.STACK_STRING],
             mult=json_modes[cls.MULT_STRING])
 
     @classmethod
-    def from_string(cls, mode_string: str):
+    def from_string(cls, mode_string: str) -> "Modes":
         modes = Modes()
         if "0" not in mode_string:
             modes = Modes(
@@ -97,3 +97,7 @@ class GameState():
     @property
     def index(self) -> int:
         return self.peeps.index(self.identity)
+
+    @property
+    def num_players(self) -> int:
+        return len(self.peeps)
