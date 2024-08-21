@@ -1,6 +1,6 @@
 from tkinter import Button, Frame
 from PIL import ImageTk, Image
-from typing import Callable
+from typing import Callable, Optional
 from card import Card
 from tkmacosx import Button as ColorButton
 
@@ -95,27 +95,26 @@ class TakeCardButton(CardButton):
 class ColorfulButton(ColorButton):
     def __init__(
         self,
-        **kwargs
-        # parent_frame: Frame,
-        # text: str,
-        # fg: str,
-        # bg: str,
-        # width: int,
-        # height: int,
-        # command: Callable,
+        parent_frame: Optional[Frame] = None,
+        text: str = "",
+        fg: str = "",
+        bg: str = "",
+        width: int = 0,
+        height: int = 0,
+        command: Callable = ...,
     ):
-        if len(kwargs) == 0:
+        if not text:
             super().__init__()
-        else:
-            super().__init__(
-                master=kwargs["parent_frame"],
-                text=kwargs["text"],
-                fg=kwargs["fg"],
-                bg=kwargs["bg"],
-                width=kwargs["width"],
-                height=kwargs["height"],
-                borderless=1,
-                borderwidth=0,
-                border=0,
-                command=kwargs["command"],
-            )
+            return
+        super().__init__(
+            master=parent_frame,
+            text=text,
+            fg=fg,
+            bg=bg,
+            width=width,
+            height=height,
+            borderless=1,
+            borderwidth=0,
+            border=0,
+            command=command,
+        )
