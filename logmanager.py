@@ -35,7 +35,7 @@ def setup_logger(logger: logging.Logger, user: str):
     logging_handler.setFormatter(ColorFormatter())
     logger.addHandler(logging_handler)
 
-    timestamp = datetime.now().strftime('%d-%m-%Y_%H-%M')
+    timestamp = datetime.now().strftime("%d-%m-%Y_%H-%M")
     file_handler = logging.FileHandler(f"{user}-logs-{timestamp}.log")
     # Set the format for the logs, but don't use the ColorFormatter as colors aren't saved to files
     file_handler.setFormatter(logging.Formatter(LOG_FORMAT))

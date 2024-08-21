@@ -7,7 +7,7 @@ def recover(msg: str) -> dict[str, Any]:
     # Assuming the padding takes up a lot of the message, try and recover if data corruption
     # happened in the padding
     if "padd" in msg:
-        if ", \"padd" in msg:
+        if ', "padd' in msg:
             padding_beginning = ', "padd'
         else:
             padding_beginning = ", 'padd'"

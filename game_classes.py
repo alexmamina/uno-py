@@ -37,7 +37,7 @@ class Stage(IntEnum):
 
 
 @dataclass
-class Modes():
+class Modes:
     sevenzero: bool = False
     stack: bool = False
     mult: bool = False
@@ -64,7 +64,7 @@ class Modes():
         return {
             self.SEVENZERO_STRING: self.sevenzero,
             self.STACK_STRING: self.stack,
-            self.MULT_STRING: self.mult
+            self.MULT_STRING: self.mult,
         }
 
     @classmethod
@@ -72,22 +72,21 @@ class Modes():
         return Modes(
             sevenzero=json_modes[cls.SEVENZERO_STRING],
             stack=json_modes[cls.STACK_STRING],
-            mult=json_modes[cls.MULT_STRING])
+            mult=json_modes[cls.MULT_STRING],
+        )
 
     @classmethod
     def from_string(cls, mode_string: str) -> "Modes":
         modes = Modes()
         if "0" not in mode_string:
             modes = Modes(
-                sevenzero="1" in mode_string,
-                stack="2" in mode_string,
-                mult="3" in mode_string
+                sevenzero="1" in mode_string, stack="2" in mode_string, mult="3" in mode_string
             )
         return modes
 
 
 @dataclass
-class GameState():
+class GameState:
     identity: str  # Current player's name
     peeps: list[str]  # Players' names
     deck: Deck  # The deck where cards are defined

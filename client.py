@@ -7,6 +7,7 @@ import queue
 import logging
 import sys
 from logmanager import setup_logger
+
 # from player import Player
 import gameanim
 from random import randint
@@ -17,12 +18,17 @@ import utils
 parser = argparse.ArgumentParser(
     usage="No flags - play multiplayer. Add flags to play alone (temporarily deprecated)"
 )
-parser.add_argument("--sentient", action="store_true",
-                    help="add this flag to start a robot's side client")
-parser.add_argument("--human", type=str,
-                    help="use this flag followed by your name to start a game against a robot")
-parser.add_argument("--localhost", action="store_true",
-                    help="use this flag to skip some init-game pop ups for faster testing")
+parser.add_argument(
+    "--sentient", action="store_true", help="add this flag to start a robot's side client"
+)
+parser.add_argument(
+    "--human", type=str, help="use this flag followed by your name to start a game against a robot"
+)
+parser.add_argument(
+    "--localhost",
+    action="store_true",
+    help="use this flag to skip some init-game pop ups for faster testing",
+)
 
 log = logging.getLogger(__name__)
 
@@ -37,9 +43,9 @@ def get_player_info(conditions: argparse.Namespace) -> tuple[str, int, str]:
             if not conditions.human:
                 address = askstring(
                     "Address",
-                    "Paste the \"CONNECT TO\" information you see on the server: \n"
+                    'Paste the "CONNECT TO" information you see on the server: \n'
                     "(ipaddress, then space, then port number, without quotes"
-                    " - e.g. 'X.X.X.X 1234'):"
+                    " - e.g. 'X.X.X.X 1234'):",
                 )
                 name = askstring("Name", "What's your name?")
             else:

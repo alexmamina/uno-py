@@ -30,7 +30,7 @@ class InfoPop(Toplevel):
             height=40,
             bg="light blue",
             command=self.cancel,
-            borderless=1
+            borderless=1,
         )
         btn.focus_set()
         self.bind("<Return>", self.cancel)

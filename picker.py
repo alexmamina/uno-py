@@ -36,7 +36,7 @@ class Picker(Toplevel):
                     text=option,
                     command=lambda x=option: self.set_option(x),
                     bg=option,
-                    borderless=1
+                    borderless=1,
                 )
 
             else:
