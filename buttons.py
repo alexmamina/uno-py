@@ -1,8 +1,9 @@
-from tkinter import Button, Frame
+from tkinter import Button
 from PIL import ImageTk, Image
 from typing import Callable, Optional
 from card import Card
 from tkmacosx import Button as ColorButton
+from frames_and_labels import Frame
 
 DEFAULT_WIDTH = 117
 DEFAULT_HEIGHT = 183
@@ -97,8 +98,8 @@ class ColorfulButton(ColorButton):
         self,
         parent_frame: Optional[Frame] = None,
         text: str = "",
-        fg: str = "",
-        bg: str = "",
+        fg: str = "black",
+        bg: str = "white",
         width: int = 0,
         height: int = 0,
         command: Callable = ...,

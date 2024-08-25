@@ -1,25 +1,30 @@
-from tkinter import Frame, Label, Menu, messagebox, Tk, TclError
-from tkinter import simpledialog
+import copy
+import json
 import math
+import utils
+import queue
+import webbrowser
+
+from buttons import HandCardButton, PileButton, TakeCardButton, ColorfulButton
+from tkinter import Menu, messagebox, Tk, TclError
+from frames_and_labels import Frame, Label
+from tkinter import simpledialog
 from PIL import ImageTk, Image
 from popup import InfoPop
-import webbrowser
+from picker import Picker
 from logging import Logger
 from typing import Optional
-from picker import Picker
+
 from game_classes import Stage, Modes, GameState
 from turn_state import TurnState
 from typing import Any
 from card import Card, CardType
 from socket import socket
-import queue
+
 from deck import Deck
-import copy
-import json
 from json import JSONDecodeError
 from message_utils import recover
-import utils
-from buttons import HandCardButton, PileButton, TakeCardButton, ColorfulButton
+
 
 direction_for_img_location = "Images/directionfor.jpg.png"
 direction_rev_img_location = "Images/directionrev.jpg.png"
@@ -76,10 +81,10 @@ class Game(Frame):
             stage=msg["stage"]
         )
 
-        self.init_ui_elements(msg, other_players, localhost)
+        self.init_ui_elements(msg, localhost)
 
     # UI settings
-    def init_ui_elements(self, msg: dict[str, Any], opponents: list[str], localhost: bool = False):
+    def init_ui_elements(self, msg: dict[str, Any], localhost: bool = False):
         icon = ImageTk.PhotoImage(Image.open(icon_img_location))
         self.revdir = ImageTk.PhotoImage(
             Image.open(direction_rev_img_location).resize((95, 95), Image.LANCZOS)
@@ -108,11 +113,11 @@ class Game(Frame):
         self.setup_menu()
 
         if msg["player"] == self.game_state.identity:
-            self.name_lbl.config(bg="green", fg="white")
-            self.childframes[self.game_state.identity].config(bg=TURN_COLOR)
+            self.name_lbl.config(bg="green")
+            self.childframes[self.game_state.identity].set_color(TURN_COLOR)
         else:
-            self.name_lbl.config(bg="red", fg="white")
-            self.childframes[self.game_state.identity].config(bg=BACKGROUND_COLOR)
+            self.name_lbl.config(bg="red")
+            self.childframes[self.game_state.identity].set_color(BACKGROUND_COLOR)
         self.set_label_next(msg)
         if not localhost:
             self.show_enabled_modes()
@@ -123,18 +128,16 @@ class Game(Frame):
         frame_width = 0.6 * self.screen_width
         frame_height = 0.3 * self.screen_height
         frame = Frame(
+            parent=self.master,
             width=frame_width,
             height=frame_height,
             bg=BACKGROUND_COLOR,
-            highlightthickness=1,
-            highlightbackground="black"
         )
         frame.place(x=0.2 * self.screen_width, y=0.3 * self.screen_height)
 
         self.stack_label = Label(
             frame,
             text=f"{STACK_LABEL_TEXT}{self.turn_state.stack_counter}",
-            fg="black",
             bg="PeachPuff",
             width=10,
             height=3
@@ -145,9 +148,7 @@ class Game(Frame):
             image=self.revdir if self.turn_state.is_reversed else self.fordir,
             width=93,
             height=93,
-            border=0
         )
-        self.direction_l["image"] = self.revdir if self.turn_state.is_reversed else self.fordir
 
         if self.game_state.modes.stack:
             self.stack_label.place(x=0.8 * frame_width, y=2)
@@ -157,7 +158,6 @@ class Game(Frame):
 
         self.taken_label = Label(
             frame,
-            text="",
             fg="blue",
             bg=BACKGROUND_COLOR,
             width=28,
@@ -168,7 +168,6 @@ class Game(Frame):
         self.uno_but = ColorfulButton(
             parent_frame=frame,
             text="UNO",
-            fg="black",
             bg="light sky blue",
             width=100,
             height=80,
@@ -182,29 +181,24 @@ class Game(Frame):
         frame_width = self.screen_width
         frame_height = 0.4 * self.screen_height
         self.card_frame = Frame(
+            parent=self.master,
             width=frame_width,
             height=frame_height,
             bg=BACKGROUND_COLOR,
-            highlightthickness=1,
-            highlightbackground="black"
         )
         self.card_frame.place(x=0, y=0.6 * self.screen_height)
         self.childframes[self.game_state.identity] = self.card_frame
 
         self.name_lbl = Label(
-            self.card_frame,
+            parent=self.card_frame,
             text="You",
-            fg="black",
+            fg="white",
             bg="pale green",
             width=18,
-            height=1,
-            font=("TkDefaultFont", 15),
-        )
+            height=1)
         self.name_lbl.place(x=1, y=1)
 
-        self.cards_left = Label(
-            self.card_frame, text="7", fg="black", bg="pale green",
-            width=2, height=1, font=("TkDefaultFont", 15))
+        self.cards_left = Label(self.card_frame, text="7", bg="pale green", width=2, height=1)
         self.cards_left.place(x=0.15 * frame_width + 1, y=1)
 
         # Button for debugging
@@ -217,7 +211,7 @@ class Game(Frame):
         debug.place(x=frame_width - 120, y=frame_height - 55)
         self.sort_btns = ColorfulButton(
             parent_frame=self.card_frame,
-            text="Sort cards", fg="black", bg="white",
+            text="Sort cards",
             width=200,
             height=40,
             command=self.sort_hand_buttons)
@@ -230,19 +224,23 @@ class Game(Frame):
             if Card(msg["played"]).type_is(CardType.PLUSTWO) and \
                     (not self.turn_state.can_stack or not self.game_state.modes.stack):
                 self.turn_need_taking = Label(
-                    master=self.card_frame,
+                    parent=self.card_frame,
                     text="Take cards",
-                    fg="black",
                     bg="orange",
-                    width=12, height=1)
+                    width=12,
+                    height=1
+                )
             else:
                 self.turn_need_taking = Label(
-                    master=self.card_frame, text="", fg="Black", bg=TURN_COLOR, width=12, height=1
+                    parent=self.card_frame, bg=TURN_COLOR, width=12, height=1
                 )
         else:
             self.turn_need_taking = Label(
-                master=self.card_frame, text="", fg="black",
-                bg=BACKGROUND_COLOR, width=12, height=1)
+                parent=self.card_frame,
+                bg=BACKGROUND_COLOR,
+                width=12,
+                height=1
+            )
         self.turn_need_taking.place(x=0.18 * frame_width, y=1)
 
     # UI settings
@@ -342,28 +340,26 @@ class Game(Frame):
 
     def create_opponent_frame(self, x_coord: float, width: float, height: float) -> Frame:
         frame = Frame(
+            parent=self.master,
             width=width * self.screen_width,
             height=height * self.screen_height,
             bg=BACKGROUND_COLOR,
-            highlightthickness=1,
-            highlightbackground="black")
+        )
         frame.place(x=x_coord * self.screen_width, y=0)
         return frame
 
     def set_up_opponent_info(self, person: str, frame: Frame):
         name_lbl = Label(
-            master=frame,
+            parent=frame,
             text=person,
-            fg="black",
+            fg="white",
             bg="pale green",
             width=18,
             height=1,
-            font=("TkDefaultFont", 15)
         )
         name_lbl.place(x=1, y=1)
         self.other_names_lbls[person] = name_lbl
-        other_card_lbl = Label(
-            master=frame, text="7 cards", fg="black", bg="pale green", width=8, height=1)
+        other_card_lbl = Label(parent=frame, text="7 cards", bg="pale green", width=8, height=1)
         self.other_cards_lbls[person] = other_card_lbl
         other_card_lbl.place(x=1, y=31)
         self.put_other_cards(person, self.turn_state.all_nums_of_cards[person])
@@ -378,9 +374,7 @@ class Game(Frame):
         # Cap the number of visible cards at 18
         size = num_cards if num_cards <= 18 else 18
         for step in range(size):
-            cardback = Label(master=frame, image=photo, width=80, height=125, border=0)
-            cardback["image"] = photo
-            cardback.__setattr__("image", photo)
+            cardback = Label(parent=frame, image=photo, width=80, height=125)
             self.other_cards_imgs[who].append(cardback)
 
             if frame_width > frame_height:
@@ -411,8 +405,8 @@ class Game(Frame):
     def get_card_placement(self, num_cards: int, i: int) -> list[float]:
         # Returns coordinates of a button  given specific parameters
         # Like the width and length of cards, as well as how apart they should be
-        frame_height = self.card_frame["height"]
-        frame_width = self.card_frame["width"]
+        frame_height = self.card_frame.height
+        frame_width = self.card_frame.width
         result = []
         if num_cards == 1:
             num_cards = 2
@@ -520,7 +514,7 @@ class Game(Frame):
     def update_labels_buttons_card_placed(self, placed_card: str, ind: int):
         card = Card(placed_card)
         if card.type_is(CardType.REVERSE):
-            self.direction_l["image"] = self.revdir if self.turn_state.is_reversed else self.fordir
+            self.direction_l.set_image(self.revdir if self.turn_state.is_reversed else self.fordir)
         self.hand_btns.pop(ind)
         self.cards_left.config(text=self.turn_state.all_nums_of_cards[self.game_state.identity])
         self.move_buttons()
@@ -823,8 +817,7 @@ class Game(Frame):
     def update_labels_new_turn(self, played_card: str, msg: dict[str, Any]):
         self.set_label_next(msg)
         self.turn_state.is_reversed = msg["dir"]
-        self.direction_l.config(image=self.revdir if self.turn_state.is_reversed else self.fordir)
-        self.direction_l["image"] = self.revdir if self.turn_state.is_reversed else self.fordir
+        self.direction_l.set_image(self.revdir if self.turn_state.is_reversed else self.fordir)
         if Card(played_card).type_is(CardType.PLUSTWO) and "taken" not in msg:
             if self.game_state.modes.stack:
                 self.configure_stack_label(self.turn_state.stack_counter)
@@ -838,7 +831,7 @@ class Game(Frame):
     # UI settings
     def enable_buttons_regular_turn(self, card: str, msg: dict[str, Any]):
         self.name_lbl.config(bg="green")
-        self.childframes[self.game_state.identity].config(bg=TURN_COLOR)
+        self.childframes[self.game_state.identity].set_color(TURN_COLOR)
         if Card(card).type_is(CardType.PLUSFOUR) and \
                 "taken" not in msg and "wild" in msg:
             # Show "challenge +4" button
@@ -930,14 +923,14 @@ class Game(Frame):
     def enable_taking_for_final_plus(self, message: dict[str, Any]):
         self.turn_need_taking.config(text="Take cards!", bg="orange")
         self.name_lbl.config(bg="green")
-        self.childframes[self.game_state.identity].config(bg=TURN_COLOR)
+        self.childframes[self.game_state.identity].set_color(TURN_COLOR)
         self.new_card.set_enabled(True)
         if self.game_state.modes.stack and "counter" in message:
             self.configure_stack_label(self.turn_state.stack_counter)
 
     # UI settings
     def show_temp_banner(self, text: str, ttl: int):
-        frame_width = self.card_frame["width"]
+        frame_width = self.card_frame.width
         temp_banner = Label(self.card_frame, text=text, bg="blue", fg="white", width=40, height=1)
         temp_banner.place(x=0.4 * frame_width, y=1)
         self.master.after(ttl, temp_banner.destroy)
@@ -1074,8 +1067,8 @@ class Game(Frame):
 
         for i in self.hand_btns:
             self.hand_btns[i].set_enabled(False)
-        self.name_lbl.config(bg="red", fg="white")
-        self.childframes[self.game_state.identity].config(bg=BACKGROUND_COLOR)
+        self.name_lbl.config(bg="red")
+        self.childframes[self.game_state.identity].set_color(BACKGROUND_COLOR)
         self.taken_label.config(text="")
 
     # Notify opponent that they forgot to say UNO; when clicking button
@@ -1122,7 +1115,7 @@ class Game(Frame):
         else:
             self.valid_wild = ColorfulButton(
                 parent_frame=self.central_frame,
-                text="Illegal +4?", bg="HotPink", fg="black",
+                text="Illegal +4?", bg="HotPink",
                 width=150, height=30,
                 command=lambda valid=validity: self.challenge_plus(valid))
             frame_width = self.central_frame["width"]
@@ -1179,10 +1172,7 @@ class Game(Frame):
         current_player = msg["player"]
 
         for player, label in self.other_names_lbls.items():
-            label.config(
-                bg="green" if player == current_player else "red",
-                fg="white"
-            )
+            label.config(bg="green" if player == current_player else "red")
             self.childframes[player].config(
                 bg=TURN_COLOR if player == current_player else BACKGROUND_COLOR)
 
@@ -1199,7 +1189,7 @@ class Game(Frame):
         next_player = self.game_state.peeps[next_index]
         if next_player in self.other_names_lbls.keys():
             self.other_names_lbls[next_player].config(bg="green")
-            self.childframes[next_player].config(bg=TURN_COLOR)
+            self.childframes[next_player].set_color(TURN_COLOR)
 
     # UI settings
     def check_periodically(self):

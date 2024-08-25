@@ -1,5 +1,6 @@
-from tkinter import Toplevel, Label, TOP, BOTTOM
+from tkinter import Toplevel, TOP, BOTTOM
 from tkmacosx import Button as ColorfulButton
+from frames_and_labels import Label
 
 
 class InfoPop(Toplevel):

@@ -1,5 +1,6 @@
-from tkinter import Toplevel, Frame, Label, Button, Tk
+from tkinter import Toplevel, Button, Tk
 from tkmacosx import Button as ColorfulButton
+from frames_and_labels import Frame, Label
 
 
 class Picker(Toplevel):
@@ -23,10 +24,10 @@ class Picker(Toplevel):
         self.wait_window()
 
     def create_widgets(self, title: str):
-        frm_question = Frame(self)
+        frm_question = Frame(self, border_width=0)
         Label(frm_question, text=self.question).grid()
         frm_question.grid(row=1)
-        frm_buttons = Frame(self)
+        frm_buttons = Frame(self, border_width=0)
         frm_buttons.grid(row=2)
         column = 0
         for option in self.options:
