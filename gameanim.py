@@ -215,7 +215,7 @@ class Game(Frame):
             width=200,
             height=40,
             command=self.sort_hand_buttons)
-        self.sort_btns.place(x=int(frame_width / 2) - 100, y=frame_height - 75)
+        self.sort_btns.place(x=int(frame_width / 2) - 100, y=0.8 * frame_height)
 
         self.hand_btns: dict[int, HandCardButton] = {}
         self.setup_hand()
