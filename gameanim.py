@@ -486,7 +486,7 @@ class Game(Frame):
             self.turn_state.update_stack_counter(0)
         if proper_card.type_is(CardType.SEVEN) and self.game_state.modes.sevenzero and \
                 self.turn_state.num_cards_left > 0:
-            self.send_design_update(0, self.turn_state.num_cards_left, card)
+            self.send_design_update(self.turn_state.num_cards_left, card)
             players = [x for x in self.game_state.peeps if not x == self.game_state.identity]
             swap_with = self.pick_option(
                 "Swap",
@@ -545,7 +545,7 @@ class Game(Frame):
             self.turn_state.stack_counter -= 1
 
         if not (self.turn_state.stage == Stage.ZEROCARDS):
-            self.send_design_update(1, self.turn_state.num_cards_left + 1)
+            self.send_design_update(self.turn_state.num_cards_left + 1)
         # Since hand is a dict, the keys aren't in order.
         # Get the largest and add 1 for the next
         ind = max(list(self.turn_state.hand_cards.keys())) + 1
@@ -969,7 +969,7 @@ class Game(Frame):
             car.destroy()
         self.put_other_cards(who_updated, message["num_cards"])
 
-        if message["type"] == 0:
+        if message.get("played"):
             self.log.info("A new card was placed, updating")
             self.set_last_played(message)
 
@@ -1026,17 +1026,15 @@ class Game(Frame):
             self.q.put(message)
         self.log.info("Stopping listening for messages")
 
-    def send_design_update(self, type: int, num: int, *args):
-        # todo args are the card name only needed when type==0. redo the dependency
+    def send_design_update(self, num: int, played_card: str = ""):
         # 1 = taken, 0 = placed
         data = {
             "stage": Stage.DESIGNUPD,
-            "type": type,
             "num_cards": num,
             "from": self.game_state.identity
         }
-        if type == 0:
-            data["played"] = args[0]
+        if played_card:
+            data["played"] = played_card
 
         self.send_message(data)
         self.log.info("Design update sent")
