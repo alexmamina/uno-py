@@ -267,7 +267,7 @@ class Server():
             "pile": self.pile[0:20],
             "played": message["played"],
             "stage": Stage.ZEROCARDS,
-            "to_take": taking_cards
+            "to_take": taking_cards,
         }
         # If stacking is enabled, someone may need to take many cards first
         if "counter" in message and self.modes.stack:

@@ -505,6 +505,7 @@ class Game(Frame):
         if self.turn_state.num_cards_left > 0:
             self.send_info(data_to_send)
         else:
+            self.send_design_update(0, data_to_send["played"])
             self.send_final(data_to_send)
         self.turn_state.last_played = special_card
 
@@ -866,7 +867,7 @@ class Game(Frame):
             f"You won {points} points!\n\n Total this session: \n" +
             table_of_points,
             default=True)
-        ans = self.ask_yes_no("New", "Would you like to continue with a new game?")
+        ans = self.ask_yes_no("New", "Would you like to continue\n with a new game?")
         if ans == 1:
             modes_response = self.pick_option(
                 "Modes",
@@ -898,7 +899,7 @@ class Game(Frame):
             self.turn_state.update_card_counter(2)
             self.show_information(
                 "UNO not said!",
-                "You forgot to click UNO, so take 2 cards!",
+                "You forgot to click UNO, \nso take 2 cards!",
                 default=True
             )
             self.turn_need_taking.config(text="Take 2 cards!", bg="orange")
@@ -906,7 +907,7 @@ class Game(Frame):
             self.turn_state.update_card_counter(4)
             self.show_information(
                 "Illegal +4!",
-                "You can't put +4 when you have other cards, so take 4!",
+                "You can't put +4 when you \nhave other cards, so take 4!",
                 default=True
             )
             self.turn_need_taking.config(text="Take 4 cards!", bg="orange")
@@ -1141,7 +1142,7 @@ class Game(Frame):
 
     # Send all the final information with 0 cards left to end/finalise the game
     def send_final(self, data_to_send: dict[str, Any]):
-        print("END")
+        self.log.info("END")
         data_to_send["stage"] = Stage.ZEROCARDS
         self.turn_state.set_uno(False)
         self.turn_state.reset_card_counter()
