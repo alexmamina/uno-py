@@ -1102,7 +1102,7 @@ class Game(Frame):
             self.turn_state.update_card_counter(6)
             data = {"stage": Stage.SHOWCHALLENGE, "from": self.game_state.identity}
             self.send_message(data)
-            messagebox.showinfo("Legal move", "The player was honest, so take 6 cards!")
+            self.show_information("Legal move", "The player was honest,\nso take 6 cards!", True)
         self.handle_wild_button(destroy=True)
 
     # UI settings
