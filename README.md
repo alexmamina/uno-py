@@ -1,5 +1,7 @@
 # uno-py
 Multiplayer Uno game in Python with sockets.
+Disclaimer: game created for training purposes to understand more deeply various programming
+concepts (i.e. Tkinter, sockets, abstract classes, multithreading, testing)
 
 Requirements: Python 3, tkmacosx, Tkinter, Pillow
 

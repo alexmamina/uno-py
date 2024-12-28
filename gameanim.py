@@ -13,11 +13,10 @@ from PIL import ImageTk, Image
 from popup import InfoPop
 from picker import Picker
 from logging import Logger
-from typing import Optional
+from typing import Optional, Any
 
 from game_classes import Stage, Modes, GameState
 from turn_state import TurnState
-from typing import Any
 from card import Card, CardType
 from socket import socket
 
