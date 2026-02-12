@@ -3,7 +3,7 @@ from tkinter import Tk
 from game_classes import Modes
 from deck import Deck
 from socket import socket
-from gameanim import Game
+from gameanim import GameLogic
 from logging import Logger
 from card import Card, CardType
 from utils import get_next_player, get_prev_player
@@ -84,7 +84,7 @@ class Tests(unittest.TestCase):
         }
         a: dict[str, int] = {p: 0 for p in m["peeps"]}
         cls.m = m
-        cls.game = Game(Tk(), None, m, socket(), a, Logger(__name__))
+        cls.game = GameLogic(Tk(), m, None, socket(), Logger(__name__), a)
 
     @unittest.skip("modes too old")
     def test_pretty_modes(self):

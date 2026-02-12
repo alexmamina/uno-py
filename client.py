@@ -9,7 +9,7 @@ import sys
 from logmanager import setup_logger
 
 # from player import Player
-import gameanim
+from game_ui import GameUI
 from random import randint
 from tkinter.simpledialog import askstring
 import argparse
@@ -103,10 +103,10 @@ def start_game(sock: socket, conditions: argparse.Namespace):
             # window = Player(root, q, message, sock, all_points)
             # root.withdraw()
         else:
-            window = gameanim.Game(root, q, message, sock, all_points, log, conditions.localhost)
+            window = GameUI(root, message, q, sock, all_points, log, conditions.localhost)
             # window = Game(root, q, message, sock, all_points)
         window.start_config(message)
-        thread = Thread(target=window.receive)
+        thread = Thread(target=window.game_logic.receive)
         thread.start()
         window.check_periodically()
         window.mainloop()
