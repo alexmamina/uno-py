@@ -30,6 +30,9 @@ class GameLogic():
         game_ui: "GameUI",
     ):
         self.log = logger
+        self.sock = sock
+        self.q = queue
+        self.game_ui = game_ui
 
         self.game_state = GameState(
             msg["whoami"],
@@ -38,9 +41,7 @@ class GameLogic():
             all_points,
             Modes.from_json(msg["modes"])
         )
-        self.sock = sock
-        self.q = queue
-        self.quit_game = False
+
         other_players: list[str] = copy.deepcopy(self.game_state.peeps)
         other_players.pop(self.game_state.index)
         self.log.info(f"I am {self.game_state.identity}, playing against {other_players}")
@@ -51,16 +52,14 @@ class GameLogic():
             card_counter=1 if not self.game_state.modes.mult else 500,
             is_reversed=msg["dir"],
             pile=msg["pile"],
-            uno=False,
             last_played=msg["played"],
             game_state=self.game_state,
             stage=msg["stage"]
         )
-        self.game_ui = game_ui
 
     # #################################### EVENTS ##################################
     # Set new card on pile, send information, update hand - after animation or straight away
-    def complete_placement(self, card: str, ind: int):
+    def complete_placement(self, card: str, card_index: int):
         proper_card = Card(card)
         if proper_card.type_is(CardType.REVERSE):
             self.turn_state.is_reversed = not self.turn_state.is_reversed
@@ -82,10 +81,10 @@ class GameLogic():
             special_card = card
 
         # Remove card from "hand", update label with number
-        self.turn_state.hand_cards.pop(ind)
+        self.turn_state.hand_cards.pop(card_index)
         self.turn_state.all_nums_of_cards[self.game_state.identity] -= 1
 
-        self.game_ui.update_labels_buttons_card_placed(special_card, ind)
+        self.game_ui.update_labels_buttons_card_placed(special_card, card_index)
 
         data_to_send = {
             "played": special_card,
@@ -261,12 +260,12 @@ class GameLogic():
                     self.game_ui.start_new(msg)
                 elif msg["stage"] == Stage.BYE:
                     self.log.info("Received a BYE message, closing (someone exited?)")
-                    self.quit_game = True
+                    self.turn_state.set_quit_game()
                     break
 
             except queue.Empty:
                 pass
-        if self.quit_game:
+        if self.turn_state.quit_game:
             self.log.info("Loop ended")
             self.send_bye_and_exit()
 
@@ -337,12 +336,12 @@ class GameLogic():
             self.send_message(bye)
             self.log.info("No new game, sending a BYE message")
             # self.send_bye_and_exit()
-            self.quit_game = True
+            self.turn_state.set_quit_game()
         return ans == 1
 
     # Put received message in queue for async processing
     def receive(self):
-        while not self.quit_game:
+        while not self.turn_state.quit_game:
             self.log.info("Waiting for a new message")
             try:
                 json_msg, _ = self.sock.recvfrom(700)
@@ -355,7 +354,7 @@ class GameLogic():
                 message.pop("padding")
             except JSONDecodeError as er:
                 if "Expecting value" in str(er):
-                    self.quit_game = True
+                    self.turn_state.set_quit_game()
                     self.log.info("Someone else's socket has been closed")
                     break
                 elif "Unterminated string" in str(er):
@@ -371,7 +370,7 @@ class GameLogic():
                     message = recover(data)
                 else:
                     self.log.error(er)
-                    self.quit_game = True
+                    self.turn_state.set_quit_game()
                     raise
                 # break
             except OSError as o:
@@ -380,7 +379,7 @@ class GameLogic():
                     break
                 else:
                     self.log.error(o)
-                    self.quit_game = True
+                    self.turn_state.set_quit_game()
             self.q.put(message)
         self.log.info("Stopping listening for messages")
 
@@ -459,7 +458,7 @@ class GameLogic():
             self.sock.close()
         except OSError:
             pass
-        self.quit_game = True
+        self.turn_state.set_quit_game()
 
         self.log.info("I am closing")
         self.game_ui.close_window()

@@ -19,6 +19,7 @@ class TurnState():
     stage: Stage
     why_challenge_in_progress: Optional[int]
     current_player: str
+    quit_game: bool
 
     def __init__(
         self,
@@ -27,10 +28,11 @@ class TurnState():
         card_counter: int,
         is_reversed: bool,
         pile: list[str],
-        uno: bool,
         last_played: str,
         game_state: GameState,
-        stage: Stage
+        stage: Stage,
+        uno: bool = False,
+        quit_game: bool = False,
     ):
         self.stack_counter = stack_counter
         self.all_nums_of_cards = all_nums_of_cards
@@ -43,6 +45,7 @@ class TurnState():
         self.last_played = last_played
         self.cards_taken_previously = False
         self.stage = stage
+        self.quit_game = quit_game
 
     @property
     # Go through the hand and see if there are cards that could be played
@@ -187,3 +190,6 @@ class TurnState():
         new_plus = not self.cards_taken_previously and Card(self.last_played).is_plus()
         return empty_counters and \
             (not self.possible_move or new_plus or self.stage == Stage.CHALLENGE)
+
+    def set_quit_game(self):
+        self.quit_game = True

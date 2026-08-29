@@ -565,7 +565,7 @@ class GameUI(Frame):
 
     def check_periodically(self):
         self.game_logic.incoming()
-        if not self.game_logic.quit_game:
+        if not self.game_logic.turn_state.quit_game:
             self.after(100, self.check_periodically)
 
     def start_new(self, message: dict[str, Any]):
