@@ -1,4 +1,3 @@
-import copy
 import json
 import queue
 
@@ -41,9 +40,7 @@ class GameLogic():
             all_points,
             Modes.from_json(msg["modes"])
         )
-
-        other_players: list[str] = copy.deepcopy(self.game_state.peeps)
-        other_players.pop(self.game_state.index)
+        other_players = self.game_state.other_players
         self.log.info(f"I am {self.game_state.identity}, playing against {other_players}")
 
         self.turn_state = TurnState(
@@ -62,7 +59,7 @@ class GameLogic():
     def complete_placement(self, card: str, card_index: int):
         proper_card = Card(card)
         if proper_card.type_is(CardType.REVERSE):
-            self.turn_state.is_reversed = not self.turn_state.is_reversed
+            self.turn_state.reverse_direction()
         # Changes the black card to black with a color to show which one to play next
         if proper_card.type_is(CardType.BLACK):
             new_color = self.game_ui.pick_option(
@@ -80,10 +77,8 @@ class GameLogic():
         else:  # Not a black card
             special_card = card
 
-        # Remove card from "hand", update label with number
-        self.turn_state.hand_cards.pop(card_index)
-        self.turn_state.all_nums_of_cards[self.game_state.identity] -= 1
-
+        # Remove card from hand, update labels and buttons
+        self.turn_state.remove_card(card_index)
         self.game_ui.update_labels_buttons_card_placed(special_card, card_index)
 
         data_to_send = {
@@ -121,29 +116,18 @@ class GameLogic():
         else:
             self.send_design_update(0, data_to_send["played"])
             self.send_final(data_to_send)
-        self.turn_state.last_played = special_card
 
+        self.turn_state.set_last_played(special_card)
         self.game_ui.update_last_played_img(special_card)
 
     def take_card(self):
-        # Take new card
         new = Card(self.turn_state.pile.pop(0))
         # Decrease number of cards that need to be taken
-        self.turn_state.card_counter -= 1
-
-        if self.turn_state.stack_counter > 0 and \
-                Card(self.turn_state.last_played).type_is(CardType.PLUSTWO):
-            # Card.card_is(self.turn_state.last_played, CardType.PLUSFOUR)
-            self.turn_state.stack_counter -= 1
+        self.turn_state.decrease_counters()
 
         if not (self.turn_state.stage == Stage.ZEROCARDS):
             self.send_design_update(self.turn_state.num_cards_left + 1)
-        # Since hand is a dict, the keys aren't in order.
-        # Get the largest and add 1 for the next
-        ind = max(list(self.turn_state.hand_cards.keys())) + 1
-        # Add new card to the "hand", create new button, update number
-        self.turn_state.hand_cards[ind] = new
-        self.turn_state.all_nums_of_cards[self.game_state.identity] += 1
+        new_index = self.turn_state.add_card(new)
         self.log.info(f"Card counter: {self.turn_state.card_counter}")
         self.log.info(f"Stack counter: {self.turn_state.stack_counter}")
         # Is it possible to place a card right now?
@@ -170,7 +154,7 @@ class GameLogic():
                 data_to_send["stage"] = Stage.CHALLENGE_TAKEN
                 data_to_send["why"] = self.turn_state.why_challenge_in_progress
             self.send_info(data_to_send)
-        return new, ind, possible_move
+        return new, new_index, possible_move
 
     # both settings
     def incoming(self):
@@ -181,24 +165,27 @@ class GameLogic():
                 self.log.info("Processing message:")
                 self.log.debug(msg)
                 # todo probably update all turnstate elements in one go
-                self.turn_state.stage = msg["stage"]
-                self.turn_state.cards_taken_previously = msg.get("taken", False)
-                self.turn_state.why_challenge_in_progress = msg.get("why", 0)
+                self.turn_state.update_new_turn(msg)
+
                 # Normal play stage
                 if msg["stage"] == Stage.GO:
                     self.process_regular_message(msg)
                 # Forgot to say UNO - enable taking new cards only
                 elif msg["stage"] == Stage.CHALLENGE:
+                    if msg["why"] == 1:
+                        self.turn_state.update_card_counter(2)
+                    else:
+                        self.turn_state.update_card_counter(4)
                     self.game_ui.enable_taking_for_challenge(msg["why"])
 
                 elif msg["stage"] == Stage.SHOWCHALLENGE:
                     self.log.info("Another player tried to check you for illegal +4")
-                    self.game_ui.show_temp_banner("Someone checked if +4 was illegal!", 5000)
+                    self.game_ui.show_temp_banner("Someone checked if +4 was illegal!")
 
                 # Another player has finished the game; you either take cards if last is a plus,
                 # or automatically send the remaining points for the other player
                 elif msg["stage"] == Stage.ZEROCARDS:
-                    self.game_ui.set_last_played(msg)
+                    self.game_ui.set_last_played(msg["played"])
                     if msg["to_take"]:
                         # Enable taking cards
                         self.game_ui.enable_taking_for_final_plus(msg)
@@ -217,11 +204,7 @@ class GameLogic():
 
                 # Get points from the opponent and show them
                 elif msg["stage"] == Stage.CALC:
-                    table_of_points = ""
-                    self.game_state.all_points = msg["total"]
-                    for player, pts in msg["total"].items():
-                        table_of_points += \
-                            f"\n{player}: {pts} points\n"
+                    table_of_points = self.generate_points_table(msg)
 
                     if msg["winner"] == self.game_state.identity:
                         start_new_game = self.process_winning(msg["points"], table_of_points)
@@ -246,8 +229,11 @@ class GameLogic():
 
                     if "end" not in msg:
                         self.send_message(hand)
-
-                    self.game_ui.inform_about_sevenzero(msg, what)
+                    old_size, new_size = self.turn_state.replace_cards_after_swap(
+                        msg["hand"],
+                        msg["from"]
+                    )
+                    self.game_ui.inform_about_sevenzero(msg["from"], what, old_size, new_size)
 
                 elif msg["stage"] == Stage.NUMUPDATE:
                     self.game_ui.update_other_nums_of_cards(msg)
@@ -269,18 +255,22 @@ class GameLogic():
             self.log.info("Loop ended")
             self.send_bye_and_exit()
 
+    def generate_points_table(self, msg: dict[str, Any]) -> str:
+        table_of_points = ""
+        self.game_state.all_points = msg["total"]
+        for player, pts in msg["total"].items():
+            table_of_points += \
+                f"\n{player}: {pts} points\n"
+        return table_of_points
+
     def process_regular_message(self, msg: dict[str, Any]):
         # todo some of this could be turn_state methods
         # Set the last played card and configure the pile + card counter
-        self.game_ui.set_last_played(msg)
+        proper_last_played = self.turn_state.update_last_played(msg)
+        self.game_ui.set_last_played(proper_last_played)
         newly_played = msg["played"]
         self.log.info(f"Played: {newly_played}")
-        if Card(newly_played).type_is(CardType.PLUSTWO) and "taken" not in msg:
-            self.turn_state.update_card_counter(2)
-            if self.game_state.modes.stack:
-                self.turn_state.update_stack_counter(msg["counter"])
-        elif "taken" in msg:
-            self.turn_state.update_stack_counter(0)
+        self.turn_state.is_reversed = msg["dir"]
         self.game_ui.update_labels_new_turn(newly_played, msg)
         self.game_ui.update_other_nums_of_cards(msg)
         # Check if other player said UNO; place the challenge button if not said
@@ -381,7 +371,7 @@ class GameLogic():
                     self.log.error(o)
                     self.turn_state.set_quit_game()
             self.q.put(message)
-        self.log.info("Stopping listening for messages")
+        self.log.info("Stopped listening for messages")
 
     def send_design_update(self, num: int, played_card: str = ""):
         # 1 = taken, 0 = placed

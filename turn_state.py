@@ -81,6 +81,37 @@ class TurnState():
     def is_current(self) -> bool:
         return self.current_player == self.game_state.identity
 
+    def reverse_direction(self) -> None:
+        self.is_reversed = not self.is_reversed
+
+    def remove_card(self, card_index: int) -> None:
+        self.hand_cards.pop(card_index)
+        self.all_nums_of_cards[self.game_state.identity] -= 1
+
+    def add_card(self, new_card: Card) -> int:
+        # Since hand is a dict, the keys aren't in order.
+        # Get the largest and add 1 for the next
+        ind = max(list(self.hand_cards.keys())) + 1
+        # Add new card to the "hand", create new button, update number
+        self.hand_cards[ind] = new_card
+        self.all_nums_of_cards[self.game_state.identity] += 1
+        return ind
+
+    def update_new_turn(self, message: dict[str, Any]) -> None:
+        self.stage = message["stage"]
+        self.cards_taken_previously = message.get("taken", False)
+        self.why_challenge_in_progress = message.get("why", 0)
+
+    def set_last_played(self, new_card: str) -> None:
+        self.last_played = new_card
+
+    def decrease_counters(self) -> None:
+        self.card_counter -= 1
+        if self.stack_counter > 0 and \
+                Card(self.last_played).type_is(CardType.PLUSTWO):
+            # Card.card_is(self.turn_state.last_played, CardType.PLUSFOUR)
+            self.stack_counter -= 1
+
     # Create a hand of 7 cards from pile from message. Return a dict as we want cards to have ids
     def deal_cards(self) -> dict[int, Card]:
         hand = {}
@@ -160,17 +191,23 @@ class TurnState():
 
     def update_last_played(self, message: dict[str, Any]) -> str:
         played_card = Card(message["played"])
-        # if plus take cards else send points
-        if played_card.type_is(CardType.PLUSFOUR):
-            if "taken" not in message:
-                self.card_counter = 4
-            else:
-                self.reset_card_counter()
+        last_turn_cards_taken = "taken" in message
+        # Set counters based on what the last played card was, or reset if nothing needs to be taken
+        if not last_turn_cards_taken:
+            if played_card.type_is(CardType.PLUSFOUR):
+                self.update_card_counter(4)
+            if played_card.type_is(CardType.PLUSTWO):
+                self.update_card_counter(2)
+                if self.game_state.modes.stack:
+                    self.update_stack_counter(message["counter"])
         else:
             self.reset_card_counter()
+            self.update_stack_counter(0)
+
         self.last_played = played_card.name
         if "pile" in message.keys():
             self.pile = message["pile"]
+
         return played_card.name
 
     def update_card_counter(self, num_to_take: int):

@@ -388,6 +388,7 @@ class GameUI(Frame):
     # Change the button color and enable/disable the parameter
     def toggle_uno(self):
         self.toggle_uno_button_color()
+        # todo can we avoid setting a turn state from the ui?
         self.game_logic.turn_state.set_uno(not self.game_logic.turn_state.uno)
 
     def toggle_uno_button_color(self):
@@ -474,18 +475,24 @@ class GameUI(Frame):
         if self.game_logic.game_state.modes.stack and "counter" in message:
             self.configure_stack_label(self.game_logic.turn_state.stack_counter)
 
-    def show_temp_banner(self, text: str, ttl: int):
+    def show_temp_banner(self, text: str, ttl: int = 5000):
         frame_width = self.card_frame.width
         temp_banner = Label(self.card_frame, text=text, bg="blue", fg="white", width=40, height=1)
         temp_banner.place(x=0.4 * frame_width, y=1)
         self.master.after(ttl, temp_banner.destroy)
 
-    def inform_about_sevenzero(self, message: dict[str, Any], number: str):
-        self.update_btns(message["hand"], message["from"])
-        self.show_temp_banner("You got cards from " + message["from"], 10000)
+    def inform_about_sevenzero(
+            self,
+            from_player: str,
+            number: str,
+            old_hand_size: int,
+            new_hand_size: int
+    ):
+        self.update_btns(from_player, old_hand_size, new_hand_size)
+        self.show_temp_banner("You got cards from " + from_player, 10000)
         self.show_information(
             f"A {number} was played",
-            f"{number} was played.\n You got cards from\n {message['from']}",
+            f"{number} was played.\n You got cards from\n {from_player}",
             default=False
         )
 
@@ -513,7 +520,7 @@ class GameUI(Frame):
 
         if message.get("played"):
             self.game_logic.log.info("A new card was placed, updating")
-            self.set_last_played(message)
+            self.set_last_played(str(message["played"]))
 
     # Show the points that you have with your cards right now (option in menu)
     def show_points(self):
@@ -525,9 +532,7 @@ class GameUI(Frame):
             text += f"{player}: {pts} points\n"
         self.show_information("Points", text, default=True)
 
-    def update_btns(self, new_hand: list[str], player: str):
-        old_hand_size, new_hand_size = self.game_logic.turn_state.replace_cards_after_swap(
-            new_hand, player)
+    def update_btns(self, player: str, old_hand_size: int, new_hand_size: int):
         self.sevenzero_update_buttons(player, old_hand_size, new_hand_size)
 
     def sevenzero_update_buttons(self, player: str, old_hand_size: int, new_hand_size: int):
@@ -555,9 +560,8 @@ class GameUI(Frame):
             self.other_names_lbls[next_player].config(bg="green")
             self.childframes[next_player].set_color(TURN_COLOR)
 
-    def set_last_played(self, msg: dict[str, Any]):
-        proper_last_played = self.game_logic.turn_state.update_last_played(msg)
-        self.update_last_played_img(proper_last_played)
+    def set_last_played(self, last_played: str):
+        self.update_last_played_img(last_played)
 
     def update_last_played_img(self, card_name: str):
         proper_card = Card(card_name)
@@ -681,7 +685,6 @@ class GameUI(Frame):
 
     def update_labels_new_turn(self, played_card: str, msg: dict[str, Any]):
         self.set_label_next(msg)
-        self.game_logic.turn_state.is_reversed = msg["dir"]
         self.direction_l.set_image(
             self.revdir if self.game_logic.turn_state.is_reversed else self.fordir)
         if Card(played_card).type_is(CardType.PLUSTWO) and "taken" not in msg:
@@ -733,7 +736,6 @@ class GameUI(Frame):
     def enable_taking_for_challenge(self, reason: str):
         self.new_card.set_enabled(True)
         if reason == 1:
-            self.game_logic.turn_state.update_card_counter(2)
             self.show_information(
                 "UNO not said!",
                 "You forgot to click UNO, \nso take 2 cards!",
@@ -741,7 +743,6 @@ class GameUI(Frame):
             )
             self.turn_need_taking.config(text="Take 2 cards!", bg="orange")
         else:
-            self.game_logic.turn_state.update_card_counter(4)
             self.show_information(
                 "Illegal +4!",
                 "You can't put +4 when you \nhave other cards, so take 4!",
@@ -830,7 +831,7 @@ class GameUI(Frame):
 
     def process_regular_update(self, msg: dict[str, Any]):
         # Set the last played card and configure the pile + card counter
-        self.set_last_played(msg)
+        self.set_last_played(msg["played"])
         self.game_logic.process_regular_message(msg)
         self.update_labels_new_turn(msg["played"], msg)
         self.update_other_nums_of_cards(msg)

@@ -100,3 +100,7 @@ class GameState:
     @property
     def num_players(self) -> int:
         return len(self.peeps)
+
+    @property
+    def other_players(self) -> list[str]:
+        return [player for player in self.peeps if player != self.identity]
