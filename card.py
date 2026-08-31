@@ -8,6 +8,8 @@ CARD_IMAGE_PATH = "Images/Cards/"
 SPECIAL_FOLDER = "Special"
 CARD_FOLDER = "UNO"
 
+BLACK_CARD_NAME = "black"
+BLACK_PLUSFOUR_CARD_NAME = "blackplusfour"
 
 @dataclass
 class CardType:

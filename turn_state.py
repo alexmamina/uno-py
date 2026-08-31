@@ -1,4 +1,4 @@
-from game_classes import GameState
+from game_classes import ChallengeReason, GameState
 import re
 from card import Card, CardType
 from typing import Any, Optional
@@ -17,7 +17,7 @@ class TurnState():
     game_state: GameState
     cards_taken_previously: bool
     stage: Stage
-    why_challenge_in_progress: Optional[int]
+    why_challenge_in_progress: Optional[ChallengeReason] = None
     current_player: str
     quit_game: bool
 
@@ -100,7 +100,7 @@ class TurnState():
     def update_new_turn(self, message: dict[str, Any]) -> None:
         self.stage = message["stage"]
         self.cards_taken_previously = message.get("taken", False)
-        self.why_challenge_in_progress = message.get("why", 0)
+        self.why_challenge_in_progress = message.get("why")
 
     def set_last_played(self, new_card: Card) -> None:
         self.last_played = new_card

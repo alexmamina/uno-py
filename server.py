@@ -6,9 +6,9 @@ from deck import Deck
 from typing import Any
 from random import shuffle
 from copy import deepcopy
-from card import Card, CardType
+from card import Card, CardType, BLACK_PLUSFOUR_CARD_NAME, BLACK_CARD_NAME
 from message_utils import recover
-from game_classes import Stage, Modes
+from game_classes import ChallengeReason, Stage, Modes
 import json
 from json import JSONDecodeError
 import utils
@@ -235,7 +235,7 @@ class Server():
         self.left_cards[self.prev_player] = message["num_left"]
         self.pile.pop(0)
         self.pile.pop(0)
-        if "why" in message and message["why"] == 4:
+        if "why" in message and message["why"] == ChallengeReason.ILLEGAL_PLUSFOUR:
             self.pile.pop(0)
             self.pile.pop(0)
 
@@ -249,7 +249,7 @@ class Server():
             "stage": Stage.GO,
         }
 
-        if "why" in message and message["why"] == 4:
+        if "why" in message and message["why"] == ChallengeReason.ILLEGAL_PLUSFOUR:
             data["taken"] = True
         data["dir"] = self.is_reversed
         data["counter"] = self.stack_counter
@@ -409,7 +409,16 @@ class Server():
         if card.type_is(CardType.PLUSFOUR) and "taken" not in message:
             data["wild"] = message["wild"]
         if "taken" not in message:
-            self.all_played.append(str_card)
+            # Played black cards are coloured; when adding them back to the pile, add their original
+            # versions
+            if card.type_is(CardType.PLUSFOUR):
+                self.all_played.append(BLACK_PLUSFOUR_CARD_NAME)
+                log.info(self.all_played)
+            elif card.type_is(CardType.BLACK):
+                self.all_played.append(BLACK_CARD_NAME)
+                log.info(self.all_played)
+            else:
+                self.all_played.append(str_card)
             # Compare the pile on the server with the client's one to see if the player took cards
             if not (self.pile[0:5] == message["pile"][0:5]):
                 self.pile.pop(0)

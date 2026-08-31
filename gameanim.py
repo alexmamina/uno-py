@@ -4,7 +4,7 @@ import queue
 from logging import Logger
 from typing import Any, TYPE_CHECKING, Optional
 
-from game_classes import Stage, Modes, GameState
+from game_classes import ChallengeReason, Stage, Modes, GameState
 from turn_state import TurnState
 from card import Card, CardType
 from socket import socket
@@ -171,7 +171,7 @@ class GameLogic():
                     self.process_regular_message(msg)
                 # Forgot to say UNO - enable taking new cards only
                 elif msg["stage"] == Stage.CHALLENGE:
-                    if msg["why"] == 1:
+                    if msg["why"] == ChallengeReason.MISSING_UNO:
                         self.turn_state.update_card_counter(2)
                     else:
                         self.turn_state.update_card_counter(4)
@@ -396,13 +396,13 @@ class GameLogic():
 
     # Notify opponent that they forgot to say UNO; when clicking button
     def challenge_uno(self):
-        data = {"stage": Stage.CHALLENGE, "why": 1}
+        data = {"stage": Stage.CHALLENGE, "why": ChallengeReason.MISSING_UNO}
         if self.game_state.modes.stack and self.turn_state.stack_counter > 0:
             data["counter"] = self.turn_state.stack_counter
         self.send_info(data)
 
     def challenge_plus(self, is_valid: bool):
-        data = {"stage": Stage.CHALLENGE, "why": 4}
+        data = {"stage": Stage.CHALLENGE, "why": ChallengeReason.ILLEGAL_PLUSFOUR}
         # If true that can't put +4, so it was illegal, send it
         if not is_valid:
             self.send_info(data)

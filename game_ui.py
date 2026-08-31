@@ -14,7 +14,7 @@ from picker import Picker
 from logging import Logger
 from typing import Optional, Any
 
-from game_classes import Stage, Modes
+from game_classes import ChallengeReason, Stage, Modes
 from card import Card, CardType
 from socket import socket
 
@@ -730,9 +730,9 @@ class GameUI(Frame):
     def ask_yes_no(self, title: str, question: str) -> int:
         return messagebox.askyesno(title, question)
 
-    def enable_taking_for_challenge(self, reason: str):
+    def enable_taking_for_challenge(self, reason: ChallengeReason):
         self.new_card.set_enabled(True)
-        if reason == 1:
+        if reason == ChallengeReason.MISSING_UNO:
             self.show_information(
                 "UNO not said!",
                 "You forgot to click UNO, \nso take 2 cards!",
@@ -814,7 +814,7 @@ class GameUI(Frame):
 
     def handle_plus_challenge(self, valid: bool):
         self.game_logic.challenge_plus(valid)
-        if not valid:
+        if valid:
             self.show_information("Legal move", "The player was honest,\nso take 6 cards!", True)
         self.handle_wild_button(destroy=True)
 
