@@ -36,9 +36,6 @@ class Stage(IntEnum):
     BYE = 10
     DESIGNUPD = 123
 
-    def to_json(self) -> str:
-        return json.dumps(self)
-
 class ChallengeReason(IntEnum):
     MISSING_UNO = 0
     ILLEGAL_PLUSFOUR = 1
