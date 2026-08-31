@@ -136,7 +136,7 @@ class Server():
         data_to_send = {
             "stage": Stage.INIT,
             "modes": self.modes.to_json(),
-            "played": self.first_card.toJSON(),
+            "played": self.first_card.to_json(),
             "pile": self.pile[0:7],
             "num_left": 7,
             "other_left": self.left_cards,

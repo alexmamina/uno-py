@@ -89,7 +89,7 @@ class Card:
             return black_plus or self.card_type == type
         return self.card_type == type
 
-    def toJSON(self) -> str:
+    def to_json(self) -> str:
         return json.dumps(self.name)
 
 def is_special_card(name: str) -> bool:

@@ -82,7 +82,7 @@ class GameLogic():
         self.game_ui.update_labels_buttons_card_placed(special_card, card_index)
 
         data_to_send = {
-            "played": special_card.toJSON(),
+            "played": special_card.to_json(),
             "pile": self.turn_state.pile,
             "stage": Stage.GO,
             "num_left": self.turn_state.num_cards_left
@@ -143,7 +143,7 @@ class GameLogic():
         # card
         if self.turn_state.can_send_card_taken_update():
             data_to_send = {
-                "played": self.turn_state.last_played.toJSON(),
+                "played": self.turn_state.last_played.to_json(),
                 "pile": self.turn_state.pile,
                 "stage": Stage.GO,
                 "num_left": self.turn_state.num_cards_left
@@ -380,7 +380,7 @@ class GameLogic():
             "from": self.game_state.identity
         }
         if played_card:
-            data["played"] = played_card.toJSON()
+            data["played"] = played_card.to_json()
 
         self.send_message(data)
         self.log.info("Design update sent")
@@ -418,7 +418,7 @@ class GameLogic():
         # todo get data information from the turn state as a method
         data = {
             "stage": Stage.DEBUG,
-            "played": self.turn_state.last_played.toJSON(),
+            "played": self.turn_state.last_played.to_json(),
             "pile": self.turn_state.pile,
             "hand": self.turn_state.get_hand_card_names(),
             "num_left": self.turn_state.num_cards_left,
