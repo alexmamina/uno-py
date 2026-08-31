@@ -115,7 +115,7 @@ class Server():
             self.pile += self.all_played
             self.all_played = []
 
-    def pop_first_card(self) -> str:
+    def pop_first_card(self) -> Card:
         # Usually the first card is placed after cards are dealt (so e.g. it's the 15th card for 2
         # players). Pretend it's the same here
         first_card: Card = Card(self.pile.pop(7 * self.num_players))
@@ -125,7 +125,7 @@ class Server():
             self.pile.append(first_card.name)
             shuffle(self.pile)
             first_card = Card(self.pile.pop(7 * self.num_players))
-        return first_card.name
+        return first_card
 
     def reverse_players(self):
         self.peeps.reverse()
@@ -136,7 +136,7 @@ class Server():
         data_to_send = {
             "stage": Stage.INIT,
             "modes": self.modes.to_json(),
-            "played": self.first_card,
+            "played": self.first_card.toJSON(),
             "pile": self.pile[0:7],
             "num_left": 7,
             "other_left": self.left_cards,
@@ -146,13 +146,13 @@ class Server():
 
         log.info(self.peeps)
         data_to_send["peeps"] = deepcopy(self.peeps)
-        if Card(self.first_card).type_is(CardType.REVERSE):
+        if self.first_card.type_is(CardType.REVERSE):
             self.reverse_players()
 
         if first_game:
             self.current_player = (
                 self.peeps[0]
-                if not Card(self.first_card).type_is(CardType.STOP)
+                if not self.first_card.type_is(CardType.STOP)
                 # 1 in every case except for testing 1 player
                 else self.peeps[1 % len(self.peeps)]
             )
@@ -260,7 +260,7 @@ class Server():
                 self.send_message(data, player)
 
     def process_and_show_points(self, message: dict[str, Any]):
-        taking_cards = Card(message["played"]).is_plus()
+        taking_cards = Card(message["played"]).is_plus
         self.fit_pile_to_size()
 
         data = {
@@ -277,7 +277,7 @@ class Server():
 
         # We only care about the next player if they have to take cards. They'll always be +1 so no
         # need to specify a played card
-        next_player = utils.get_next_player(self.current_player, self.peeps, message["played"])
+        next_player = utils.get_next_player(self.current_player, self.peeps, Card(message["played"]))
         for player in self.peeps:
             if player != self.current_player:
                 # Only the next player needs to take cards
@@ -365,9 +365,9 @@ class Server():
             i = (i + 1) % self.num_players
             next_player = utils.get_next_player(next_player, self.peeps)
 
-    def relay_and_change_turns(self, card: str, message: dict[str, Any]):
+    def relay_and_change_turns(self, card: Card, message: dict[str, Any]):
         # If the last played card is stop
-        if Card(card).type_is(CardType.STOP) and "taken" not in message:
+        if card.type_is(CardType.STOP) and "taken" not in message:
             # todo this could probably be combined
             next_player = utils.get_next_player(self.current_player, self.peeps, card)
             for player in self.peeps:
@@ -449,7 +449,7 @@ class Server():
             data["said_uno"] = True
             data["from"] = self.current_player
 
-        self.relay_and_change_turns(str_card, data)
+        self.relay_and_change_turns(card, data)
 
         if not Card(message["played"]).type_is(CardType.STOP):
             self.previous_message = message

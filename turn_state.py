@@ -13,7 +13,7 @@ class TurnState():
     pile: list[str]
     uno: bool
     hand_cards: dict[int, Card]
-    last_played: str
+    last_played: Card
     game_state: GameState
     cards_taken_previously: bool
     stage: Stage
@@ -28,7 +28,7 @@ class TurnState():
         card_counter: int,
         is_reversed: bool,
         pile: list[str],
-        last_played: str,
+        last_played: Card,
         game_state: GameState,
         stage: Stage,
         uno: bool = False,
@@ -52,17 +52,17 @@ class TurnState():
     def possible_move(self) -> bool:
         for hand_card in self.hand_cards.values():
             is_black = hand_card.type_is(CardType.BLACK)
-            same_color = self.last_played[0:3] in hand_card.name
-            same_symbol = self.last_played[3:] in hand_card.name
+            same_color = self.last_played.color == hand_card.color
+            same_symbol = self.last_played.symbol == hand_card.symbol
             if is_black or same_color or same_symbol:
                 return True
         return False
 
     @property
     def can_put_plusfour(self) -> bool:
-        last_played_color = self.last_played[0:3]
+        last_played_color = self.last_played.color
         for hand_card in self.hand_cards.values():
-            if last_played_color in hand_card.name:  # Color
+            if last_played_color == hand_card.color:  # Color
                 return False
         return True
 
@@ -102,13 +102,12 @@ class TurnState():
         self.cards_taken_previously = message.get("taken", False)
         self.why_challenge_in_progress = message.get("why", 0)
 
-    def set_last_played(self, new_card: str) -> None:
+    def set_last_played(self, new_card: Card) -> None:
         self.last_played = new_card
 
     def decrease_counters(self) -> None:
         self.card_counter -= 1
-        if self.stack_counter > 0 and \
-                Card(self.last_played).type_is(CardType.PLUSTWO):
+        if self.stack_counter > 0 and self.last_played.type_is(CardType.PLUSTWO):
             # Card.card_is(self.turn_state.last_played, CardType.PLUSFOUR)
             self.stack_counter -= 1
 
@@ -163,8 +162,8 @@ class TurnState():
                     result += 50
         return result
 
-    def configure_counters_uno_on_start(self, last_played_card: str, player: str):
-        last_played_plus = Card(last_played_card).is_plus()
+    def configure_counters_uno_on_start(self, last_played_card: Card, player: str):
+        last_played_plus = last_played_card.is_plus
         if not player == self.game_state.identity:
             self.uno = False
         elif last_played_plus and \
@@ -189,7 +188,7 @@ class TurnState():
         self.all_nums_of_cards[player] = old_hand_size
         return old_hand_size, new_hand_size
 
-    def update_last_played(self, message: dict[str, Any]) -> str:
+    def update_last_played(self, message: dict[str, Any]) -> Card:
         played_card = Card(message["played"])
         last_turn_cards_taken = "taken" in message
         # Set counters based on what the last played card was, or reset if nothing needs to be taken
@@ -204,11 +203,11 @@ class TurnState():
             self.reset_card_counter()
             self.update_stack_counter(0)
 
-        self.last_played = played_card.name
+        self.last_played = played_card
         if "pile" in message.keys():
             self.pile = message["pile"]
 
-        return played_card.name
+        return played_card
 
     def update_card_counter(self, num_to_take: int):
         self.card_counter = num_to_take
@@ -224,7 +223,7 @@ class TurnState():
 
     def can_send_card_taken_update(self) -> bool:
         empty_counters = self.card_counter <= 0 and self.stack_counter == 0
-        new_plus = not self.cards_taken_previously and Card(self.last_played).is_plus()
+        new_plus = not self.cards_taken_previously and self.last_played.is_plus
         return empty_counters and \
             (not self.possible_move or new_plus or self.stage == Stage.CHALLENGE)
 

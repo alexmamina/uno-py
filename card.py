@@ -1,6 +1,8 @@
 from PIL import Image
 from dataclasses import dataclass
 from os import listdir
+import json
+from json import JSONDecodeError
 
 CARD_IMAGE_PATH = "Images/Cards/"
 SPECIAL_FOLDER = "Special"
@@ -38,9 +40,17 @@ class Card:
     card_pic: Image.Image
     name: str
     card_type: str
+    color: str
+    symbol: str
+    is_plus: bool
+    is_special: bool
 
-    def __init__(self, name: str):
-        special = Card.is_special(name)
+    def __init__(self, metadata: str):
+        try:
+            name = json.loads(metadata)
+        except JSONDecodeError:
+            name = metadata
+        special = is_special_card(name)
         if special:
             folder = SPECIAL_FOLDER
             extension = ".jpeg"
@@ -57,6 +67,12 @@ class Card:
         card_pic = Image.open(f"{CARD_IMAGE_PATH}{folder}/" + filename)
         self.card_pic = card_pic.resize((117, 183), Image.LANCZOS)
         self.card_type = CardType.get_type(name)
+        self.color = self.name[:3]
+        self.symbol = self.name[3:]
+        self.is_special = special
+        # We have a plustwo or a plusfour, both of which are also plus.
+        # Black is assigned first as a type, so this is an additional check
+        self.is_plus = CardType.PLUS in self.name
 
     def __str__(self) -> str:
         return "Card: " + self.name
@@ -67,20 +83,17 @@ class Card:
     def __eq__(self, value: "Card") -> bool:
         return self.name == value.name
 
-    # We have a plustwo or a plusfour, both of which are also plus.
-    # Black is assigned first as a type, so this is an additional check
-    def is_plus(self) -> bool:
-        return CardType.PLUS in self.name
-
     def type_is(self, type: str) -> bool:
-        black_plus = self.card_type == CardType.BLACK and self.is_plus()
+        black_plus = self.card_type == CardType.BLACK and self.is_plus
         if type == CardType.PLUSFOUR:
             return black_plus or self.card_type == type
         return self.card_type == type
 
-    @classmethod
-    def is_special(cls, name: str) -> bool:
-        # If an image with this name exists in the special folder, it's a special card
-        # Assume all special cards are jpegs
-        files = listdir(f"{CARD_IMAGE_PATH}{SPECIAL_FOLDER}")
-        return f"{name}.jpeg" in files
+    def toJSON(self) -> str:
+        return json.dumps(self.name)
+
+def is_special_card(name: str) -> bool:
+    # If an image with this name exists in the special folder, it's a special card
+    # Assume all special cards are jpegs
+    files = listdir(f"{CARD_IMAGE_PATH}{SPECIAL_FOLDER}")
+    return f"{name}.jpeg" in files

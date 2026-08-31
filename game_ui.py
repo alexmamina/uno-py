@@ -207,7 +207,7 @@ class GameUI(Frame):
             height=80,
             command=self.toggle_uno)
         self.uno_but.place(x=0.1 * frame_width, y=0.16 * frame_height)
-        self.setup_pile(msg["played"], frame)
+        self.setup_pile(Card(msg["played"]), frame)
 
         return frame
 
@@ -313,7 +313,7 @@ class GameUI(Frame):
         self.master["menu"] = menubar
 
     # Add the pile and last played buttons
-    def setup_pile(self, last_played_card: str, parent_frame: Frame):
+    def setup_pile(self, last_played_card: Card, parent_frame: Frame):
         # Button to take a card (so a pile)
         frame_width = parent_frame["width"]
         frame_height = parent_frame["height"]
@@ -325,7 +325,7 @@ class GameUI(Frame):
         )
         self.new_card.place(x=0.6 * frame_width, y=0.07 * frame_height)
         # Last is a disabled button with the last played card (from the message) shown
-        self.last = PileButton(Card(last_played_card), parent_frame)
+        self.last = PileButton(last_played_card, parent_frame)
         self.last.place(x=0.4 * frame_width, y=0.07 * frame_height)
 
     def setup_hand(self):
@@ -336,7 +336,7 @@ class GameUI(Frame):
                 self.hand_btns[i].destroy()
         self.hand_btns: dict[int, HandCardButton] = {}
         dealt_cards = self.game_logic.turn_state.hand_cards
-        n = len(dealt_cards)
+        n = self.game_logic.turn_state.num_cards_left
         for i in range(n):
             # Create a button for each card in dealt cards
             b = HandCardButton(
@@ -404,7 +404,7 @@ class GameUI(Frame):
 
     def update_labels_buttons_card_taken(self, new_card: Card, index: int, move_is_possible: bool):
         if self.game_logic.turn_state.stack_counter >= 0 and \
-                Card(self.game_logic.turn_state.last_played).type_is(CardType.PLUSTWO):
+                self.game_logic.turn_state.last_played.type_is(CardType.PLUSTWO):
             # or Card.card_is(self.game_logic.turn_state.last_played, CardType.PLUSFOUR)
             self.configure_stack_label(self.game_logic.turn_state.stack_counter)
         self.cards_left.config(
@@ -520,7 +520,7 @@ class GameUI(Frame):
 
         if message.get("played"):
             self.game_logic.log.info("A new card was placed, updating")
-            self.set_last_played(str(message["played"]))
+            self.set_last_played(Card(message["played"]))
 
     # Show the points that you have with your cards right now (option in menu)
     def show_points(self):
@@ -560,12 +560,11 @@ class GameUI(Frame):
             self.other_names_lbls[next_player].config(bg="green")
             self.childframes[next_player].set_color(TURN_COLOR)
 
-    def set_last_played(self, last_played: str):
+    def set_last_played(self, last_played: Card):
         self.update_last_played_img(last_played)
 
-    def update_last_played_img(self, card_name: str):
-        proper_card = Card(card_name)
-        self.last.update_card(proper_card)
+    def update_last_played_img(self, card: Card):
+        self.last.update_card(card)
 
     def check_periodically(self):
         self.game_logic.incoming()
@@ -601,12 +600,12 @@ class GameUI(Frame):
 
     def start_config(self, message: dict[str, Any]):
         self.game_logic.turn_state.configure_counters_uno_on_start(
-            message["played"], message["player"])
+            Card(message["played"]), message["player"])
         self.config_start_buttons(message)
 
     def config_start_buttons(self, message: dict[str, Any]):
         current = message["player"] == self.game_logic.game_state.identity
-        played_plus = Card(message["played"]).is_plus()
+        played_plus = Card(message["played"]).is_plus
         stack_possible = self.game_logic.game_state.modes.stack and \
             self.game_logic.turn_state.can_stack
         no_stack = not stack_possible
@@ -626,7 +625,7 @@ class GameUI(Frame):
 
     # Move card to the pile in an animation
     def move(self, origx: int, origy: int, dx: int, dy: int, i: int, binst, img, ind: int):
-        card = self.game_logic.turn_state.hand_cards[ind].name
+        card = self.game_logic.turn_state.hand_cards[ind]
         ratio = 40 if abs(dx) < 250 else 200
         time = 5 if abs(dx) < 250 else 1
         if not i == ratio:
@@ -642,12 +641,11 @@ class GameUI(Frame):
             self.game_logic.complete_placement(card, ind)
 
     def place_card(self, ind: int, binst: HandCardButton):
-        card = self.game_logic.turn_state.hand_cards[ind].name
+        new_card = self.game_logic.turn_state.hand_cards[ind]
         old_card = self.game_logic.turn_state.last_played
-        # Same color (0:3), same symbol (3:), black
-        same_color = card[0:3] == old_card[0:3]
-        same_symbol = card[3:] == old_card[3:]
-        is_black = Card(card).type_is(CardType.BLACK)
+        same_color = new_card.color == old_card.color
+        same_symbol = new_card.symbol == old_card.symbol
+        is_black = new_card.type_is(CardType.BLACK)
         if same_color or same_symbol or is_black:
             # You can't have the "Illegal +4" when placing a card, as you never place it, so don't
             # handle it
@@ -661,18 +659,17 @@ class GameUI(Frame):
                 self.move(orig_x, orig_y, dx, dy, 0, binst, self.last.get_image(), ind)
             else:
                 binst.destroy()
-                self.game_logic.complete_placement(card, ind)
+                self.game_logic.complete_placement(new_card, ind)
 
-    def update_labels_buttons_card_placed(self, placed_card: str, ind: int):
-        card = Card(placed_card)
-        if card.type_is(CardType.REVERSE):
+    def update_labels_buttons_card_placed(self, placed_card: Card, ind: int):
+        if placed_card.type_is(CardType.REVERSE):
             self.direction_l.set_image(
                 self.revdir if self.game_logic.turn_state.is_reversed else self.fordir)
         self.hand_btns.pop(ind)
         self.cards_left.config(
             text=self.game_logic.turn_state.all_nums_of_cards[self.game_logic.game_state.identity])
         self.move_buttons()
-        if card.type_is(CardType.PLUSTWO) and self.game_logic.game_state.modes.stack:
+        if placed_card.type_is(CardType.PLUSTWO) and self.game_logic.game_state.modes.stack:
             self.configure_stack_label(self.game_logic.turn_state.stack_counter + 2)
 
     def pick_option(self, title: str, question: str, options: Optional[list[str]]) -> str:
@@ -683,11 +680,11 @@ class GameUI(Frame):
             response = simpledialog.askstring(title, question)
             return response if response else "0"
 
-    def update_labels_new_turn(self, played_card: str, msg: dict[str, Any]):
+    def update_labels_new_turn(self, played_card: Card, msg: dict[str, Any]):
         self.set_label_next(msg)
         self.direction_l.set_image(
             self.revdir if self.game_logic.turn_state.is_reversed else self.fordir)
-        if Card(played_card).type_is(CardType.PLUSTWO) and "taken" not in msg:
+        if played_card.type_is(CardType.PLUSTWO) and "taken" not in msg:
             if self.game_logic.game_state.modes.stack:
                 self.configure_stack_label(self.game_logic.turn_state.stack_counter)
             self.taken_label.config(text="")
@@ -697,10 +694,10 @@ class GameUI(Frame):
         else:
             self.taken_label.config(text="")
 
-    def enable_buttons_regular_turn(self, card: str, msg: dict[str, Any]):
+    def enable_buttons_regular_turn(self, card: Card, msg: dict[str, Any]):
         self.name_lbl.config(bg="green")
         self.childframes[self.game_logic.game_state.identity].set_color(TURN_COLOR)
-        if Card(card).type_is(CardType.PLUSFOUR) and \
+        if card.type_is(CardType.PLUSFOUR) and \
                 "taken" not in msg and "wild" in msg:
             # Show "challenge +4" button
             self.handle_wild_button(validity=msg["wild"])
@@ -716,12 +713,12 @@ class GameUI(Frame):
                 self.game_logic.turn_state.card_counter == 4 and not
                 self.game_logic.turn_state.card_counter == 2) or \
                 (self.game_logic.game_state.modes.stack and self.game_logic.turn_state.can_stack and
-                    Card(card).type_is(CardType.PLUSTWO)):
+                    card.type_is(CardType.PLUSTWO)):
             self.turn_need_taking.config(text="", bg=TURN_COLOR)
             for i in self.hand_btns:
                 self.hand_btns[i].set_enabled(True)
             if self.game_logic.game_state.modes.stack and self.game_logic.turn_state.can_stack and \
-                    Card(card).type_is(CardType.PLUSTWO) and "taken" not in msg and \
+                    card.type_is(CardType.PLUSTWO) and "taken" not in msg and \
                     self.game_logic.turn_state.stack_counter > 0:
                 for i in self.hand_btns:
                     # Go through cards on buttons and enable only +2s
@@ -831,15 +828,14 @@ class GameUI(Frame):
 
     def process_regular_update(self, msg: dict[str, Any]):
         # Set the last played card and configure the pile + card counter
-        self.set_last_played(msg["played"])
+        self.set_last_played(Card(msg["played"]))
         self.game_logic.process_regular_message(msg)
-        self.update_labels_new_turn(msg["played"], msg)
+        self.update_labels_new_turn(Card(msg["played"]), msg)
         self.update_other_nums_of_cards(msg)
 
 
 # ######################################## SHOW FUNCTIONS #######################################
 def show_rules():
-    print("RULES")
     answer = messagebox.askyesno(
         "Rules",
         "No stacking, take one card only. You can click on cards when it's your turn. Press the"

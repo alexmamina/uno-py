@@ -2,7 +2,7 @@ import json
 import queue
 
 from logging import Logger
-from typing import Any, TYPE_CHECKING
+from typing import Any, TYPE_CHECKING, Optional
 
 from game_classes import Stage, Modes, GameState
 from turn_state import TurnState
@@ -42,38 +42,38 @@ class GameLogic():
         )
         other_players = self.game_state.other_players
         self.log.info(f"I am {self.game_state.identity}, playing against {other_players}")
+        played_card = Card(msg["played"])
 
         self.turn_state = TurnState(
-            stack_counter=0 if not Card(msg["played"]).type_is(CardType.PLUSTWO) else 2,
+            stack_counter=0 if not played_card.type_is(CardType.PLUSTWO) else 2,
             all_nums_of_cards=msg["other_left"],
             card_counter=1 if not self.game_state.modes.mult else 500,
             is_reversed=msg["dir"],
             pile=msg["pile"],
-            last_played=msg["played"],
+            last_played=played_card,
             game_state=self.game_state,
             stage=msg["stage"]
         )
 
     # #################################### EVENTS ##################################
     # Set new card on pile, send information, update hand - after animation or straight away
-    def complete_placement(self, card: str, card_index: int):
-        proper_card = Card(card)
-        if proper_card.type_is(CardType.REVERSE):
+    def complete_placement(self, card: Card, card_index: int):
+        if card.type_is(CardType.REVERSE):
             self.turn_state.reverse_direction()
         # Changes the black card to black with a color to show which one to play next
-        if proper_card.type_is(CardType.BLACK):
+        if card.type_is(CardType.BLACK):
             new_color = self.game_ui.pick_option(
                 "New color",
                 "Which one?",
                 ["Red", "Green", "Blue", "Yellow"])
             new_color = new_color.lower()[0:3]
             # Get the colored black cards from the deck for ease of transfer
-            if proper_card.is_plus():
+            if card.is_plus:
                 new_color += "plus"
-                special_card = new_color + "four"
+                special_card = Card(new_color + "four")
             else:
                 new_color += "black"
-                special_card = new_color
+                special_card = Card(new_color)
         else:  # Not a black card
             special_card = card
 
@@ -82,18 +82,18 @@ class GameLogic():
         self.game_ui.update_labels_buttons_card_placed(special_card, card_index)
 
         data_to_send = {
-            "played": special_card,
+            "played": special_card.toJSON(),
             "pile": self.turn_state.pile,
             "stage": Stage.GO,
             "num_left": self.turn_state.num_cards_left
         }
-        if proper_card.type_is(CardType.PLUSFOUR):
+        if card.type_is(CardType.PLUSFOUR):
             data_to_send["wild"] = self.turn_state.can_put_plusfour
         # If placed plustwo in the mode, send the counter
-        elif proper_card.type_is(CardType.PLUSTWO) and self.game_state.modes.stack:
+        elif card.type_is(CardType.PLUSTWO) and self.game_state.modes.stack:
             data_to_send["counter"] = self.turn_state.stack_counter + 2
             self.turn_state.update_stack_counter(0)
-        if proper_card.type_is(CardType.SEVEN) and self.game_state.modes.sevenzero and \
+        if card.type_is(CardType.SEVEN) and self.game_state.modes.sevenzero and \
                 self.turn_state.num_cards_left > 0:
             self.send_design_update(self.turn_state.num_cards_left, card)
             players = [x for x in self.game_state.peeps if not x == self.game_state.identity]
@@ -104,7 +104,7 @@ class GameLogic():
             data_to_send["swapwith"] = swap_with
             data_to_send["hand"] = self.turn_state.get_hand_card_names()
 
-        if proper_card.type_is(CardType.ZERO) and self.game_state.modes.sevenzero and \
+        if card.type_is(CardType.ZERO) and self.game_state.modes.sevenzero and \
                 self.turn_state.num_cards_left > 0:
             data_to_send["hand"] = self.turn_state.get_hand_card_names()
 
@@ -114,7 +114,7 @@ class GameLogic():
         if self.turn_state.num_cards_left > 0:
             self.send_info(data_to_send)
         else:
-            self.send_design_update(0, data_to_send["played"])
+            self.send_design_update(0, Card(data_to_send["played"]))
             self.send_final(data_to_send)
 
         self.turn_state.set_last_played(special_card)
@@ -143,7 +143,7 @@ class GameLogic():
         # card
         if self.turn_state.can_send_card_taken_update():
             data_to_send = {
-                "played": self.turn_state.last_played,
+                "played": self.turn_state.last_played.toJSON(),
                 "pile": self.turn_state.pile,
                 "stage": Stage.GO,
                 "num_left": self.turn_state.num_cards_left
@@ -164,7 +164,6 @@ class GameLogic():
                 # Played, pile, num_left, color, player, saiduno, taken
                 self.log.info("Processing message:")
                 self.log.debug(msg)
-                # todo probably update all turnstate elements in one go
                 self.turn_state.update_new_turn(msg)
 
                 # Normal play stage
@@ -185,13 +184,14 @@ class GameLogic():
                 # Another player has finished the game; you either take cards if last is a plus,
                 # or automatically send the remaining points for the other player
                 elif msg["stage"] == Stage.ZEROCARDS:
-                    self.game_ui.set_last_played(msg["played"])
+                    played_card = Card(msg["played"])
+                    self.game_ui.set_last_played(played_card)
                     if msg["to_take"]:
                         # Enable taking cards
                         self.game_ui.enable_taking_for_final_plus(msg)
 
                         self.turn_state.update_card_counter(
-                            2 if Card(msg["played"]).type_is(CardType.PLUSTWO) else 4
+                            2 if played_card.type_is(CardType.PLUSTWO) else 4
                         )
                         if self.game_state.modes.stack and "counter" in msg:
                             self.turn_state.update_stack_counter(msg["counter"])
@@ -264,11 +264,10 @@ class GameLogic():
         return table_of_points
 
     def process_regular_message(self, msg: dict[str, Any]):
-        # todo some of this could be turn_state methods
         # Set the last played card and configure the pile + card counter
         proper_last_played = self.turn_state.update_last_played(msg)
         self.game_ui.set_last_played(proper_last_played)
-        newly_played = msg["played"]
+        newly_played = Card(msg["played"])
         self.log.info(f"Played: {newly_played}")
         self.turn_state.is_reversed = msg["dir"]
         self.game_ui.update_labels_new_turn(newly_played, msg)
@@ -281,7 +280,7 @@ class GameLogic():
             from_player: str = msg["from"]
             # todo this says wrong player if uno after 7. after 0 no message on 2 bc the other
             # player doesn't get a message update - only a numupdate
-            if Card(newly_played).type_is(CardType.ZERO) and "taken" not in msg and \
+            if newly_played.type_is(CardType.ZERO) and "taken" not in msg and \
                     self.game_state.modes.sevenzero:
                 direction = -1 if self.turn_state.is_reversed else 1
                 player_index = self.game_state.peeps.index(from_player)
@@ -373,7 +372,7 @@ class GameLogic():
             self.q.put(message)
         self.log.info("Stopped listening for messages")
 
-    def send_design_update(self, num: int, played_card: str = ""):
+    def send_design_update(self, num: int, played_card: Optional[Card] = None):
         # 1 = taken, 0 = placed
         data = {
             "stage": Stage.DESIGNUPD,
@@ -381,7 +380,7 @@ class GameLogic():
             "from": self.game_state.identity
         }
         if played_card:
-            data["played"] = played_card
+            data["played"] = played_card.toJSON()
 
         self.send_message(data)
         self.log.info("Design update sent")
@@ -419,7 +418,7 @@ class GameLogic():
         # todo get data information from the turn state as a method
         data = {
             "stage": Stage.DEBUG,
-            "played": self.turn_state.last_played,
+            "played": self.turn_state.last_played.toJSON(),
             "pile": self.turn_state.pile,
             "hand": self.turn_state.get_hand_card_names(),
             "num_left": self.turn_state.num_cards_left,

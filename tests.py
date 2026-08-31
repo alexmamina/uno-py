@@ -4,6 +4,7 @@ from game_classes import Modes
 from deck import Deck
 from socket import socket
 from gameanim import GameLogic
+from game_ui import GameUI
 from logging import Logger
 from card import Card, CardType
 from utils import get_next_player, get_prev_player
@@ -84,8 +85,8 @@ class Tests(unittest.TestCase):
         }
         a: dict[str, int] = {p: 0 for p in m["peeps"]}
         cls.m = m
-        cls.game = GameLogic(Tk(), m, None, socket(), Logger(__name__), a)
-
+        ui = GameUI(Tk(), m, None, socket(), a, Logger(__name__))
+        cls.game = ui.game_logic
     @unittest.skip("modes too old")
     def test_pretty_modes(self):
         # Get modes
@@ -174,11 +175,11 @@ class Tests(unittest.TestCase):
         self.assertEqual(actual_strings, self.game.game_state.modes.enabled_strings())
 
     def test_possible_move_color(self):
-        self.game.turn_state.last_played = "gre0"
+        self.game.turn_state.last_played = Card("gre0")
         self.assertTrue(self.game.turn_state.possible_move)
 
     def test_possible_move_number(self):
-        self.game.turn_state.last_played = "blu5"
+        self.game.turn_state.last_played = Card("blu5")
         self.assertTrue(self.game.turn_state.possible_move)
 
     def test_possible_move_black(self):
@@ -187,23 +188,23 @@ class Tests(unittest.TestCase):
         self.game.turn_state.hand_cards.pop(10)
 
     def test_no_possible_move(self):
-        self.game.turn_state.last_played = "blu7"
+        self.game.turn_state.last_played = Card("blu7")
         self.assertFalse(self.game.turn_state.possible_move)
 
     def test_can_plusfour(self):
-        self.game.turn_state.last_played = "blu6"
+        self.game.turn_state.last_played = Card("blu6")
         self.game.turn_state.hand_cards[10] = Card("blackplusfour")
         self.assertTrue(self.game.turn_state.can_put_plusfour)
         self.game.turn_state.hand_cards.pop(10)
 
     def test_cannot_plusfour_color(self):
-        self.game.turn_state.last_played = "gre1"
+        self.game.turn_state.last_played = Card("gre1")
         self.game.turn_state.hand_cards[10] = Card("blackplusfour")
         self.assertFalse(self.game.turn_state.can_put_plusfour)
         self.game.turn_state.hand_cards.pop(10)
 
     def test_can_plusfour_number_black(self):
-        self.game.turn_state.last_played = "blu2"
+        self.game.turn_state.last_played = Card("blu2")
         self.game.turn_state.hand_cards[10] = Card("blackplusfour")
         self.game.turn_state.hand_cards[11] = Card("black")
         self.assertTrue(self.game.turn_state.can_put_plusfour)
@@ -211,7 +212,7 @@ class Tests(unittest.TestCase):
         self.game.turn_state.hand_cards.pop(11)
 
     def test_can_put_plustwo(self):
-        self.game.turn_state.last_played = "redplustwo"
+        self.game.turn_state.last_played = Card("redplustwo")
         self.game.turn_state.hand_cards[12] = Card("greplustwo")
         self.assertTrue(self.game.turn_state.possible_move)
         self.game.turn_state.hand_cards.pop(12)
@@ -219,7 +220,7 @@ class Tests(unittest.TestCase):
     @unittest.skip("stashed")
     def test_config_start(self):
         # self.game.message["player"] = 0
-        self.game.turn_state.last_played = "yelplustwo"
+        self.game.turn_state.last_played = Card("yelplustwo")
         # self.game.pile.append("yelplustwo")
         # self.game.game_state.modes = Modes()
         new_card_1 = True
@@ -234,13 +235,13 @@ class Tests(unittest.TestCase):
             new_card_1 = False
             for i in hand_btns_1:
                 hand_btns_1[i] = (False, "b")
-        elif Card(self.game.turn_state.last_played).is_plus() and (
+        elif self.game.turn_state.last_played.is_plus and (
             not self.game.turn_state.can_stack or not self.game.game_state.modes.stack
         ):
             for i in hand_btns_1:
                 hand_btns_1[i] = (False, "b")
         elif (
-            Card(self.game.turn_state.last_played).is_plus() and
+            self.game.turn_state.last_played.is_plus and
             self.game.game_state.modes.stack and
             self.game.turn_state.can_stack
         ):
@@ -250,7 +251,7 @@ class Tests(unittest.TestCase):
         elif self.game.turn_state.possible_move:
             new_card_1 = False
         not_current = Tests.m["player"] != self.game.game_state.identity
-        played_plus = Card(self.game.turn_state.last_played).is_plus()
+        played_plus = self.game.turn_state.last_played.is_plus
         no_stack = not self.game.turn_state.can_stack or not self.game.game_state.modes.stack
         stack_possible = self.game.game_state.modes.stack and self.game.turn_state.can_stack
         if not_current or self.game.turn_state.possible_move:
@@ -325,7 +326,7 @@ class Tests(unittest.TestCase):
         return current_player, curr_list_index, prev_player
 
     def test_next_player_forward_4(self):
-        played_cards = ["redstop", "bluplustwo", "blu5"]
+        played_cards = [Card("redstop"), Card("bluplustwo"), Card("blu5")]
         solution = {
             "0": ["2", "1", "1"],
             "1": ["3", "2", "2"],
@@ -342,7 +343,7 @@ class Tests(unittest.TestCase):
                     self.assertEqual(next, proper_next)
 
     def test_next_player_forward_2(self):
-        played_cards = ["redstop", "bluplustwo", "blu5"]
+        played_cards = [Card("redstop"), Card("bluplustwo"), Card("blu5")]
         solution = {
             "0": ["0", "1", "1"],
             "1": ["1", "0", "0"],
@@ -357,7 +358,7 @@ class Tests(unittest.TestCase):
                     self.assertEqual(next, proper_next)
 
     def test_prev_player_forward_2(self):
-        played_cards = ["redstop", "bluplustwo", "blu5"]
+        played_cards = [Card("redstop"), Card("bluplustwo"), Card("blu5")]
         solution = {
             "0": ["0", "1", "1"],
             "1": ["1", "0", "0"],
@@ -371,7 +372,7 @@ class Tests(unittest.TestCase):
                     self.assertEqual(next, proper_next)
 
     def test_prev_player_forward_4(self):
-        played_cards = ["redstop", "bluplustwo", "blu5"]
+        played_cards = [Card("redstop"), Card("bluplustwo"), Card("blu5")]
         solution = {
             "0": ["2", "3", "3"],
             "1": ["3", "0", "0"],
