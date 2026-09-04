@@ -3,6 +3,7 @@ import re
 from card import Card, CardType
 from typing import Any, Optional
 from game_classes import Stage
+from message_processor import Message
 
 
 class TurnState():
@@ -97,10 +98,10 @@ class TurnState():
         self.all_nums_of_cards[self.game_state.identity] += 1
         return ind
 
-    def update_new_turn(self, message: dict[str, Any]) -> None:
-        self.stage = message["stage"]
-        self.cards_taken_previously = message.get("taken", False)
-        self.why_challenge_in_progress = message.get("why")
+    def update_new_turn(self, message: Message) -> None:
+        self.stage = message.stage
+        self.cards_taken_previously = message.taken
+        self.why_challenge_in_progress = message.challenge_reason
 
     def set_last_played(self, new_card: Card) -> None:
         self.last_played = new_card
@@ -188,9 +189,10 @@ class TurnState():
         self.all_nums_of_cards[player] = old_hand_size
         return old_hand_size, new_hand_size
 
-    def update_last_played(self, message: dict[str, Any]) -> Card:
-        played_card = Card(message["played"])
-        last_turn_cards_taken = "taken" in message
+    def update_last_played(self, message: Message) -> Card:
+        played_card = message.played
+        assert played_card is not None
+        last_turn_cards_taken = message.taken
         # Set counters based on what the last played card was, or reset if nothing needs to be taken
         if not last_turn_cards_taken:
             if played_card.type_is(CardType.PLUSFOUR):
@@ -198,14 +200,14 @@ class TurnState():
             if played_card.type_is(CardType.PLUSTWO):
                 self.update_card_counter(2)
                 if self.game_state.modes.stack:
-                    self.update_stack_counter(message["counter"])
+                    self.update_stack_counter(message.counter)
         else:
             self.reset_card_counter()
             self.update_stack_counter(0)
 
         self.last_played = played_card
-        if "pile" in message.keys():
-            self.pile = message["pile"]
+        if message.pile:
+            self.pile = message.pile
 
         return played_card
 

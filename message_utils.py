@@ -1,8 +1,8 @@
 import json
-from typing import Any
+from message_processor import Message
 
 
-def recover(msg: str) -> dict[str, Any]:
+def recover(msg: str) -> Message:
     blob = {}
     # Assuming the padding takes up a lot of the message, try and recover if data corruption
     # happened in the padding
@@ -16,4 +16,4 @@ def recover(msg: str) -> dict[str, Any]:
         blob = json.loads(proper_msg)
     else:
         raise json.JSONDecodeError("The message does not have padding in it!", msg, 0)
-    return blob
+    return Message.from_dict(blob)

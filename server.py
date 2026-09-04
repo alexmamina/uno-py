@@ -3,10 +3,10 @@ import sys
 import logging
 from logmanager import setup_logger
 from deck import Deck
-from typing import Any
 from random import shuffle
 from copy import deepcopy
 from card import Card, CardType, BLACK_PLUSFOUR_CARD_NAME, BLACK_CARD_NAME
+from message_processor import Message
 from message_utils import recover
 from game_classes import ChallengeReason, Stage, Modes
 import json
@@ -16,9 +16,9 @@ import utils
 log = logging.getLogger(__name__)
 
 
-def pretty_print_message(message: dict[str, Any]):
+def pretty_print_message(message: Message):
     new_msg = deepcopy(message)
-    new_msg.pop("padding", "")
+    new_msg.padding = ""
     log.debug(new_msg)
 
 
@@ -105,7 +105,7 @@ class Server():
             p: number for p, number in zip(self.peeps, [7] * self.num_players)
         }
         self.resulting_points = 0
-        self.previous_message = {}
+        self.previous_message = None
 
     # If too few cards left, shuffle all played cards and add to the end of the pile.
     # Reset all played afterwards as they're now a part of the pile
@@ -132,20 +132,8 @@ class Server():
         self.is_reversed = not self.is_reversed
 
     def send_initial_pile(self, first_game: bool = False):
-        # Skeleton of json to be sent
-        data_to_send = {
-            "stage": Stage.INIT,
-            "modes": self.modes.to_json(),
-            "played": self.first_card.to_json(),
-            "pile": self.pile[0:7],
-            "num_left": 7,
-            "other_left": self.left_cards,
-        }
-        self.previous_message = data_to_send
-        # End of initialisation
-
+        assert self.modes is not None
         log.info(self.peeps)
-        data_to_send["peeps"] = deepcopy(self.peeps)
         if self.first_card.type_is(CardType.REVERSE):
             self.reverse_players()
 
@@ -164,23 +152,32 @@ class Server():
             )
         self.prev_player = utils.get_prev_player(self.current_player, self.peeps, self.first_card)
 
-        data_to_send["dir"] = self.is_reversed
+        # Message skeleton that will be populated with player-specific data below
+        data_to_send = Message(
+            stage=Stage.INIT,
+            modes=self.modes,
+            played=self.first_card,
+            pile=self.pile[0:7],
+            num_left=7,
+            other_left=self.left_cards,
+            players=self.peeps,
+            is_reversed=self.is_reversed
+        )
+        self.previous_message = data_to_send
 
-        for player in self.peeps:
-            player_index = self.peeps.index(player)
-            data_to_send["pile"] = self.pile[0:7] + \
-                self.pile[
-                    7 * (self.num_players - player_index):7 * (self.num_players - player_index) + 20
-            ]
-            data_to_send["whoami"] = player
-            data_to_send["player"] = self.current_player
+        for ind, player in enumerate(self.peeps):
+            # Imitate giving out cards by taking every nth card
+            data_to_send.pile = self.pile[0:7] + \
+                self.pile[7 * (self.num_players - ind):7 * (self.num_players - ind) + 20]
+            data_to_send.whoami = player
+            data_to_send.player = self.current_player
 
             self.send_message(data_to_send, player)
             log.info(f"Sent initial cards to player {player}")
             pretty_print_message(data_to_send)
             self.pile = self.pile[7:]
 
-    def send_to_all_players(self, message: dict[str, Any], skip_current: bool = False):
+    def send_to_all_players(self, message: Message, skip_current: bool = False):
         for player in self.peeps:
             # Send a message if we don't skip any players,
             # or we DO skip and we're not looking at the current player
@@ -188,24 +185,18 @@ class Server():
             if sending:
                 self.send_message(message, player)
 
-    def send_message(self, message: dict[str, Any], destination_player: str):
+    def send_message(self, message: Message, destination_player: str):
         msg_copy = deepcopy(message)
-        msg_copy.pop("padding", "")
-        msg_copy["padding"] = "a" * (685 - len(json.dumps(msg_copy)))
-        encoded_msg = json.dumps(msg_copy).encode("utf-8")
-        # todo remove for message class
-        # with open("servermsgs.txt", "a") as f:
-        #     f.write(f"{list(msg_copy.keys())}stage: {msg_copy['stage']}")
-        #     f.write("\n")
+        msg_copy.padding = "a" * (685 - len(json.dumps(msg_copy.to_json())))
+        encoded_msg = json.dumps(msg_copy.to_json()).encode("utf-8")
         self.socks[destination_player].sendto(encoded_msg, self.addresses[destination_player])
 
-    def receive_message(self, from_player: str, buffer_size: int = 700) -> dict[str, Any]:
+    def receive_message(self, from_player: str, buffer_size: int = 700) -> Message:
         json_msg, _ = self.socks[from_player].recvfrom(buffer_size)
         try:
             dec_json = json_msg.decode("utf-8")
-            message = json.loads(dec_json)
-            message.pop("padding", "")
-            log.debug(message)
+            message = Message.from_dict(json.loads(dec_json))
+            message.padding = ""
         except JSONDecodeError as e:
             log.critical(f"Error decoding response from a player: {e}")
             log.critical(json_msg)
@@ -213,91 +204,97 @@ class Server():
             message = recover(dec_json)
         return message
 
-    def process_received_challenge(self, message: dict[str, Any]):
+    def process_received_challenge(self, message: Message):
         # From a current player to the previous player; need to send to previous player only
         self.fit_pile_to_size()
         data = message
         # This makes data longer than 700 characters, but that's fine. We're trimming padding later
-        data["pile"] = self.pile[:20]
+        data.pile = self.pile[:20]
         rulebreaker = self.prev_player
         self.send_message(data, rulebreaker)
         # We sent a challenge to the previous player, so now expect a response from them
         self.prev_player = self.current_player
         self.current_player = rulebreaker
 
-    def process_completed_challenge(self, message: dict[str, Any]):
+    def process_completed_challenge(self, message: Message):
         # Swap the current and previous player
         old = self.current_player
         self.current_player = self.prev_player
         self.prev_player = old
 
         # Update the now previous player's card number, as well as what the pile looks like
-        self.left_cards[self.prev_player] = message["num_left"]
+        self.left_cards[self.prev_player] = message.num_left
         self.pile.pop(0)
         self.pile.pop(0)
-        if "why" in message and message["why"] == ChallengeReason.ILLEGAL_PLUSFOUR:
+        if message.challenge_reason == ChallengeReason.ILLEGAL_PLUSFOUR:
             self.pile.pop(0)
             self.pile.pop(0)
 
         self.fit_pile_to_size()
 
-        data = {
-            "pile": self.pile[:20],
-            "num_left": message["num_left"],
-            "played": message["played"],
-            "other_left": self.left_cards,
-            "stage": Stage.GO,
-        }
+        data = Message(
+            stage=Stage.GO,
+            pile=self.pile[:20],
+            num_left=message.num_left,
+            played=message.played,
+            other_left=self.left_cards,
+            is_reversed=self.is_reversed,
+            counter=self.stack_counter,
+            player=self.current_player,
+            from_player=message.from_player
+        )
 
-        if "why" in message and message["why"] == ChallengeReason.ILLEGAL_PLUSFOUR:
-            data["taken"] = True
-        data["dir"] = self.is_reversed
-        data["counter"] = self.stack_counter
-        data["player"] = self.current_player
+        if message.challenge_reason == ChallengeReason.ILLEGAL_PLUSFOUR:
+            data.taken = True
 
         for player in self.peeps:
             if player != self.prev_player:
                 self.send_message(data, player)
 
-    def process_and_show_points(self, message: dict[str, Any]):
-        taking_cards = Card(message["played"]).is_plus
+    def process_and_show_points(self, message: Message):
+        # The message should always have a played field but adding the assertion for linting purposes
+        assert message.played is not None
+        assert self.modes is not None
+        taking_cards = message.played.is_plus
         self.fit_pile_to_size()
 
-        data = {
-            "pile": self.pile[0:20],
-            "played": message["played"],
-            "stage": Stage.ZEROCARDS,
-            "to_take": taking_cards,
-        }
+        data = Message(
+            stage=Stage.ZEROCARDS,
+            pile=self.pile[0:20],
+            played=message.played,
+            to_take=taking_cards,
+            from_player=message.from_player,
+        )
         # If stacking is enabled, someone may need to take many cards first
-        if "counter" in message and self.modes.stack:
-            data["counter"] = message["counter"]
-            self.stack_counter = message["counter"]
+        if message.counter and self.modes.stack:
+            data.counter = message.counter
+            self.stack_counter = message.counter
         # Either: next takes cards, then all send. Or: all send
 
         # We only care about the next player if they have to take cards. They'll always be +1 so no
         # need to specify a played card
-        next_player = utils.get_next_player(self.current_player, self.peeps, Card(message["played"]))
+        next_player = utils.get_next_player(self.current_player, self.peeps, message.played)
         for player in self.peeps:
             if player != self.current_player:
                 # Only the next player needs to take cards
-                data["player"] = next_player
-                data["to_take"] = taking_cards and player == next_player
+                data.player = next_player
+                data.to_take = taking_cards and player == next_player
 
                 # Send the request for points and syncronously receive the response
                 self.send_message(data, player)
                 result = self.receive_message(player, 1000)
-                self.resulting_points += result["points"]
+                self.resulting_points += result.points
 
         self.all_players_points[self.current_player] += self.resulting_points
 
         # Send a points update to all players
-        msg = {
-            "stage": Stage.CALC,
-            "points": self.resulting_points,
-            "total": self.all_players_points,
-            "winner": self.current_player
-        }
+        msg = Message(
+            stage=Stage.CALC,
+            points=self.resulting_points,
+            total=self.all_players_points,
+            winner=self.current_player,
+            from_player=message.from_player,
+        )
         self.send_to_all_players(msg)
 
     def pop_pile_until_equivalent(self, player_cards_left: int):
@@ -307,72 +304,67 @@ class Server():
         for _ in range(num_taken):
             self.pile.pop(0)
 
-    def swap_after_seven(self, message: dict[str, Any]):
-        swapped_player = message["swapwith"]
-        hand = message["hand"]
-        ask = {
-            "stage": Stage.SEVEN,
-            "hand": hand,
-            "from": self.current_player
-        }
+    def swap_after_seven(self, message: Message):
+        swapped_player = message.swapwith
+        ask = Message(
+            stage=Stage.SEVEN,
+            hand=message.hand,
+            from_player=self.current_player,
+        )
         # Ask cards from the swapped player, send those to current,
         # msg["cards"] to swapped
         decoded_response = self.swap_hands(ask, to_whom=swapped_player)
-        other_hand = decoded_response["hand"]
-        log.info(
-            f"Player {swapped_player} has {other_hand}. Will go to {self.current_player}"
-        )
-        decoded_response["end"] = True
+        other_hand = decoded_response.hand
+        log.info(f"Player {swapped_player} has {other_hand}. Will go to {self.current_player}")
+        decoded_response.end = True
         self.send_message(decoded_response, self.current_player)
         # Swap number of cards
-        self.left_cards[swapped_player] = message["num_left"]
+        self.left_cards[swapped_player] = message.num_left
         self.left_cards[self.current_player] = len(other_hand)
 
-    def swap_hands(
-            self, swapping_message: dict[str, Any], to_whom: str
-    ) -> dict[str, Any]:
-        # Add padding to message
-        from_whom = swapping_message["from"]
-        log.info(f"Player {from_whom} has {swapping_message['hand']} - sending to player {to_whom}")
+    def swap_hands(self, swapping_message: Message, to_whom: str) -> Message:
+        from_whom = swapping_message.from_player
+        log.info(f"Player {from_whom} has {swapping_message.hand} - sending to player {to_whom}")
         self.send_message(swapping_message, to_whom)
         decoded_response = self.receive_message(to_whom, 2000)
         return decoded_response
 
-    def swap_after_zero(self, message: dict[str, Any]):
-        hand = message["hand"]
+    def swap_after_zero(self, message: Message):
+        hand = message.hand
         # Go through the indices of players and swap cards
         i = self.peeps.index(self.current_player)
-        swap = {
-            "stage": Stage.ZERO,
-            "hand": hand,
-            "from": self.current_player
-        }
+        swap = Message(
+            stage=Stage.ZERO,
+            hand=hand,
+            from_player=self.current_player
+        )
         next_player = utils.get_next_player(self.current_player, self.peeps)
         self.left_cards[next_player] = len(hand)
         response = self.swap_hands(swap, to_whom=next_player)
-        hand = response["hand"]
+        hand = response.hand
         i = (i + 1) % self.num_players
         next_player = utils.get_next_player(next_player, self.peeps)
         while not (i == self.peeps.index(self.current_player)):
-            swap = {
-                "stage": Stage.ZERO,
-                "hand": hand,
-                "from": self.peeps[i]
-            }
+            swap = Message(
+                stage=Stage.ZERO,
+                hand=hand,
+                from_player=self.peeps[i]
+            )
             self.left_cards[next_player] = len(hand)
             response = self.swap_hands(swap, to_whom=next_player)
-            hand = response["hand"]
+            hand = response.hand
             i = (i + 1) % self.num_players
             next_player = utils.get_next_player(next_player, self.peeps)
 
-    def relay_and_change_turns(self, card: Card, message: dict[str, Any]):
+    def relay_and_change_turns(self, card: Card, message: Message):
+        assert self.previous_message is not None
         # If the last played card is stop
-        if card.type_is(CardType.STOP) and "taken" not in message:
+        if card.type_is(CardType.STOP) and not message.taken:
             # todo this could probably be combined
             next_player = utils.get_next_player(self.current_player, self.peeps, card)
             for player in self.peeps:
-                message["player"] = next_player
-                message["num_left"] = self.previous_message["num_left"]
+                message.player = next_player
+                message.num_left = self.previous_message.num_left
                 self.send_message(message, player)
                 log.info(f"Message about a stop card forwarded to player {player}")
 
@@ -382,85 +374,85 @@ class Server():
             next_player = utils.get_next_player(self.current_player, self.peeps)
             for player in self.peeps:
                 if player != self.current_player:
-                    message["player"] = next_player
+                    message.player = next_player
                     self.send_message(message, player)
                     log.info(f"Regular message forwarded to player {player}")
                 else:
-                    left = {"stage": Stage.NUMUPDATE, "other_left": self.left_cards}
+                    left = Message(
+                        stage=Stage.NUMUPDATE,
+                        other_left=self.left_cards,
+                        from_player=message.from_player
+                    )
                     self.send_message(left, player)
                     log.info(f"Number update sent to current player {player}")
         self.prev_player = self.current_player
         self.current_player = next_player
 
-    def process_regular_message(self, message: dict[str, Any]):  # refactor
-        str_card = message["played"]
-        card = Card(str_card)
+    def process_regular_message(self, message: Message):  # refactor
+        assert message.played is not None
+        assert self.modes is not None
+        card = message.played
         # card_type = Card(str_card).card_type
 
-        log.info(f"Player {self.current_player} played {str_card} (type {card.card_type})")
+        log.info(f"Player {self.current_player} played {card.name} (type {card.card_type})")
 
-        data = {
-            "pile": self.pile,
-            "num_left": message["num_left"],
-            "played": message["played"],
-            "other_left": self.left_cards,
-            "stage": Stage.GO,
-        }
-        if card.type_is(CardType.PLUSFOUR) and "taken" not in message:
-            data["wild"] = message["wild"]
-        if "taken" not in message:
+        data = Message(
+            pile=self.pile,
+            num_left=message.num_left,
+            played=message.played,
+            other_left=self.left_cards,
+            stage=Stage.GO,
+            said_uno=message.said_uno,
+            from_player = message.from_player,
+        )
+        if card.type_is(CardType.PLUSFOUR) and not message.taken:
+            data.wild = message.wild
+        if not message.taken:
             # Played black cards are coloured; when adding them back to the pile, add their original
             # versions
             if card.type_is(CardType.PLUSFOUR):
                 self.all_played.append(BLACK_PLUSFOUR_CARD_NAME)
-                log.info(self.all_played)
             elif card.type_is(CardType.BLACK):
                 self.all_played.append(BLACK_CARD_NAME)
-                log.info(self.all_played)
             else:
-                self.all_played.append(str_card)
+                self.all_played.append(card.name)
             # Compare the pile on the server with the client's one to see if the player took cards
-            if not (self.pile[0:5] == message["pile"][0:5]):
+            if not (self.pile[0:5] == message.pile[0:5]):
                 self.pile.pop(0)
             # If taking multiple cards is enabled, make the server and client piles eqivalent
             if self.modes.mult:
-                self.pop_pile_until_equivalent(message["num_left"])
+                self.pop_pile_until_equivalent(message.num_left)
         else:
             # The player took cards after a +2/+4 and reported it
             self.stack_counter = 0
-            data["taken"] = message["taken"]
-            self.pop_pile_until_equivalent(message["num_left"])
+            data.taken = message.taken
+            self.pop_pile_until_equivalent(message.num_left)
         self.fit_pile_to_size()
-        data["pile"] = self.pile[:20]
-        self.left_cards[self.current_player] = message["num_left"]
+        data.pile = self.pile[:20]
+        self.left_cards[self.current_player] = message.num_left
 
-        if card.type_is(CardType.SEVEN) and self.modes.sevenzero and "taken" not in message:
-            # A seven was placed right now, not that it was placed before but someone else took
-            # cards afterwards
-            self.swap_after_seven(message)
+        if self.modes.sevenzero and not message.taken:
+            if card.type_is(CardType.SEVEN):
+                # A seven was placed right now, not that it was placed before but someone else took
+                # cards afterwards
+                self.swap_after_seven(message)
+            elif card.type_is(CardType.ZERO):
+                self.swap_after_zero(message)
 
-        if card.type_is(CardType.ZERO) and self.modes.sevenzero and "taken" not in message:
-            self.swap_after_zero(message)
+        data.other_left = self.left_cards
 
-        data["other_left"] = self.left_cards
+        if self.modes.stack and message.counter:
+            data.counter = message.counter
+            self.stack_counter = message.counter
 
-        if self.modes.stack and "counter" in message:
-            data["counter"] = message["counter"]
-            self.stack_counter = message["counter"]
-
-        if card.type_is(CardType.REVERSE) and "taken" not in message:
+        if card.type_is(CardType.REVERSE) and not message.taken:
             self.reverse_players()
-        data["dir"] = self.is_reversed
+        data.is_reversed = self.is_reversed
 
-        if message["num_left"] == 1 and "said_uno" not in message.keys():
-            data["said_uno"] = False
-        elif "said_uno" in message.keys() and message["said_uno"]:
-            data["said_uno"] = True
-            data["from"] = self.current_player
 
         self.relay_and_change_turns(card, data)
 
-        if not Card(message["played"]).type_is(CardType.STOP):
+        if not message.played.type_is(CardType.STOP):
             self.previous_message = message
 
     def process_messages_forever(self):
@@ -474,43 +466,43 @@ class Server():
         while True:
             log.info(f"Waiting for player {self.current_player}")
             message = self.receive_message(self.current_player)
-            if message["stage"] == Stage.GO or message["stage"] == Stage.DEBUG:
+            if message.stage == Stage.GO or message.stage == Stage.DEBUG:
                 self.process_regular_message(message)
 
-            elif message["stage"] == Stage.CHALLENGE:
+            elif message.stage == Stage.CHALLENGE:
                 log.info("Received a challenge - Uno wasn't said, or an illegal +4 was placed")
                 self.process_received_challenge(message)
 
-            elif message["stage"] == Stage.SHOWCHALLENGE:
+            elif message.stage == Stage.SHOWCHALLENGE:
                 log.info("Someone clicked on \"Illegal +4\" but it was legal! Forwarding")
                 self.send_message(message, self.prev_player)
 
-            elif message["stage"] == Stage.CHALLENGE_TAKEN:
+            elif message.stage == Stage.CHALLENGE_TAKEN:
                 log.info("The previous player took cards after forgetting Uno or placing a bad +4")
                 self.process_completed_challenge(message)
 
-            elif message["stage"] == Stage.ZEROCARDS:
+            elif message.stage == Stage.ZEROCARDS:
                 log.info("A player has finished - tallying up the points")
                 self.process_and_show_points(message)
 
-            elif message["stage"] == Stage.INIT:
+            elif message.stage == Stage.INIT:
                 self.total_games_played += 1
                 log.info(f"New game! Total played: {self.total_games_played}")
                 # Restore the player list to its original form
                 if self.is_reversed:
                     self.reverse_players()
                 self.init_deck()
-                self.modes = Modes.from_json(message.get("modes", {}))
+                self.modes = message.modes
                 self.send_initial_pile()
 
-            elif message["stage"] == Stage.DESIGNUPD:
+            elif message.stage == Stage.DESIGNUPD:
                 log.info("Received a design update")
                 # Forward the update to every player except the one we got it from
                 self.send_to_all_players(message, skip_current=True)
 
             else:
                 # Try and get the stage - either it's a new one, or the key doesn't exist
-                msg_stage = message.get("stage", "")
+                msg_stage = message.stage
                 log.info(
                     f"Received a BYE message or an unknown stage: {msg_stage}."
                     " Forwarding and shutting down"

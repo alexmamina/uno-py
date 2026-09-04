@@ -21,24 +21,25 @@ import json
 
 
 class Stage(IntEnum):
-    INIT = -1
-    GO = 0
-    CHALLENGE = 1
-    CHALLENGE_TAKEN = 6
-    SHOWCHALLENGE = 810
-    ZEROCARDS = 2
-    DEBUG = 3
-    TAKECARDS = 4
-    CALC = 5
-    SEVEN = 7
-    ZERO = 70
-    NUMUPDATE = 705
-    BYE = 10
-    DESIGNUPD = 123
+    INIT = 1
+    GO = 2
+    CHALLENGE = 3
+    CHALLENGE_TAKEN = 4
+    SHOWCHALLENGE = 5
+    ZEROCARDS = 6
+    DEBUG = 7
+    TAKECARDS = 8
+    CALC = 9
+    SEVEN = 10
+    ZERO = 11
+    NUMUPDATE = 12
+    BYE = 13
+    DESIGNUPD = 14
+
 
 class ChallengeReason(IntEnum):
-    MISSING_UNO = 0
-    ILLEGAL_PLUSFOUR = 1
+    MISSING_UNO = 1
+    ILLEGAL_PLUSFOUR = 4
 
 @dataclass
 class Modes:

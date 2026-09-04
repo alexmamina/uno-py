@@ -1,5 +1,6 @@
 import copy
 import math
+from message_processor import Message
 import utils
 import queue
 import webbrowser
@@ -35,7 +36,7 @@ class GameUI(Frame):
     def __init__(
         self,
         master: Tk,
-        msg: dict[str, Any],
+        msg: Message,
         q: queue.Queue,
         sock: socket,
         all_points,
@@ -58,7 +59,7 @@ class GameUI(Frame):
 
         self.init_ui_elements(msg, localhost)
 
-    def init_ui_elements(self, msg: dict[str, Any], localhost: bool = False):
+    def init_ui_elements(self, msg: Message, localhost: bool = False):
         icon = ImageTk.PhotoImage(Image.open(icon_img_location))
         self.revdir = ImageTk.PhotoImage(
             Image.open(direction_rev_img_location).resize((95, 95), Image.LANCZOS)
@@ -86,13 +87,13 @@ class GameUI(Frame):
 
         self.setup_menu()
 
-        if msg["player"] == self.game_logic.game_state.identity:
+        if msg.player == self.game_logic.game_state.identity:
             self.name_lbl.config(bg="green")
             self.childframes[self.game_logic.game_state.identity].set_color(TURN_COLOR)
         else:
             self.name_lbl.config(bg="red")
             self.childframes[self.game_logic.game_state.identity].set_color(BACKGROUND_COLOR)
-        self.set_label_next(msg)
+        self.set_label_next(msg.player)
         if not localhost:
             self.show_enabled_modes()
 
@@ -156,7 +157,8 @@ class GameUI(Frame):
             else:
                 cardback.place(x=0.5 * frame_width, y=35 + 15 * step)
 
-    def set_up_central_frame(self, msg: dict[str, Any]) -> Frame:
+    def set_up_central_frame(self, msg: Message) -> Frame:
+        assert msg.played is not None
         self.challenge = ColorfulButton()
         self.valid_wild = ColorfulButton()
         frame_width = 0.6 * self.screen_width
@@ -207,11 +209,12 @@ class GameUI(Frame):
             height=80,
             command=self.toggle_uno)
         self.uno_but.place(x=0.1 * frame_width, y=0.16 * frame_height)
-        self.setup_pile(Card(msg["played"]), frame)
+        self.setup_pile(msg.played, frame)
 
         return frame
 
-    def set_up_card_frame(self, msg: dict[str, Any]):
+    def set_up_card_frame(self, msg: Message):
+        assert msg.played is not None
         frame_width = self.screen_width
         frame_height = 0.4 * self.screen_height
         self.card_frame = Frame(
@@ -254,8 +257,8 @@ class GameUI(Frame):
         self.hand_btns: dict[int, HandCardButton] = {}
         self.setup_hand()
 
-        if msg["player"] == self.game_logic.game_state.identity:
-            if Card(msg["played"]).type_is(CardType.PLUSTWO) and \
+        if msg.player == self.game_logic.game_state.identity:
+            if msg.played.type_is(CardType.PLUSTWO) and \
                     (not self.game_logic.turn_state.can_stack or
                      not self.game_logic.game_state.modes.stack):
                 self.turn_need_taking = Label(
@@ -377,9 +380,7 @@ class GameUI(Frame):
             self.childframes[person] = frame
             self.set_up_opponent_info(person, frame)
 
-    def set_label_next(self, msg: dict[str, Any]):
-        current_player = msg["player"]
-
+    def set_label_next(self, current_player: str):
         for player, label in self.other_names_lbls.items():
             label.config(bg="green" if player == current_player else "red")
             self.childframes[player].config(
@@ -467,12 +468,12 @@ class GameUI(Frame):
         else:
             InfoPop(self, title, information)
 
-    def enable_taking_for_final_plus(self, message: dict[str, Any]):
+    def enable_taking_for_final_plus(self, counter: int):
         self.turn_need_taking.config(text="Take cards!", bg="orange")
         self.name_lbl.config(bg="green")
         self.childframes[self.game_logic.game_state.identity].set_color(TURN_COLOR)
         self.new_card.set_enabled(True)
-        if self.game_logic.game_state.modes.stack and "counter" in message:
+        if self.game_logic.game_state.modes.stack and counter > 0:
             self.configure_stack_label(self.game_logic.turn_state.stack_counter)
 
     def show_temp_banner(self, text: str, ttl: int = 5000):
@@ -496,31 +497,31 @@ class GameUI(Frame):
             default=False
         )
 
-    def update_other_nums_of_cards(self, message: dict[str, Any]):
+    def update_other_nums_of_cards(self, num_cards_per_person: dict[str, int]):
         self.game_logic.log.info("Updating the number of remaining cards for others")
         for person, label in self.other_cards_lbls.items():
-            card_word = "cards" if not message["other_left"][person] == 1 else "card"
-            label.config(text=f"{message['other_left'][person]} {card_word}")
+            card_word = "cards" if not num_cards_per_person[person] == 1 else "card"
+            label.config(text=f"{num_cards_per_person[person]} {card_word}")
             o_cards = self.other_cards_imgs[person]
             for car in o_cards:
                 car.destroy()
 
-            self.put_other_cards(person, message["other_left"][person])
+            self.put_other_cards(person, num_cards_per_person[person])
 
     # Another player either took a card, or placed a seven-zero, mostly
-    def process_design_update(self, message: dict[str, Any]):
+    def process_design_update(self, message: Message):
         self.game_logic.log.info("A player has taken or placed a card")
-        who_updated = message["from"]
-        card_word = "cards" if not message["num_cards"] == 1 else "card"
-        self.other_cards_lbls[who_updated].config(text=f"{message['num_cards']} {card_word}")
+        who_updated = message.from_player
+        card_word = "card" if message.num_left == 1 else "cards"
+        self.other_cards_lbls[who_updated].config(text=f"{message.num_left} {card_word}")
         o_cards = self.other_cards_imgs[who_updated]
         for car in o_cards:
             car.destroy()
-        self.put_other_cards(who_updated, message["num_cards"])
+        self.put_other_cards(who_updated, message.num_left)
 
-        if message.get("played"):
+        if message.played:
             self.game_logic.log.info("A new card was placed, updating")
-            self.set_last_played(Card(message["played"]))
+            self.set_last_played(message.played)
 
     # Show the points that you have with your cards right now (option in menu)
     def show_points(self):
@@ -544,9 +545,9 @@ class GameUI(Frame):
         self.other_cards_lbls[player].config(text=f"{old_hand_size} {card_word}")
         self.cards_left.config(text=f"{new_hand_size}")
 
-    def update_next_lbl(self, sent_message: dict[str, Any]):
-        skip_player: bool = Card(sent_message["played"]).type_is(CardType.STOP) and \
-            "taken" not in sent_message
+    def update_next_lbl(self, sent_message: Message):
+        assert sent_message.played is not None
+        skip_player: bool = sent_message.played.type_is(CardType.STOP) and not sent_message.taken
         difference = 2 if skip_player else 1
         # Take all players and move them up by 1/2 when turn finished
         if not self.game_logic.turn_state.is_reversed:
@@ -571,7 +572,7 @@ class GameUI(Frame):
         if not self.game_logic.turn_state.quit_game:
             self.after(100, self.check_periodically)
 
-    def start_new(self, message: dict[str, Any]):
+    def start_new(self, message: Message):
 
         self.game_logic.log.info("Destroying old game...")
         self.master.destroy()
@@ -581,7 +582,7 @@ class GameUI(Frame):
         screen_width = root.winfo_screenwidth()
         screen_height = root.winfo_screenheight()
         root.geometry("{}x{}".format(screen_width, screen_height))
-        utils.title_window(root, message["whoami"], message["peeps"])
+        utils.title_window(root, message.whoami, message.players)
         root.protocol("WM_DELETE_WINDOW", self.game_logic.send_bye_and_exit)
         new = GameUI(
             master=root,
@@ -598,14 +599,15 @@ class GameUI(Frame):
         new.check_periodically()
         new.mainloop()
 
-    def start_config(self, message: dict[str, Any]):
-        self.game_logic.turn_state.configure_counters_uno_on_start(
-            Card(message["played"]), message["player"])
+    def start_config(self, message: Message):
+        assert message.played is not None
+        self.game_logic.turn_state.configure_counters_uno_on_start(message.played, message.player)
         self.config_start_buttons(message)
 
-    def config_start_buttons(self, message: dict[str, Any]):
-        current = message["player"] == self.game_logic.game_state.identity
-        played_plus = Card(message["played"]).is_plus
+    def config_start_buttons(self, message: Message):
+        assert message.played is not None
+        current = message.player == self.game_logic.game_state.identity
+        played_plus = message.played.is_plus
         stack_possible = self.game_logic.game_state.modes.stack and \
             self.game_logic.turn_state.can_stack
         no_stack = not stack_possible
@@ -680,27 +682,26 @@ class GameUI(Frame):
             response = simpledialog.askstring(title, question)
             return response if response else "0"
 
-    def update_labels_new_turn(self, played_card: Card, msg: dict[str, Any]):
-        self.set_label_next(msg)
+    def update_labels_new_turn(self, played_card: Card, msg: Message):
+        self.set_label_next(msg.player)
         self.direction_l.set_image(
             self.revdir if self.game_logic.turn_state.is_reversed else self.fordir)
-        if played_card.type_is(CardType.PLUSTWO) and "taken" not in msg:
+        if played_card.type_is(CardType.PLUSTWO) and not msg.taken:
             if self.game_logic.game_state.modes.stack:
                 self.configure_stack_label(self.game_logic.turn_state.stack_counter)
             self.taken_label.config(text="")
-        elif "taken" in msg:
+        elif msg.taken:
             self.configure_stack_label(0)
             self.taken_label.config(text="Other player took cards!")
         else:
             self.taken_label.config(text="")
 
-    def enable_buttons_regular_turn(self, card: Card, msg: dict[str, Any]):
+    def enable_buttons_regular_turn(self, card: Card, msg: Message):
         self.name_lbl.config(bg="green")
         self.childframes[self.game_logic.game_state.identity].set_color(TURN_COLOR)
-        if card.type_is(CardType.PLUSFOUR) and \
-                "taken" not in msg and "wild" in msg:
+        if card.type_is(CardType.PLUSFOUR) and not msg.taken:
             # Show "challenge +4" button
-            self.handle_wild_button(validity=msg["wild"])
+            self.handle_wild_button(validity=msg.wild)
         # No moves possible, or move possible but need to take cards
         if not self.game_logic.turn_state.possible_move or \
             (self.game_logic.turn_state.card_counter == 2 or
@@ -718,7 +719,7 @@ class GameUI(Frame):
             for i in self.hand_btns:
                 self.hand_btns[i].set_enabled(True)
             if self.game_logic.game_state.modes.stack and self.game_logic.turn_state.can_stack and \
-                    card.type_is(CardType.PLUSTWO) and "taken" not in msg and \
+                    card.type_is(CardType.PLUSTWO) and not msg.taken and \
                     self.game_logic.turn_state.stack_counter > 0:
                 for i in self.hand_btns:
                     # Go through cards on buttons and enable only +2s
@@ -748,16 +749,16 @@ class GameUI(Frame):
             self.turn_need_taking.config(text="Take 4 cards!", bg="orange")
         self.name_lbl.config(bg="orange")
 
-    def disable_buttons(self, sent_message: dict[str, Any]):
+    def disable_buttons(self, sent_message: Message):
         self.new_card.set_enabled(False)
         self.uno_but["bg"] = "light sky blue"
         self.handle_challenge_button(destroy=True)
         self.handle_wild_button(destroy=True)
-        go_or_debug = sent_message["stage"] == Stage.GO or sent_message["stage"] == Stage.DEBUG
+        go_or_debug = sent_message.stage == Stage.GO or sent_message.stage == Stage.DEBUG
         if go_or_debug:
             self.update_next_lbl(sent_message)
 
-        if sent_message["stage"] == Stage.ZEROCARDS:
+        elif sent_message.stage == Stage.ZEROCARDS:
             self.turn_need_taking.config(text="Getting results!", bg=BACKGROUND_COLOR, fg="blue")
         else:
             self.turn_need_taking.config(text="", bg=BACKGROUND_COLOR)
@@ -768,7 +769,7 @@ class GameUI(Frame):
         self.childframes[self.game_logic.game_state.identity].set_color(BACKGROUND_COLOR)
         self.taken_label.config(text="")
 
-    def handle_challenge_button(self, player: Optional[bool] = None, destroy: bool = False):
+    def handle_challenge_button(self, player: Optional[str] = "", destroy: bool = False):
         if destroy:
             if self.challenge:
                 self.challenge.destroy()
@@ -777,7 +778,7 @@ class GameUI(Frame):
                 parent_frame=self.central_frame,
                 text="UNO not said!", bg="red", fg="white",
                 width=150, height=30, command=self.handle_uno_challenge)
-            if player and player == self.game_logic.game_state.identity:
+            if player == self.game_logic.game_state.identity:
                 frame_width = self.central_frame["width"]
                 frame_height = self.central_frame["height"]
                 self.challenge.place(x=0.07 * frame_width, y=0.63 * frame_height)
@@ -825,13 +826,6 @@ class GameUI(Frame):
         new, ind, possible_move = self.game_logic.take_card()
         # Create and enable a new button for the card + update labels
         self.update_labels_buttons_card_taken(new, ind, possible_move)
-
-    def process_regular_update(self, msg: dict[str, Any]):
-        # Set the last played card and configure the pile + card counter
-        self.set_last_played(Card(msg["played"]))
-        self.game_logic.process_regular_message(msg)
-        self.update_labels_new_turn(Card(msg["played"]), msg)
-        self.update_other_nums_of_cards(msg)
 
 
 # ######################################## SHOW FUNCTIONS #######################################

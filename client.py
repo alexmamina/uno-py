@@ -2,6 +2,7 @@ from tkinter import Tk
 from socket import socket, AF_INET, SOCK_STREAM
 import json
 from json import JSONDecodeError
+from message_processor import Message
 from threading import Thread
 import queue
 import logging
@@ -89,13 +90,12 @@ def start_game(sock: socket, conditions: argparse.Namespace):
     init, _ = sock.recvfrom(1000)
     try:
         data = init.decode("utf-8")
-        message = json.loads(data)
-        message.pop("padding")
+        message = Message.from_dict(json.loads(data))
         log.debug(f"Received initial message: {message}")
-        utils.title_window(root, message["whoami"], message["peeps"])
+        utils.title_window(root, message.whoami, message.players)
         q = queue.Queue()
         all_points: dict[str, int] = {
-            p: number for p, number in zip(message["peeps"], [0] * len(message["other_left"]))
+            p: number for p, number in zip(message.players, [0] * len(message.other_left))
         }
         if conditions.sentient:
             log.critical("Currently not supported")

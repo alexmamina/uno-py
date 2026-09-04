@@ -2,7 +2,7 @@ import logging
 import platform
 from datetime import datetime
 
-LOG_FORMAT = "%(asctime)s:%(funcName)s:%(lineno)d:%(levelname)s: %(message)s"
+LOG_FORMAT = "%(asctime)s(%(funcName)s)%(filename)s:%(lineno)d:%(levelname)s: %(message)s"
 
 
 class ColorFormatter(logging.Formatter):

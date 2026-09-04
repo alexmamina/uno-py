@@ -1,12 +1,12 @@
 import unittest
 from tkinter import Tk
-from game_classes import Modes
+from game_classes import Modes, Stage
 from deck import Deck
 from socket import socket
-from gameanim import GameLogic
 from game_ui import GameUI
 from logging import Logger
 from card import Card, CardType
+from message_processor import Message
 from utils import get_next_player, get_prev_player
 
 
@@ -25,7 +25,6 @@ class FakeGame:
             ["gre8", "blackplusfour", "blu5", "blu2", "gre5", "yel6", "yel2"]
         )
     }
-    # hand_cards = {i: v for i, v in enumerate(d[:7])}
     last_played: str
 
 
@@ -62,11 +61,11 @@ class Tests(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls) -> None:
-        m = {
-            "stage": -1,
-            "modes": {"7/0": False, "Stacking": True, "Taking multiple cards": True},
-            "played": "gre0",
-            "pile": [
+        m = Message(
+            stage=Stage.INIT,
+            modes=Modes.from_json({"7/0": False, "Stacking": True, "Taking multiple cards": True}),
+            played=Card("gre0"),
+            pile=[
                 "gre2",
                 "redstop",
                 "gre3",
@@ -75,47 +74,18 @@ class Tests(unittest.TestCase):
                 "red5",
                 "yel3"
             ],
-            "num_left": 7,
-            "other_left": {x: 7 for x in ["default-925", "one"]},
-            "player": "default-925",
-            "peeps": ["default-925", "one"],
-            "dir": False,
-            "whoami": "one",
-            "padding": "a",
-        }
-        a: dict[str, int] = {p: 0 for p in m["peeps"]}
+            num_left=7,
+            other_left={x: 7 for x in ["default-925", "one"]},
+            player="default-925",
+            players=["default-925", "one"],
+            is_reversed=False,
+            whoami="one",
+            padding="a",
+        )
+        a: dict[str, int] = {p: 0 for p in m.players}
         cls.m = m
         ui = GameUI(Tk(), m, None, socket(), a, Logger(__name__))
         cls.game = ui.game_logic
-    @unittest.skip("modes too old")
-    def test_pretty_modes(self):
-        # Get modes
-        # [0] = 7/0, [1] = stack, [2] = take forever
-
-        for args in self.all_args:
-            modes = [False] * 3
-            text = []
-            ttest_modes = [False] * 3
-            ttest_text = []
-            with self.subTest(params=args, msg=str(args)):
-                if "0" not in args:
-                    modes[0] = "1" in args
-                    if modes[0]:
-                        text.append("7/0 enabled")
-                    modes[1] = "2" in args
-                    if modes[1]:
-                        text.append("Stacking enabled")
-                    modes[2] = "3" in args
-                    if modes[2]:
-                        text.append("Taking many cards enabled")
-
-                    mode_types = ["7/0", "Stacking", "Taking many cards"]
-                    for i in range(1, 4):
-                        ttest_modes[i - 1] = str(i) in args
-                        if str(i) in args:
-                            ttest_text.append(f"{mode_types[i - 1]} enabled")
-                self.assertEqual(modes, ttest_modes, args)
-                self.assertEqual(text, ttest_text)
 
     def test_card_type(self):
         import random
@@ -148,27 +118,6 @@ class Tests(unittest.TestCase):
         sol_indices = [1, 0, 10, 11, 4, 9, 3, 2, 8, 5, 7, 6]
         self.assertEqual(self.game.turn_state.hand_cards, solution)
         self.assertEqual(indices, sol_indices)
-
-    @unittest.skip("too general test")
-    def test_mode_class(self):
-        for args in self.all_args:
-            with self.subTest(params=args, msg=str(args)):
-                text = []
-                modes = [False] * 3
-                if "0" not in args:
-                    modes[0] = "1" in args
-                    if modes[0]:
-                        text.append("7/0")
-                    modes[1] = "2" in args
-                    if modes[1]:
-                        text.append("Stacking")
-                    modes[2] = "3" in args
-                    if modes[2]:
-                        text.append("Taking multiple cards")
-                modes = get_modes(args)
-                strlist = modes.enabled_strings()
-
-                self.assertEqual(strlist, text)
 
     def test_game_modes(self):
         actual_strings = ["Stacking", "Taking multiple cards"]
@@ -217,12 +166,8 @@ class Tests(unittest.TestCase):
         self.assertTrue(self.game.turn_state.possible_move)
         self.game.turn_state.hand_cards.pop(12)
 
-    @unittest.skip("stashed")
     def test_config_start(self):
-        # self.game.message["player"] = 0
         self.game.turn_state.last_played = Card("yelplustwo")
-        # self.game.pile.append("yelplustwo")
-        # self.game.game_state.modes = Modes()
         new_card_1 = True
         hand_btns_1: dict[int, tuple[bool, str]]
         hand_btns_2: dict[int, tuple[bool, str]]
@@ -231,7 +176,7 @@ class Tests(unittest.TestCase):
         new_card_2 = True
         hand_btns_2 = {i: (True, "a") for i in range(7)}
         hand_btns_2[3] = (True, "two")
-        if Tests.m["player"] != self.game.game_state.identity:
+        if Tests.m.player != self.game.game_state.identity:
             new_card_1 = False
             for i in hand_btns_1:
                 hand_btns_1[i] = (False, "b")
@@ -250,7 +195,7 @@ class Tests(unittest.TestCase):
                     hand_btns_1[i] = (False, "two")
         elif self.game.turn_state.possible_move:
             new_card_1 = False
-        not_current = Tests.m["player"] != self.game.game_state.identity
+        not_current = Tests.m.player != self.game.game_state.identity
         played_plus = self.game.turn_state.last_played.is_plus
         no_stack = not self.game.turn_state.can_stack or not self.game.game_state.modes.stack
         stack_possible = self.game.game_state.modes.stack and self.game.turn_state.can_stack
@@ -267,11 +212,11 @@ class Tests(unittest.TestCase):
         self.assertEqual(hand_btns_1, hand_btns_2)
 
     def test_init_msg(self):
-        data_to_send_1 = {}
-        data_to_send_2 = {}
+        data_to_send_1 = Message(stage=Stage.INIT)
+        data_to_send_2 = Message(stage=Stage.INIT)
         self.pile = ["blu5"] * 50
         self.num_players = 3
-        self.list_of_players = [0, 1, 2]
+        self.list_of_players = ["0", "1", "2"]
         self.first_card = "red5"
         # self.first_card = "yelstop"
         # self.first_card = "blureverse"
@@ -281,42 +226,43 @@ class Tests(unittest.TestCase):
             self.list_of_players, self.first_card
         )
 
-        for i in self.list_of_players:
+        for i, player in enumerate(self.list_of_players):
             # Get the first 7 cards + the pile of twenty that comes after everyone has taken
             # (7*numplayers)
-            data_to_send_1["pile"] = self.pile[0:7] + \
+            data_to_send_1.pile = self.pile[0:7] + \
                 self.pile[7 * (self.num_players - i):7 * (self.num_players - i) + 20]
-            data_to_send_1["whoami"] = i
-            data_to_send_1["player"] = self.current_player
+            data_to_send_1.whoami = player
+            data_to_send_1.player = self.current_player
             self.pile = self.pile[7:]
 
         self.pile = ["blu5"] * 50
-        for i in self.list_of_players:
+        for i, player in enumerate(self.list_of_players):
             # Get the first 7 cards + the pile of twenty that comes after everyone has taken
             # (7*numplayers)
-            data_to_send_2["pile"] = self.pile[0:7] + \
+            data_to_send_2.pile = self.pile[0:7] + \
                 self.pile[7 * (self.num_players - i):7 * (self.num_players - i) + 20]
-            data_to_send_2["whoami"] = i
+            data_to_send_2.whoami = player
             if (i == self.list_of_players[0] and
                 not Card(self.first_card).type_is(CardType.STOP)) or \
                     (i == 1 and Card(self.first_card).type_is(CardType.STOP)):
-                data_to_send_2["player"] = i
-                self.current_player = i
+                data_to_send_2.player = player
+                self.current_player = player
                 self.curr_list_index = \
                     1 if (i == 1 and Card(self.first_card).type_is(CardType.STOP)) else 0
                 self.prev_player = self.list_of_players[self.num_players - 1]
             else:
                 # Only on the first game start from player 0 and consider stop
-                if i == self.list_of_players[0] and \
+                if player == self.list_of_players[0] and \
                         Card(self.first_card).type_is(CardType.STOP) and first_game:
-                    data_to_send_2["player"] = (self.current_player + 1) % self.num_players
+                    next_index = (self.curr_list_index + 1) % self.num_players
+                    data_to_send_2.player = self.list_of_players[next_index]
                 else:
-                    data_to_send_2["player"] = self.current_player
+                    data_to_send_2.player = self.current_player
 
             self.pile = self.pile[7:]
         self.assertEqual(data_to_send_1, data_to_send_2)
 
-    def get_player_order(self, list_of_players: list[int], first_card: str) -> tuple[int, int, int]:
+    def get_player_order(self, list_of_players: list[str], first_card: str) -> tuple[str, int, str]:
         # list of players. either reversed or not. either normal card, or stop. on normal, first
         # is current, last is prev. on stop second is current, first is prev
         first_stop = Card(first_card).type_is(CardType.STOP)

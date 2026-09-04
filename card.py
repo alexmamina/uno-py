@@ -92,7 +92,7 @@ class Card:
         return self.card_type == type
 
     def to_json(self) -> str:
-        return json.dumps(self.name)
+        return self.name
 
 def is_special_card(name: str) -> bool:
     # If an image with this name exists in the special folder, it's a special card
