@@ -3,7 +3,11 @@ from card import Card, CardType
 from typing import Optional
 
 
-def get_prev_player(current: str, all_players: list[str], last_played_card: Optional[Card] = None) -> str:
+def get_prev_player(
+        current: str,
+        all_players: list[str],
+        last_played_card: Optional[Card] = None
+) -> str:
     # If the card isn't given, it's definitely not a stop
     is_stop = last_played_card and last_played_card.type_is(CardType.STOP)
     diff = 1 if not is_stop else 2
@@ -12,7 +16,11 @@ def get_prev_player(current: str, all_players: list[str], last_played_card: Opti
     return all_players[prev_index]
 
 
-def get_next_player(current: str, all_players: list[str], last_played_card: Optional[Card] = None) -> str:
+def get_next_player(
+        current: str,
+        all_players: list[str],
+        last_played_card: Optional[Card] = None
+) -> str:
     current_index = all_players.index(current)
     is_stop = last_played_card and last_played_card.type_is(CardType.STOP)
     diff = 1 if not is_stop else 2

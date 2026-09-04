@@ -1,7 +1,7 @@
 from game_classes import ChallengeReason, GameState
 import re
 from card import Card, CardType
-from typing import Any, Optional
+from typing import Optional
 from game_classes import Stage
 from message_processor import Message
 

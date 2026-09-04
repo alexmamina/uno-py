@@ -11,6 +11,7 @@ CARD_FOLDER = "UNO"
 BLACK_CARD_NAME = "black"
 BLACK_PLUSFOUR_CARD_NAME = "blackplusfour"
 
+
 @dataclass
 class CardType:
     BLACK = "bla"
@@ -93,6 +94,7 @@ class Card:
 
     def to_json(self) -> str:
         return self.name
+
 
 def is_special_card(name: str) -> bool:
     # If an image with this name exists in the special folder, it's a special card

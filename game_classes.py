@@ -1,7 +1,6 @@
 from enum import IntEnum
 from dataclasses import dataclass
 from deck import Deck
-import json
 
 # Go - regular play, regular relay
 # Debug - change turn, regular play, print data
@@ -41,6 +40,7 @@ class ChallengeReason(IntEnum):
     MISSING_UNO = 1
     ILLEGAL_PLUSFOUR = 4
 
+
 @dataclass
 class Modes:
     sevenzero: bool = False
@@ -74,8 +74,8 @@ class Modes:
 
     def __eq__(self, value: "Modes") -> bool:
         return self.sevenzero == value.sevenzero and \
-              self.stack == value.stack and \
-              self.mult == value.mult
+            self.stack == value.stack and \
+            self.mult == value.mult
 
     @classmethod
     def from_json(cls, json_modes: dict[str, bool]) -> "Modes":

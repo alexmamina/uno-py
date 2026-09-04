@@ -2,7 +2,7 @@ import json
 import queue
 
 from logging import Logger
-from typing import Any, TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING, Optional
 
 from game_classes import ChallengeReason, Stage, Modes, GameState
 from turn_state import TurnState
@@ -201,7 +201,10 @@ class GameLogic():
 
                     else:
                         # No cards need to be taken, send current points
-                        points = Message(stage=Stage.CALC, points=self.turn_state.calculate_points())
+                        points = Message(
+                            stage=Stage.CALC,
+                            points=self.turn_state.calculate_points()
+                        )
                         self.send_message(points)
 
                 # Get points from the opponent and show them

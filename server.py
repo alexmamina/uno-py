@@ -252,7 +252,7 @@ class Server():
                 self.send_message(data, player)
 
     def process_and_show_points(self, message: Message):
-        # The message should always have a played field but adding the assertion for linting purposes
+        # The message should always have 'played' here but adding the assertion for linting purposes
         assert message.played is not None
         assert self.modes is not None
         taking_cards = message.played.is_plus
@@ -403,7 +403,7 @@ class Server():
             other_left=self.left_cards,
             stage=Stage.GO,
             said_uno=message.said_uno,
-            from_player = message.from_player,
+            from_player=message.from_player,
         )
         if card.type_is(CardType.PLUSFOUR) and not message.taken:
             data.wild = message.wild
@@ -448,7 +448,6 @@ class Server():
         if card.type_is(CardType.REVERSE) and not message.taken:
             self.reverse_players()
         data.is_reversed = self.is_reversed
-
 
         self.relay_and_change_turns(card, data)
 

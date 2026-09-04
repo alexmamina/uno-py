@@ -13,7 +13,7 @@ from PIL import ImageTk, Image
 from popup import InfoPop
 from picker import Picker
 from logging import Logger
-from typing import Optional, Any
+from typing import Optional
 
 from game_classes import ChallengeReason, Stage, Modes
 from card import Card, CardType
