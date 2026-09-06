@@ -7,7 +7,7 @@ from dataclasses import dataclass, field
 @dataclass
 class Message:
     stage: Stage
-    player: str = ""
+    current_player: str = ""
     padding: str = ""
     modes: Modes = Modes()
     played: Optional[Card] = None
@@ -23,7 +23,7 @@ class Message:
     said_uno: bool = False
     swapwith: str = ""
     challenge_reason: Optional[ChallengeReason] = None
-    to_take: bool = False
+    to_take: bool = False  # only on showing points: final to take
     taken: bool = False
     points: int = 0
     total: dict[str, int] = field(default_factory=lambda: {})
@@ -52,7 +52,7 @@ class Message:
             modes = Modes.from_json(message.get("modes", '{}'))
         return Message(
             stage=Stage(int(message["stage"])),
-            player=message.get("player", ""),
+            current_player=message.get("player", ""),
             padding=message["padding"],
             modes=modes,
             played=Card(message.get("played", "")) if message.get("played") else None,

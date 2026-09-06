@@ -42,10 +42,3 @@ class Deck:
             string_like_deck += c.name
             string_like_deck += ", "
         return string_like_deck
-
-    def __repr__(self) -> str:
-        proper_str_card = ""
-        for c in self.deck:
-            proper_str_card += c.name
-            proper_str_card += ", "
-        return proper_str_card

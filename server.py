@@ -170,7 +170,7 @@ class Server():
             data_to_send.pile = self.pile[0:7] + \
                 self.pile[7 * (self.num_players - ind):7 * (self.num_players - ind) + 20]
             data_to_send.whoami = player
-            data_to_send.player = self.current_player
+            data_to_send.current_player = self.current_player
 
             self.send_message(data_to_send, player)
             log.info(f"Sent initial cards to player {player}")
@@ -240,7 +240,7 @@ class Server():
             other_left=self.left_cards,
             is_reversed=self.is_reversed,
             counter=self.stack_counter,
-            player=self.current_player,
+            current_player=self.current_player,
             from_player=message.from_player
         )
 
@@ -277,7 +277,7 @@ class Server():
         for player in self.peeps:
             if player != self.current_player:
                 # Only the next player needs to take cards
-                data.player = next_player
+                data.current_player = next_player
                 data.to_take = taking_cards and player == next_player
 
                 # Send the request for points and syncronously receive the response
@@ -363,7 +363,7 @@ class Server():
             # todo this could probably be combined
             next_player = utils.get_next_player(self.current_player, self.peeps, card)
             for player in self.peeps:
-                message.player = next_player
+                message.current_player = next_player
                 message.num_left = self.previous_message.num_left
                 self.send_message(message, player)
                 log.info(f"Message about a stop card forwarded to player {player}")
@@ -374,7 +374,7 @@ class Server():
             next_player = utils.get_next_player(self.current_player, self.peeps)
             for player in self.peeps:
                 if player != self.current_player:
-                    message.player = next_player
+                    message.current_player = next_player
                     self.send_message(message, player)
                     log.info(f"Regular message forwarded to player {player}")
                 else:

@@ -278,7 +278,7 @@ class GameLogic():
         self.game_ui.update_other_nums_of_cards(msg.other_left)
         # Check if other player said UNO; place the challenge button if not said
         if not msg.said_uno and msg.other_left[msg.from_player] == 1:
-            self.game_ui.handle_challenge_button(msg.player)
+            self.game_ui.handle_challenge_button(msg.current_player)
         elif msg.said_uno and msg.other_left[msg.from_player] == 1:
             from_player = msg.from_player
             # todo this says wrong player if uno after 7. after 0 no message on 2 bc the other
@@ -301,7 +301,7 @@ class GameLogic():
         self.turn_state.all_nums_of_cards = msg.other_left
 
         # Enable buttons for cards if your turn; make UNO show if necessary
-        if msg.player == self.game_state.identity:
+        if msg.current_player == self.game_state.identity:
             self.log.info("Your turn, enabling buttons")
             self.game_ui.enable_buttons_regular_turn(newly_played, msg)
 

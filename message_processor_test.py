@@ -11,7 +11,7 @@ class Tests(unittest.TestCase):
     def test_skip_empty_fields(self):
         msg = Message(
             stage=Stage.INIT,
-            player="me",
+            current_player="me",
             padding="a",
             played=Card("blu1"),
             players=["me", "someone else"],
@@ -28,7 +28,7 @@ class Tests(unittest.TestCase):
         final_message = Message.from_dict(decoded)
         expected_message = Message(
             stage=Stage.INIT,
-            player="me",
+            current_player="me",
             padding="a",
             played=Card("blu1"),
             players=["me", "someone else"]

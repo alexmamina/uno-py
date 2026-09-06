@@ -87,13 +87,13 @@ class GameUI(Frame):
 
         self.setup_menu()
 
-        if msg.player == self.game_logic.game_state.identity:
+        if msg.current_player == self.game_logic.game_state.identity:
             self.name_lbl.config(bg="green")
             self.childframes[self.game_logic.game_state.identity].set_color(TURN_COLOR)
         else:
             self.name_lbl.config(bg="red")
             self.childframes[self.game_logic.game_state.identity].set_color(BACKGROUND_COLOR)
-        self.set_label_next(msg.player)
+        self.set_label_next(msg.current_player)
         if not localhost:
             self.show_enabled_modes()
 
@@ -257,7 +257,7 @@ class GameUI(Frame):
         self.hand_btns: dict[int, HandCardButton] = {}
         self.setup_hand()
 
-        if msg.player == self.game_logic.game_state.identity:
+        if msg.current_player == self.game_logic.game_state.identity:
             if msg.played.type_is(CardType.PLUSTWO) and \
                     (not self.game_logic.turn_state.can_stack or
                      not self.game_logic.game_state.modes.stack):
@@ -601,12 +601,15 @@ class GameUI(Frame):
 
     def start_config(self, message: Message):
         assert message.played is not None
-        self.game_logic.turn_state.configure_counters_uno_on_start(message.played, message.player)
+        self.game_logic.turn_state.configure_counters_uno_on_start(
+            message.played,
+            message.current_player
+        )
         self.config_start_buttons(message)
 
     def config_start_buttons(self, message: Message):
         assert message.played is not None
-        current = message.player == self.game_logic.game_state.identity
+        current = message.current_player == self.game_logic.game_state.identity
         played_plus = message.played.is_plus
         stack_possible = self.game_logic.game_state.modes.stack and \
             self.game_logic.turn_state.can_stack
@@ -683,7 +686,7 @@ class GameUI(Frame):
             return response if response else "0"
 
     def update_labels_new_turn(self, played_card: Card, msg: Message):
-        self.set_label_next(msg.player)
+        self.set_label_next(msg.current_player)
         self.direction_l.set_image(
             self.revdir if self.game_logic.turn_state.is_reversed else self.fordir)
         if played_card.type_is(CardType.PLUSTWO) and not msg.taken:
