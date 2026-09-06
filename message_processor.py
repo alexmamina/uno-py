@@ -37,12 +37,20 @@ class Message:
             return obj.to_json()
         return obj
 
-    def to_json(self) -> dict[str, Any]:
+    def non_empty_self(self) -> dict[str, Any]:
         dict_self = self.__dict__
+        return {k: v for k, v in dict_self.items() if v}
+
+    def to_json(self) -> dict[str, Any]:
         # Only construct a message with filled in parameters
-        non_empty_values = {k: v for k, v in dict_self.items() if v}
+        non_empty_values = self.non_empty_self()
         encoded_values = {k: self.converted_type(v) for k, v in non_empty_values.items()}
         return encoded_values
+
+    def __str__(self) -> str:
+        non_empty_values = self.non_empty_self()
+        sorted_values = {k: non_empty_values[k] for k in sorted(non_empty_values.keys())}
+        return str(sorted_values)
 
     @classmethod
     def from_dict(cls, message: dict[str, Any]) -> "Message":
@@ -52,7 +60,7 @@ class Message:
             modes = Modes.from_json(message.get("modes", '{}'))
         return Message(
             stage=Stage(int(message["stage"])),
-            current_player=message.get("player", ""),
+            current_player=message.get("current_player", ""),
             padding=message["padding"],
             modes=modes,
             played=Card(message.get("played", "")) if message.get("played") else None,

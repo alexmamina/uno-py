@@ -3,16 +3,20 @@ import sys
 import logging
 from logmanager import setup_logger
 from deck import Deck
-from random import shuffle
 from copy import deepcopy
 from card import Card, CardType, BLACK_PLUSFOUR_CARD_NAME, BLACK_CARD_NAME
 from message_processor import Message
+from typing import Optional
 from message_utils import recover
 from game_classes import ChallengeReason, Stage, Modes
 import json
 from json import JSONDecodeError
 import utils
+import server_utils
 
+
+DEFAULT_BUFFER_SIZE = 700
+DEFAULT_PILE_SIZE = 20
 log = logging.getLogger(__name__)
 
 
@@ -22,22 +26,29 @@ def pretty_print_message(message: Message):
     log.debug(new_msg)
 
 
-class Server():
+class Server:
+    sock: socket = socket(AF_INET, SOCK_STREAM)
+    num_players: int
+    modes: Modes
+    local_address: tuple[str, int]  # (ip, port)
+    peeps: list[str] = []  # Names of players
+    socks: dict[str, socket] = {}  # Socket information per player
+    addresses: dict[str, tuple[str, int]] = {}  # Each player's address
+    current_player = ""
+    stack_counter = 0
+    total_games_played = 0
+    all_players_points: dict[str, int]
+    pile: list[str]
+    all_played: list[str]
+    is_reversed: bool = False
+    first_card: Card
+    left_cards: dict[str, int]
+    resulting_points: int
+    previous_message: Optional[Message]
 
     def __init__(self):
         setup_logger(log, "server")
-        self.sock: socket = socket(AF_INET, SOCK_STREAM)
-        self.num_players: int
-        self.modes = Modes()
-        self.local_address: tuple[str, int]  # (ip, port)
-        self.peeps: list[str] = []  # Names of players
-        self.socks: dict[str, socket] = {}  # Socket information per player
-        self.addresses: dict[str, tuple[str, int]] = {}  # Each player's address
-        self.current_player = ""
-        self.stack_counter = 0
-        self.total_games_played = 0
         self.parse_server_arguments(sys.argv)
-        self.all_players_points: dict[str, int]
         self.sock.bind(self.local_address)
         self.sock.listen(128)
 
@@ -66,15 +77,8 @@ class Server():
             log.critical(f"Unable to convert the number of players ({args[3]}) to an integer!")
             sys.exit(1)
         # Get modes
-        # [0] = 7/0, [1] = stack, [2] = take forever
         if "0" not in args[4]:
-            self.modes = self.get_modes(args[4])
-
-    def get_modes(self, mode_string: str) -> Modes:
-        modes = Modes.from_string(mode_string)
-        for mode in modes.enabled_strings():
-            log.info(f"{mode} enabled")
-        return modes
+            self.modes = server_utils.get_modes(args[4], log)
 
     def connect_clients(self):
         player_counter = 0
@@ -95,37 +99,16 @@ class Server():
         }
 
     def init_deck(self):
-        # Deck initialisation
         deck_placeholder: list[Card] = Deck().deck
         self.pile: list[str] = [c.name for c in deck_placeholder]
         self.all_played = []
         self.is_reversed = False
-        self.first_card = self.pop_first_card()
-        self.left_cards: dict[str, int] = {
+        self.first_card, self.pile = server_utils.pop_first_card(self.pile, self.num_players)
+        self.left_cards = {
             p: number for p, number in zip(self.peeps, [7] * self.num_players)
         }
         self.resulting_points = 0
         self.previous_message = None
-
-    # If too few cards left, shuffle all played cards and add to the end of the pile.
-    # Reset all played afterwards as they're now a part of the pile
-    def fit_pile_to_size(self):
-        if len(self.pile) < 20:
-            shuffle(self.all_played)
-            self.pile += self.all_played
-            self.all_played = []
-
-    def pop_first_card(self) -> Card:
-        # Usually the first card is placed after cards are dealt (so e.g. it's the 15th card for 2
-        # players). Pretend it's the same here
-        first_card: Card = Card(self.pile.pop(7 * self.num_players))
-
-        # Black cards will not be played first. If popped, reshuffle and get a new one
-        while first_card.type_is(CardType.BLACK):
-            self.pile.append(first_card.name)
-            shuffle(self.pile)
-            first_card = Card(self.pile.pop(7 * self.num_players))
-        return first_card
 
     def reverse_players(self):
         self.peeps.reverse()
@@ -133,7 +116,6 @@ class Server():
 
     def send_initial_pile(self, first_game: bool = False):
         assert self.modes is not None
-        log.info(self.peeps)
         if self.first_card.type_is(CardType.REVERSE):
             self.reverse_players()
 
@@ -145,7 +127,7 @@ class Server():
                 else self.peeps[1 % len(self.peeps)]
             )
         else:
-            # On consequent games we start from the players after the winner, not player 0
+            # On consequent games we start from the player after the winner, not player 0
             # (either the next one, or the one after if a stop is played)
             self.current_player = utils.get_next_player(
                 self.current_player, self.peeps, self.first_card
@@ -191,7 +173,7 @@ class Server():
         encoded_msg = json.dumps(msg_copy.to_json()).encode("utf-8")
         self.socks[destination_player].sendto(encoded_msg, self.addresses[destination_player])
 
-    def receive_message(self, from_player: str, buffer_size: int = 700) -> Message:
+    def receive_message(self, from_player: str, buffer_size: int = DEFAULT_BUFFER_SIZE) -> Message:
         json_msg, _ = self.socks[from_player].recvfrom(buffer_size)
         try:
             dec_json = json_msg.decode("utf-8")
@@ -206,10 +188,11 @@ class Server():
 
     def process_received_challenge(self, message: Message):
         # From a current player to the previous player; need to send to previous player only
-        self.fit_pile_to_size()
+        self.pile, self.all_played = server_utils.fit_pile_to_size(self.pile, self.all_played)
         data = message
-        # This makes data longer than 700 characters, but that's fine. We're trimming padding later
-        data.pile = self.pile[:20]
+        # This makes data longer than DEFAULT_BUFFER_SIZE characters, but that's fine.
+        # We're trimming padding later
+        data.pile = self.pile[:DEFAULT_PILE_SIZE]
         rulebreaker = self.prev_player
         self.send_message(data, rulebreaker)
         # We sent a challenge to the previous player, so now expect a response from them
@@ -230,11 +213,11 @@ class Server():
             self.pile.pop(0)
             self.pile.pop(0)
 
-        self.fit_pile_to_size()
+        self.pile, self.all_played = server_utils.fit_pile_to_size(self.pile, self.all_played)
 
         data = Message(
             stage=Stage.GO,
-            pile=self.pile[:20],
+            pile=self.pile[:DEFAULT_PILE_SIZE],
             num_left=message.num_left,
             played=message.played,
             other_left=self.left_cards,
@@ -256,11 +239,11 @@ class Server():
         assert message.played is not None
         assert self.modes is not None
         taking_cards = message.played.is_plus
-        self.fit_pile_to_size()
+        self.pile, self.all_played = server_utils.fit_pile_to_size(self.pile, self.all_played)
 
         data = Message(
             stage=Stage.ZEROCARDS,
-            pile=self.pile[0:20],
+            pile=self.pile[:DEFAULT_PILE_SIZE],
             played=message.played,
             to_take=taking_cards,
             from_player=message.from_player,
@@ -427,8 +410,8 @@ class Server():
             self.stack_counter = 0
             data.taken = message.taken
             self.pop_pile_until_equivalent(message.num_left)
-        self.fit_pile_to_size()
-        data.pile = self.pile[:20]
+        self.pile, self.all_played = server_utils.fit_pile_to_size(self.pile, self.all_played)
+        data.pile = self.pile[:DEFAULT_PILE_SIZE]
         self.left_cards[self.current_player] = message.num_left
 
         if self.modes.sevenzero and not message.taken:
