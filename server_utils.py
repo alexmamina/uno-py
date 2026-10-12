@@ -22,13 +22,3 @@ def pop_first_card(pile: list[str], num_players) -> tuple[Card, list[str]]:
         shuffle(pile)
         first_card = Card(pile.pop(7 * num_players))
     return first_card, pile
-
-
-# If too few cards left, shuffle all played cards and add to the end of the pile.
-# Reset all played afterwards as they're now a part of the pile
-def fit_pile_to_size(pile: list[str], all_played: list[str]) -> tuple[list[str], list[str]]:
-    if len(pile) < 20:
-        shuffle(all_played)
-        pile += all_played
-        all_played = []
-    return pile, all_played

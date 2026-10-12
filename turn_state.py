@@ -17,6 +17,7 @@ class TurnState():
     last_played: Card
     game_state: GameState
     cards_taken_previously: bool
+    num_taken_from_pile: int = 0
     stage: Stage
     why_challenge_in_progress: Optional[ChallengeReason] = None
     current_player: str

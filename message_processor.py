@@ -9,7 +9,7 @@ class Message:
     stage: Stage
     current_player: str = ""
     padding: str = ""
-    modes: Modes = Modes()
+    modes: Modes = field(default_factory=lambda: Modes())
     played: Optional[Card] = None
     players: list[str] = field(default_factory=lambda: [])
     pile: list[str] = field(default_factory=lambda: [])
@@ -30,6 +30,7 @@ class Message:
     winner: str = ""
     end: bool = False
     from_player: str = ""
+    num_taken_from_pile: int = 0
 
     def converted_type(self, obj: Any) -> Any:
         # Custom types or lists of custom types: return to_json(), otherwise the object itself
@@ -82,5 +83,6 @@ class Message:
             total=message.get("total", {}),
             winner=message.get("winner", ""),
             end=message.get("end", False),
-            from_player=message.get("from_player", "")
+            from_player=message.get("from_player", ""),
+            num_taken_from_pile=message.get("num_taken_from_pile", 0),
         )

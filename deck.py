@@ -1,6 +1,6 @@
 from PIL import Image
 from card import Card, CardType
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from random import shuffle
 from os import listdir
 
@@ -9,6 +9,7 @@ CARD_IMAGE_PATH = "Images/Cards/"
 
 @dataclass
 class Deck:
+    deck: list[Card] = field(default_factory=lambda: [])
     backofcard = Image.open(f"{CARD_IMAGE_PATH}backofcard.jpeg")
     backofcard = backofcard.resize((117, 183), Image.LANCZOS)
 
@@ -16,7 +17,7 @@ class Deck:
 
     # List of all Card objects
     def __init__(self):
-        self.deck: list[Card] = []
+        self.deck = []
         files = listdir(f"{CARD_IMAGE_PATH}UNO")
         if len(files) == 0:
             print("No files found")

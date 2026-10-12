@@ -88,7 +88,8 @@ class GameLogic():
             played=special_card,
             pile=self.turn_state.pile,
             stage=Stage.GO,
-            num_left=self.turn_state.num_cards_left
+            num_left=self.turn_state.num_cards_left,
+            num_taken_from_pile=self.turn_state.num_taken_from_pile,
         )
         if card.type_is(CardType.PLUSFOUR):
             data_to_send.wild = self.turn_state.can_put_plusfour
@@ -124,6 +125,7 @@ class GameLogic():
 
     def take_card(self):
         new = Card(self.turn_state.pile.pop(0))
+        self.turn_state.num_taken_from_pile += 1
         # Decrease number of cards that need to be taken
         self.turn_state.decrease_counters()
 
@@ -148,7 +150,8 @@ class GameLogic():
                 played=self.turn_state.last_played,
                 pile=self.turn_state.pile,
                 stage=Stage.GO,
-                num_left=self.turn_state.num_cards_left
+                num_left=self.turn_state.num_cards_left,
+                num_taken_from_pile=self.turn_state.num_taken_from_pile,
             )
             if self.turn_state.stage != Stage.CHALLENGE:
                 data_to_send.taken = True
@@ -394,6 +397,7 @@ class GameLogic():
         self.turn_state.reset_card_counter()
 
         self.game_ui.disable_buttons(data_to_send)
+        self.turn_state.num_taken_from_pile = 0
         self.log.info("Not your turn anymore")
 
     # Notify opponent that they forgot to say UNO; when clicking button
